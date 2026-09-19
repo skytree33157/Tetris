@@ -8,6 +8,7 @@ public abstract class Block {
     // How to use :
     // Block block = new IBlock();
     // block.getType() == BlockType.I; //will return true
+    // so, it is basically return the enum of the block type, so you can use it to check the type of the block
     public BlockType getType() {
         return type;
     }
