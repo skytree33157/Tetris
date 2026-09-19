@@ -5,9 +5,9 @@ public abstract class Block {
     protected int[][] shape;
     protected BlockType type;
 
-    //How to use :
-    //Block block = new IBlock();
-    //block.getType() == BlockType.I; //will return true
+    // How to use :
+    // Block block = new IBlock();
+    // block.getType() == BlockType.I; //will return true
     public BlockType getType() {
         return type;
     }

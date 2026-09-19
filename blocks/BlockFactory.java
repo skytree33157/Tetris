@@ -6,6 +6,10 @@ public class BlockFactory {
 
     private static final Random random = new Random();
 
+    // How to use:
+    // Block random = BlockFactory.createRandomBlock();
+    // random.getType() == BlockType.I; // true if the block is of type I
+    // random.getWidth() == 4;          // true if the block width is 4
     public static Block createRandomBlock() {
         int number = random.nextInt(7);
 
