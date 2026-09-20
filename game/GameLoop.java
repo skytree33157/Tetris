@@ -13,6 +13,13 @@ public class GameLoop implements Runnable {
     private int startX = 3;
     private int startY = 0;
 
+    private int countBlock = 0;
+    private int countDeleteLine = 0;
+
+    private static final int SPEED_DECREASE_AMOUNT = 100; // 한 레벨 당 감소할 속도
+    private static final int MIN_DROP_SPEED = 100; // 최소 드롭 속도
+    private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
+    private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
 
     public GameLoop(Board board, Block block) {
         this.board = board;
@@ -44,6 +51,16 @@ public class GameLoop implements Runnable {
             block.setY(nextY);
         } else { // 블록이 더 이상 내려갈 수 없으면 현재 위치에 블록을 고정 후 새로운 블록 생성
             board.addBlock(x, y, block.getShape());
+
+            countBlock++;
+
+            // 줄 삭제 기능 구현 후 수정 예정
+            if(isClearLine()) {
+                countDeleteLine++;
+            }
+
+            increaseSpeed();
+
             block = BlockFactory.createRandomBlock();
             block.setX(startX);
             block.setY(startY);
@@ -78,5 +95,31 @@ public class GameLoop implements Runnable {
             }
         }
         return true;
-    }    
+    }
+
+    private void increaseSpeed() {
+        boolean levelUp = false;
+
+        // 블록이 임계값만큼 생성되었을 때
+        if (countBlock >= BLOCKS_FOR_LEVEL_UP) {
+            levelUp = true;
+            countBlock = 0;
+        }
+
+        // 줄이 임계값만큼 삭제되었을 때
+        if (countDeleteLine >= LINES_FOR_LEVEL_UP) {
+            levelUp = true;
+            countDeleteLine = 0;
+        }
+
+        // 위 조건 중 한 개 이상의 조건을 만족하고, 제한 속도보다 느릴 때만 속도 증가
+        if (levelUp && dropSpeed > MIN_DROP_SPEED) {
+            dropSpeed -= SPEED_DECREASE_AMOUNT;
+        }
+    }
+    
+    // 이후 구현할 기능 : 줄 삭제
+    private boolean isClearLine(){
+        return true;
+    }
 }
