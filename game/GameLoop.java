@@ -35,7 +35,8 @@ public class GameLoop implements Runnable {
                 Thread.sleep(dropSpeed);
                 moveDownBlock();
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Thread.currentThread().interrupt();
+                return;
             }
         }
     }
