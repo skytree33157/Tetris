@@ -5,6 +5,9 @@ public abstract class Block {
     protected int[][] shape;
     protected BlockType type;
 
+    protected int x;
+    protected int y;
+
     // How to use :
     // Block block = new IBlock();
     // block.getType() == BlockType.I; //will return true
@@ -25,6 +28,22 @@ public abstract class Block {
         return shape[0].length;
     }
 
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public void setY(int y) {
+        this.y = y;
+    }
 
 
 
