@@ -45,4 +45,40 @@ public class Board {
     public int getHeight() {
         return ROW;
     }
+
+    // 보드의 꽉 찬 줄 제거 후 제거된 line 수 반환
+    public int clearLines(){
+        int linesCleared=0;
+
+        // 맨 아래줄부터 검사해서 꽉 찬 줄이 있으면 isFull=true
+        for(int curRow=ROW-1;curRow>=0;curRow--){
+            boolean isFull=true;
+            for(int curCol=0;curCol<COL;curCol++){
+                if(board[curRow][curCol]==0){
+                    isFull=false;
+                    break;
+                }
+            }
+            if(isFull){
+                linesCleared++;
+
+                // 현재 줄부터 시작해서 한 줄씩 아래로 이동
+                for (int r = curRow; r > 0; r--) {
+                    for (int c = 0; c < COL; c++) {
+                        board[r][c] = board[r - 1][c];
+                    }
+                }
+
+                // 맨 윗줄은 초기화
+                for (int c = 0; c < COL; c++) {
+                    board[0][c] = 0;
+                }
+
+                // 한 칸씩 아래로 이동했으므로 curRow를 증가(현재 줄을 한 줄 밑으로 이동)
+                // -> 현재 줄이 꽉 차 있을 수 있으므로 현재 줄부터 다시 검사하도록 함
+                curRow++;
+            }
+        }
+        return linesCleared;
+    }
 }
