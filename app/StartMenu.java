@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
@@ -29,6 +31,7 @@ public class StartMenu extends JFrame {
     private SimpleAttributeSet defaultStyle; 
     private SimpleAttributeSet selectedStyle;
     private int selectedIndex = 0; // 메뉴 항목 인덱스
+    private final AppStateManager stateManager = new AppStateManager(AppState.START_MENU);
 
     public StartMenu() {
         super("SeoulTech SE Tetris");
@@ -38,6 +41,7 @@ public class StartMenu extends JFrame {
 
         pane = new JTextPane();
         pane.setEditable(false);
+        pane.setFocusable(false);
         pane.setBackground(Color.BLACK);
         CompoundBorder border = BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.GRAY, 10),
@@ -64,7 +68,12 @@ public class StartMenu extends JFrame {
         // 키보드 입력을 받으려면 포커스 필요
         addKeyListener(new MenuKeyListener());
         setFocusable(true);
-        requestFocus();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                requestFocusInWindow();
+            }
+        });
 
         drawMenu();
     }
@@ -129,6 +138,8 @@ public class StartMenu extends JFrame {
                 System.out.println("스코어보드 선택됨 (미구현)");
                 break;
             case 3:
+                stateManager.transitionTo(AppState.EXIT);
+                dispose();
                 System.exit(0);
                 break;
         }
