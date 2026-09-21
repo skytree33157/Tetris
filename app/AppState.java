@@ -1,6 +1,6 @@
 package app;
 
-// 메뉴 리스트
+// 애플리케이션 상태 목록
 public enum AppState {
     START_MENU,
     PLAYING,
