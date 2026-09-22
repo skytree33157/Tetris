@@ -1,4 +1,4 @@
-package scoreboard;
+package menu;
 
 public class ScoreRecord {
 

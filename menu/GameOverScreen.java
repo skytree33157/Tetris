@@ -14,8 +14,6 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import scoreboard.ScoreRecord;
-
 public class GameOverScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
