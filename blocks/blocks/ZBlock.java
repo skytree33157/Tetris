@@ -1,4 +1,7 @@
-package blocks;
+package blocks.blocks;
+
+import blocks.Block;
+import blocks.BlockType;
 
 public class ZBlock extends Block {
 

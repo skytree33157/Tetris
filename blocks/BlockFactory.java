@@ -1,5 +1,7 @@
 package blocks;
 
+import blocks.blocks.*;
+
 import java.util.Random;
 
 public class BlockFactory {
