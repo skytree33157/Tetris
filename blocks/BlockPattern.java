@@ -1,4 +1,4 @@
-package blocks.blocks;
+package blocks;
 
 public enum BlockPattern {
     HORIZONTAL,
