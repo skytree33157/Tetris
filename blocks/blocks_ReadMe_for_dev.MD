@@ -50,9 +50,28 @@ ColorMode.TRITANOPIA
 
 ## BlockStyle.java
 
-- `BlockStyle.of(BlockType, ColorMode)` : 블록 종류와 색상 모드에 맞는 스타일을 반환합니다.
-- `getColor()` : 렌더링에 사용할 색상을 반환합니다.
-- `getPattern()` : 렌더링에 사용할 패턴을 반환합니다.
+`BlockStyle`은 블록 종류(`BlockType`)와 색상 모드(`ColorMode`)에 따라
+렌더링에 사용할 색상과 패턴 정보를 제공합니다.
+
+> ⚠️ `pattern`은 현재 **패턴의 종류만 정의된 상태**입니다.  
+> `HORIZONTAL`, `DOT`, `GRID` 등의 값은 패턴의 의미만 나타내며,
+> 선의 굵기, 간격, 점의 크기, 패턴 색상과 같은 실제 시각적 표현 방식은
+> UI/Renderer에서 구현해야 합니다.
+
+### Pattern Reference
+
+![BlockPattern Reference](./BlockPattern_Reference.png)
+
+### 제공 메서드
+
+- `BlockStyle.of(BlockType, ColorMode)`
+  - 블록 종류와 색상 모드에 맞는 `BlockStyle`을 반환합니다.
+- `getColor()`
+  - 렌더링에 사용할 색상을 반환합니다.
+- `getPattern()`
+  - 렌더링에 사용할 패턴 종류를 반환합니다.
+
+### 보드에 저장된 블록의 스타일 가져오기
 
 ```java
 BlockType type = BlockType.fromValue(cellValue);
@@ -60,12 +79,8 @@ BlockStyle style = BlockStyle.of(type, currentColorMode);
 
 Color color = style.getColor();
 BlockPattern pattern = style.getPattern();
-```
+현재 떨어지고 있는 블록의 스타일 가져오기
 
-떨어지는 블록은 보드 값으로 변환하지 않고 바로 스타일을 가져올 수 있습니다.
 
-```java
-BlockStyle style = BlockStyle.of(block.getType(), currentColorMode);
-```
-
-`color`와 `pattern`을 실제로 그리는 작업은 렌더링 코드에서 처리합니다.
+// 떨어지는 블록은 보드 값으로 변환하지 않고 BlockType을 직접 사용할 수 있습니다.
+BlockStyle style = BlockStyle.of(block.getType(),currentColorMode);
