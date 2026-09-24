@@ -1,4 +1,4 @@
-package blocks;
+package blocks.blocks;
 
 public enum ColorMode {
     NORMAL,
