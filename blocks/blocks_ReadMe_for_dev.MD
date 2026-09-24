@@ -84,3 +84,4 @@ BlockPattern pattern = style.getPattern();
 
 // 떨어지는 블록은 보드 값으로 변환하지 않고 BlockType을 직접 사용할 수 있습니다.
 BlockStyle style = BlockStyle.of(block.getType(),currentColorMode);
+```
