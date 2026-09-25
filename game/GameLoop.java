@@ -21,6 +21,8 @@ public class GameLoop implements Runnable {
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
 
+    private boolean isPaused = false;
+
     public GameLoop(Board board, Block block) {
         this.board = board;
         this.block = block;
@@ -28,12 +30,22 @@ public class GameLoop implements Runnable {
         this.block.setY(startY);
     }
 
+    public void togglePause() {
+        isPaused = !isPaused;
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
     @Override
     public void run() {
         while (true) {
             try {
                 Thread.sleep(dropSpeed);
-                moveDownBlock();
+                if (!isPaused) {
+                    moveDownBlock();
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
