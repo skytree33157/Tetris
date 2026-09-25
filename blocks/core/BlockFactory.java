@@ -1,4 +1,6 @@
-package blocks;
+package blocks.core;
+
+import blocks.tetromino.*;
 
 import java.util.Random;
 

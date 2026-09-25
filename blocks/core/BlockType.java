@@ -1,4 +1,4 @@
-package blocks;
+package blocks.core;
 
 public enum BlockType {
     I(1),
@@ -26,5 +26,17 @@ public enum BlockType {
     */
     public int getValue() {
         return value;
+    }
+
+    public static BlockType fromValue(int value) {
+        for (BlockType type : BlockType.values()) {
+            if (type.getValue() == value) {
+                return type;
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Invalid BlockType value: " + value
+        );
     }
 }
