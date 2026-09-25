@@ -81,4 +81,30 @@ public class Board {
         }
         return linesCleared;
     }
+
+    public boolean isValidPosition(int[][] shape, int targetX, int targetY) {
+        // 블록의 각 칸을 검사하여 충돌 여부 확인
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[row].length; col++) {
+                // 블록이 실제로 존재하는 칸만 검사
+                if (shape[row][col] != 0) {
+                    int boardX = targetX + col;
+                    int boardY = targetY + row;
+
+                    // 블록이 보드 내부에 있는지 검사
+                    if (boardX < 0 || boardX >= COL || boardY >= ROW) {
+                        return false;
+                    }
+
+                    // 다른 고정된 블록과 충돌하는지 검사 
+                    if (boardY >= 0) {
+                        if (board[boardY][boardX] != 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
 }
