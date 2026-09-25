@@ -42,7 +42,7 @@ public class GameLoop implements Runnable {
     }
 
     // 블록을 아래로 이동시키는 메서드
-    private void moveDownBlock() {
+    private synchronized void moveDownBlock() {
         int x = block.getX();
         int y = block.getY();
         int nextY = y + 1;
@@ -65,28 +65,28 @@ public class GameLoop implements Runnable {
         }
     }
 
-    public void moveLeftAction() {
+    public synchronized void moveLeftAction() {
         int targetX = block.getX() - 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveLeft();
         }
     }
 
-    public void moveRightAction() {
+    public synchronized void moveRightAction() {
         int targetX = block.getX() + 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveRight();
         }
     }
 
-    public void moveDownAction() {
+    public synchronized void moveDownAction() {
         int targetY = block.getY() + 1;
         if (board.isValidPosition(block.getShape(), block.getX(), targetY)) {
             block.moveDown();
         }
     }
 
-    public void rotateAction(){
+    public synchronized void rotateAction(){
         int[][] rotatedShape = block.getRotate();
         if (board.isValidPosition(rotatedShape, block.getX(), block.getY())) {
             block.rotate();
