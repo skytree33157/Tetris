@@ -5,7 +5,6 @@ public class ScoreManager {
     private int score = 0;
     private int comboCount = 0;
 
-    private static final int AUTO_DROP_POINT = 1;
     private static final int SOFT_DROP_POINT = 1;
     private static final int HARD_DROP_POINT = 2;
 
@@ -27,11 +26,13 @@ public class ScoreManager {
     private static final double MAX_FINAL_MULTIPLIER = 10.0;
 
     // 블럭 하강 점수
-    public synchronized int addDropScore(int distance, DropType type) {
+    public synchronized int addDropScore(int distance, DropType type, int level) {
         if (distance <= 0) return 0;
 
+        validateLevel(level);
+
         int pointPerCell = switch (type) {
-            case AUTO -> AUTO_DROP_POINT;
+            case AUTO -> getAutoDropMultiplier(level);
             case SOFT -> SOFT_DROP_POINT;
             case HARD -> HARD_DROP_POINT;
         };
@@ -87,7 +88,21 @@ public class ScoreManager {
         comboCount = 0;
     }
 
-    // 레벨별 배율
+    // 자동 하강 속도별 추가 점수
+    private int getAutoDropMultiplier(int level) {
+        return switch (level) {
+            case 1 -> 1;
+            case 2, 3 -> 2;
+            case 4, 5 -> 3;
+            case 6, 7 -> 4;
+            case 8, 9, 10 -> 5;
+            default -> throw new IllegalArgumentException(
+                    "level must be between 1 and 10"
+            );
+        };
+    }
+
+    // 줄 삭제 점수의 레벨별 배율
     private double getLevelMultiplier(int level) {
         return switch (level) {
             case 1, 2 -> 1.0;
