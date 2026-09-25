@@ -1,7 +1,7 @@
-package blocks.blocks;
+package blocks.tetromino;
 
-import blocks.Block;
-import blocks.BlockType;
+import blocks.core.Block;
+import blocks.core.BlockType;
 
 public class SBlock extends Block {
 

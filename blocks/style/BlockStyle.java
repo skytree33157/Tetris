@@ -1,4 +1,6 @@
-package blocks;
+package blocks.style;
+
+import blocks.core.BlockType;
 
 import java.awt.Color;
 

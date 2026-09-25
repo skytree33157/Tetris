@@ -1,4 +1,4 @@
-package blocks;
+package blocks.core;
 
 public enum BlockType {
     I(1),

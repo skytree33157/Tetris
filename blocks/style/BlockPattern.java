@@ -1,4 +1,4 @@
-package blocks;
+package blocks.style;
 
 public enum BlockPattern {
     HORIZONTAL,      // 가로줄 패턴

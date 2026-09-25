@@ -1,4 +1,4 @@
-package blocks;
+package blocks.style;
 
 public enum ColorMode {
     NORMAL,         // 일반색상
