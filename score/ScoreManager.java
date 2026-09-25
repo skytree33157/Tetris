@@ -26,6 +26,7 @@ public class ScoreManager {
     private static final double MIN_FINAL_MULTIPLIER = 1.0;
     private static final double MAX_FINAL_MULTIPLIER = 10.0;
 
+    // 블럭 하강 점수
     public synchronized int addDropScore(int distance, DropType type) {
         if (distance <= 0) return 0;
 
@@ -41,61 +42,52 @@ public class ScoreManager {
         return addedScore;
     }
 
-    public synchronized int addLineClearScore(
-            int linesCleared,
-            int level,
-            boolean perfectClear
-    ) {
+    private void validateLevel(int level) {
+        if (level < 1 || level > 10)
+            throw new IllegalArgumentException("level must be between 1 and 10");
+    }
+
+    // 줄 삭제 및 추가 점수 계산
+    public synchronized int addLineClearScore(int linesCleared, int level, boolean perfectClear) {
         validateLevel(level);
 
+        // 줄 삭제 실패 시 콤보 초기화
         if (linesCleared == 0) {
             comboCount = 0;
             return 0;
         }
 
-        if (linesCleared < 0 || linesCleared > 4) {
-            throw new IllegalArgumentException(
-                    "linesCleared must be between 0 and 4"
-            );
-        }
+        if (linesCleared < 0 || linesCleared > 4)
+            throw new IllegalArgumentException("linesCleared must be between 0 and 4");
 
         comboCount++;
 
         int baseScore = getLineClearBaseScore(linesCleared);
         double levelMultiplier = getLevelMultiplier(level);
         double comboMultiplier = getComboMultiplier(comboCount);
-        double perfectMultiplier =
-                perfectClear ? PERFECT_CLEAR_MULTIPLIER : 1.0;
+        double perfectMultiplier = perfectClear ? PERFECT_CLEAR_MULTIPLIER : 1.0;
 
-        double rawMultiplier =
-                levelMultiplier
-                        * comboMultiplier
-                        * perfectMultiplier;
+        double rawMultiplier = levelMultiplier * comboMultiplier * perfectMultiplier;
+        double finalMultiplier = normalizeMultiplier(rawMultiplier);
 
-        double finalMultiplier =
-                normalizeMultiplier(rawMultiplier);
-
-        int addedScore =
-                (int) Math.round(baseScore * finalMultiplier);
-
+        int addedScore = (int) Math.round(baseScore * finalMultiplier);
         score += addedScore;
 
         return addedScore;
     }
 
-    public synchronized int getScore() {
-        return score;
-    }
+    // 현재 누적 점수
+    public synchronized int getScore() {return score;}
 
-    public synchronized int getComboCount() {
-        return comboCount;
-    }
+    public synchronized int getComboCount() {return comboCount;}
 
+    // 새 게임 시작 시 초기화
     public synchronized void reset() {
         score = 0;
         comboCount = 0;
     }
 
+    // 레벨별 배율
     private double getLevelMultiplier(int level) {
         return switch (level) {
             case 1, 2 -> 1.0;
@@ -109,18 +101,16 @@ public class ScoreManager {
         };
     }
 
+    // 연속 줄 삭제 배율
     private double getComboMultiplier(int comboCount) {
         if (comboCount <= 1) return 1.0;
 
-        double multiplier =
-                1.0 + ((comboCount - 1) * 0.1);
+        double multiplier = 1.0 + ((comboCount - 1) * 0.1);
 
-        return Math.min(
-                multiplier,
-                MAX_COMBO_MULTIPLIER
-        );
+        return Math.min(multiplier, MAX_COMBO_MULTIPLIER);
     }
 
+    // 한 번에 삭제한 줄 수별 기본 점수
     private int getLineClearBaseScore(int linesCleared) {
         return switch (linesCleared) {
             case 1 -> SINGLE_SCORE;
@@ -131,39 +121,17 @@ public class ScoreManager {
         };
     }
 
+    // raw 배율을 1~10 범위로 선형 정규화
     private double normalizeMultiplier(double rawMultiplier) {
-        double clamped =
-                Math.max(
-                        1.0,
-                        Math.min(
-                                rawMultiplier,
-                                MAX_RAW_MULTIPLIER
-                        )
-                );
+        double clamped = Math.max(1.0, Math.min(rawMultiplier, MAX_RAW_MULTIPLIER));
 
-        double ratio =
-                (clamped - 1.0)
-                        /
-                        (MAX_RAW_MULTIPLIER - 1.0);
+        double ratio = (clamped - 1.0) / (MAX_RAW_MULTIPLIER - 1.0);
 
         double normalized =
                 MIN_FINAL_MULTIPLIER
-                        +
-                        (MAX_FINAL_MULTIPLIER
-                                - MIN_FINAL_MULTIPLIER)
-                                * Math.sqrt(ratio);
+                        + (MAX_FINAL_MULTIPLIER - MIN_FINAL_MULTIPLIER)
+                        * ratio;
 
-        return Math.min(
-                normalized,
-                MAX_FINAL_MULTIPLIER
-        );
-    }
-
-    private void validateLevel(int level) {
-        if (level < 1 || level > 10) {
-            throw new IllegalArgumentException(
-                    "level must be between 1 and 10"
-            );
-        }
+        return Math.min(normalized, MAX_FINAL_MULTIPLIER);
     }
 }
