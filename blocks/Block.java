@@ -45,6 +45,32 @@ public abstract class Block {
         this.y = y;
     }
 
+    public void moveLeft(){
+        x--;
+    }
 
+    public void moveRight(){
+        x++;
+    }
 
+    public void moveDown(){
+        y++;
+    }
+
+    // 회전된 모양 반환
+    public int[][] getRotate(){
+        int rows = shape.length;
+        int cols = shape[0].length;
+        int[][] copyBlock = new int[cols][rows];
+        for(int i=0;i<rows;i++){
+            for(int j=0;j<cols;j++){
+                copyBlock[j][rows-1-i] = shape[i][j];
+            }
+        }
+        return copyBlock;
+    }
+
+    public void rotate(){
+        shape = getRotate();
+    }
 }
