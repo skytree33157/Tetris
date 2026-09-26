@@ -126,4 +126,12 @@ public class GameLoop implements Runnable {
             dropSpeed -= SPEED_DECREASE_AMOUNT;
         }
     }
+
+    // 하드드롭
+    public void hardDropAction() {
+        while (board.isValidPosition(block.getShape(), block.getX(), block.getY() + 1)) {
+            block.moveDown();
+        }
+        moveDownBlock(); // 블록을 고정하고 새로운 블록 생성 -> moveDownBlock()의 else 실행
+    }
 }

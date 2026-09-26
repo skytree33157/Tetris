@@ -35,6 +35,9 @@ public class GameController extends KeyAdapter {
             case KeyEvent.VK_UP:
                 gameLoop.rotateAction();
                 break;
+            case KeyEvent.VK_SPACE:
+                gameLoop.hardDropAction();
+                break;
         }
     }
 }
