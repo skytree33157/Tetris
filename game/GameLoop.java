@@ -10,8 +10,11 @@ public class GameLoop implements Runnable {
     private Board board;
     private Block block;
 
+
     private int startX = 3;
     private int startY = 0;
+
+    private volatile boolean gameOver = false; // 게임 오버인지 아닌지 확인
 
     private int countBlock = 0;
     private int countClearLine = 0;
@@ -26,11 +29,15 @@ public class GameLoop implements Runnable {
         this.block = block;
         this.block.setX(startX);
         this.block.setY(startY);
+
+        if (!board.isValidPosition(block.getShape(), startX, startY)) {
+        gameOver = true;
+        }
     }
 
     @Override
     public void run() {
-        while (true) {
+        while (!gameOver) { //gameover = true일 때까지 반복
             try {
                 Thread.sleep(dropSpeed);
                 moveDownBlock();
@@ -62,10 +69,19 @@ public class GameLoop implements Runnable {
             block = BlockFactory.createRandomBlock();
             block.setX(startX);
             block.setY(startY);
+
+            // 새 블록을 시작 위치에 배치 못하면? -> gameover
+            if (!board.isValidPosition(block.getShape(), startX, startY)) {
+                gameOver = true;
+            }
         }
     }
 
     public synchronized void moveLeftAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetX = block.getX() - 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveLeft();
@@ -73,6 +89,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void moveRightAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetX = block.getX() + 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveRight();
@@ -80,6 +100,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void moveDownAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetY = block.getY() + 1;
         if (board.isValidPosition(block.getShape(), block.getX(), targetY)) {
             block.moveDown();
@@ -87,12 +111,20 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void rotateAction(){
+        if (gameOver) {
+        return;
+        }
+        
         int[][] rotatedShape = block.getRotate();
         if (board.isValidPosition(rotatedShape, block.getX(), block.getY())) {
             block.rotate();
         }
     }
 
+    public boolean isGameOver() {
+        return gameOver;
+    }
+    
     // 하강 속도 증가시키는 메서드
     private void increaseSpeed() {
         boolean levelUp = false;
