@@ -3,11 +3,15 @@ package game;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
+// 키 조작 클래스
+
 public class GameController extends KeyAdapter {
     private GameLoop gameLoop;
+    private ActionController actionController;
 
-    public GameController(GameLoop gameLoop) {
+    public GameController(GameLoop gameLoop, ActionController actionController) {
         this.gameLoop = gameLoop;
+        this.actionController = actionController;
     }
 
     @Override
@@ -24,19 +28,19 @@ public class GameController extends KeyAdapter {
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_LEFT:
-                gameLoop.moveLeftAction();
+                actionController.moveLeftAction();
                 break;
             case KeyEvent.VK_RIGHT:
-                gameLoop.moveRightAction();
+                actionController.moveRightAction();
                 break;
             case KeyEvent.VK_DOWN:
-                gameLoop.moveDownAction();
+                actionController.moveDownAction();
                 break;
             case KeyEvent.VK_UP:
-                gameLoop.rotateAction();
+                actionController.rotateAction();
                 break;
             case KeyEvent.VK_SPACE:
-                gameLoop.hardDropAction();
+                actionController.hardDropAction();
                 break;
         }
     }
