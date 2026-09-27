@@ -29,6 +29,10 @@ public class GameLoop implements Runnable {
         this.block = block;
         this.block.setX(startX);
         this.block.setY(startY);
+
+        if (!board.isValidPosition(block.getShape(), startX, startY)) {
+        gameOver = true;
+        }
     }
 
     @Override
@@ -74,6 +78,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void moveLeftAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetX = block.getX() - 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveLeft();
@@ -81,6 +89,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void moveRightAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetX = block.getX() + 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveRight();
@@ -88,6 +100,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void moveDownAction() {
+        if (gameOver) {
+        return;
+        }
+
         int targetY = block.getY() + 1;
         if (board.isValidPosition(block.getShape(), block.getX(), targetY)) {
             block.moveDown();
@@ -95,6 +111,10 @@ public class GameLoop implements Runnable {
     }
 
     public synchronized void rotateAction(){
+        if (gameOver) {
+        return;
+        }
+        
         int[][] rotatedShape = block.getRotate();
         if (board.isValidPosition(rotatedShape, block.getX(), block.getY())) {
             block.rotate();
