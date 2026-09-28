@@ -2,8 +2,8 @@ package menu;
 
 import app.AppState;
 import app.AppStateManager;
-import blocks.Block;
-import blocks.BlockFactory;
+import blocks.core.Block;
+import blocks.core.BlockFactory;
 import board.Board;
 import game.ActionController;
 import game.GameController;

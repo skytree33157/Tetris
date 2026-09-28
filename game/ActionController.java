@@ -1,7 +1,7 @@
 package game;
 
-import blocks.Block;
-import blocks.BlockFactory;
+import blocks.core.Block;
+import blocks.core.BlockFactory;
 import board.Board;
 
 // 블록 이동 클래스
