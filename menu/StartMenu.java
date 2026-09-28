@@ -1,12 +1,20 @@
 package menu;
 
+import app.AppState;
+import app.AppStateManager;
+import blocks.Block;
+import blocks.BlockFactory;
+import board.Board;
+import game.ActionController;
+import game.GameController;
+import game.GameLoop;
+import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JTextPane;
@@ -14,9 +22,7 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
-
-import app.AppState;
-import app.AppStateManager;
+import score.ScoreManager;
 
 public class StartMenu extends JFrame {
 
@@ -134,8 +140,25 @@ public class StartMenu extends JFrame {
     private void select() {
         switch (selectedIndex) {
             case 0:
-                // TODO: game 담당자가 게임 화면 전환 로직 연결
-                System.out.println("게임 시작 선택됨 (미구현)");
+                Board board = new Board();
+                Block block = BlockFactory.createRandomBlock();
+                GameStateManager gameStateManager = new GameStateManager();
+                ActionController actionController = new ActionController(board, block, gameStateManager);
+                GameLoop gameLoop = new GameLoop(actionController, gameStateManager);
+                ScoreManager scoreManager = new ScoreManager();
+                GameController gameController = new GameController(gameLoop, actionController, gameStateManager, scoreManager);
+
+                //------------------------------------------------------
+
+                //TODO : 게임 화면 구현 후 구현할 것.
+
+                
+                //------------------------------------------------------
+
+                // 게임 루프 시작
+                new Thread(gameLoop).start();
+                //게임 시작 시 메뉴 창 닫기
+                dispose();
                 break;
             case 1:
                 // TODO: settings 담당자가 설정 화면 전환 로직 연결
