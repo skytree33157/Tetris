@@ -14,6 +14,8 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
+import storage.ScoreStorage;
+
 public class GameOverScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
@@ -30,6 +32,8 @@ public class GameOverScreen extends JFrame {
 
     private ScoreRecord newRecord;
 
+    private ScoreStorage storage;
+
     public GameOverScreen(int score) {
 
         super("SeoulTech SE Tetris");
@@ -37,7 +41,7 @@ public class GameOverScreen extends JFrame {
         this.score = score;
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(400, 400);
+        setSize(1000, 1000);
         setLocationRelativeTo(null);
 
         pane = new JTextPane();
@@ -84,23 +88,17 @@ public class GameOverScreen extends JFrame {
                 StyleConstants.ALIGN_CENTER
         );
 
-        createTestRecords();
+        storage = new ScoreStorage();
+
+        records = storage.load();
+
+        records.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
 
         checkNewRecord();
 
         drawScreen();
     }
 
-    private void createTestRecords() {
-
-        records = new ArrayList<>();
-        //순수 테스트 용도(점수에 따라 AAA랑 BBB 사이에 들어가는 등 하면 될 듯)
-        records.add(new ScoreRecord("AAA", 30000));
-        records.add(new ScoreRecord("BBB", 20000));
-        records.add(new ScoreRecord("CCC", 10000));
-        records.add(new ScoreRecord("DDD", 5000));
-        records.add(new ScoreRecord("EEE", 1000));
-    }
 
     private void checkNewRecord() {
 
@@ -144,6 +142,8 @@ public class GameOverScreen extends JFrame {
             if (records.size() > 10) {
                 records.remove(records.size() - 1);
             }
+
+            storage.save(records);
         }
     }
 
