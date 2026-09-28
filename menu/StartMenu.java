@@ -17,7 +17,6 @@ import javax.swing.text.StyledDocument;
 
 import app.AppState;
 import app.AppStateManager;
-import game.GameScreen;
 import menu.settings.SettingsScreen;
 
 
