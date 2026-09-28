@@ -23,7 +23,7 @@ public class GameLoop implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
+        while (!gameStateManager.isGameOver()) { //gameover = true일 때까지 반복
             try {
                 Thread.sleep(gameStateManager.getDropSpeed());
                 if (!isPaused) {

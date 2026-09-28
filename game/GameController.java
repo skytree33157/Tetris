@@ -13,9 +13,11 @@ public class GameController extends KeyAdapter {
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
 
-    public GameController(GameLoop gameLoop, ActionController actionController) {
+    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
+        this.gameStateManager = gameStateManager;
+        this.scoreManager = scoreManager;
     }
 
     @Override

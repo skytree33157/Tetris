@@ -1,12 +1,13 @@
 package game;
 
-// 게임 상태(속도, 점수, 하강속도(레벨업)) 관리 클래스
+// 게임 상태(게임오버, 하강속도(레벨업)) 관리 클래스
 
 public class GameStateManager {
     private volatile int dropSpeed = 1000; // 1000ms = 1s
     private int countBlock = 0;
     private int countClearLine = 0;
     private int currentLevel = 1;
+    private volatile boolean gameOver = false; // 게임 오버인지 아닌지 확인
 
     private static final int SPEED_DECREASE_AMOUNT = 100; // 한 레벨 당 감소할 속도
     private static final int MIN_DROP_SPEED = 100; // 최소 드롭 속도
@@ -27,6 +28,14 @@ public class GameStateManager {
 
     public int getCurrentLevel() {
         return currentLevel;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        this.gameOver = gameOver;
     }
 
     public void updateLevelUp(int linesCleared) {

@@ -22,6 +22,7 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import score.ScoreManager;
 
 public class StartMenu extends JFrame {
 
@@ -144,7 +145,8 @@ public class StartMenu extends JFrame {
                 GameStateManager gameStateManager = new GameStateManager();
                 ActionController actionController = new ActionController(board, block, gameStateManager);
                 GameLoop gameLoop = new GameLoop(actionController, gameStateManager);
-                GameController gameController = new GameController(gameLoop, actionController);
+                ScoreManager scoreManager = new ScoreManager();
+                GameController gameController = new GameController(gameLoop, actionController, gameStateManager, scoreManager);
 
                 //------------------------------------------------------
 

@@ -21,6 +21,10 @@ public class ActionController {
         this.gameStateManager = gameStateManager;
         this.block.setX(startX);
         this.block.setY(startY);
+
+        if (!board.isValidPosition(block.getShape(), startX, startY)) {
+            gameStateManager.setGameOver(true);
+        }
     }
 
     // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
@@ -59,10 +63,19 @@ public class ActionController {
             block = BlockFactory.createRandomBlock();
             block.setX(startX);
             block.setY(startY);
+
+            // 새 블록을 시작 위치에 배치 못하면? -> gameover
+            if (!board.isValidPosition(block.getShape(), startX, startY)) {
+                gameStateManager.setGameOver(true);
+            }
         }
     }
 
     public synchronized void moveLeftAction() {
+        if(gameStateManager.isGameOver()) {
+            return;
+        }
+
         int targetX = block.getX() - 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveLeft();
@@ -70,6 +83,10 @@ public class ActionController {
     }
 
     public synchronized void moveRightAction() {
+        if(gameStateManager.isGameOver()) {
+            return;
+        }
+        
         int targetX = block.getX() + 1;
         if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
             block.moveRight();
@@ -77,10 +94,18 @@ public class ActionController {
     }
 
     public synchronized void moveDownAction() {
+        if(gameStateManager.isGameOver()) {
+            return;
+        }
+
         moveDownBlock();
     }
 
     public synchronized void rotateAction(){
+        if(gameStateManager.isGameOver()) {
+            return;
+        }
+
         int[][] rotatedShape = block.getRotate();
         if (board.isValidPosition(rotatedShape, block.getX(), block.getY())) {
             block.rotate();
