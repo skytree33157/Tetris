@@ -17,6 +17,9 @@ import javax.swing.text.StyledDocument;
 
 import app.AppState;
 import app.AppStateManager;
+import game.GameScreen;
+import menu.settings.SettingsScreen;
+
 
 public class StartMenu extends JFrame {
 
@@ -134,12 +137,10 @@ public class StartMenu extends JFrame {
     private void select() {
         switch (selectedIndex) {
             case 0:
-                // TODO: game 담당자가 게임 화면 전환 로직 연결
-                System.out.println("게임 시작 선택됨 (미구현)");
+                startGame();
                 break;
             case 1:
-                // TODO: settings 담당자가 설정 화면 전환 로직 연결
-                System.out.println("설정 선택됨 (미구현)");
+                startSettings();
                 break;
             case 2:
                 // TODO: score/storage 담당자가 스코어보드 화면 전환 로직 연결
@@ -149,6 +150,22 @@ public class StartMenu extends JFrame {
                 exitApplication();
                 break;
         }
+    }
+
+    // 게임 화면으로 전환
+    private void startGame() {
+        stateManager.transitionTo(AppState.PLAYING);
+        dispose();
+        GameScreen gameScreen = new GameScreen();
+        gameScreen.setVisible(true);
+    }
+
+    // 설정 화면으로 전환
+    private void startSettings() {
+        stateManager.transitionTo(AppState.SETTINGS);
+        dispose();
+        SettingsScreen settingsScreen = new SettingsScreen();
+        settingsScreen.setVisible(true);
     }
 
     // 상태를 EXIT로 전이한 뒤 창을 정리하고 종료
