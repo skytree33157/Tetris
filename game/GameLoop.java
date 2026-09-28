@@ -6,7 +6,7 @@ public class GameLoop implements Runnable {
 
     private ActionController actionController;
     private GameStateManager gameStateManager;
-    private boolean isPaused = false;
+    private volatile boolean isPaused = false;
 
     public GameLoop(ActionController actionController, GameStateManager gameStateManager) {
         this.actionController = actionController;

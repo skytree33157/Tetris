@@ -2,12 +2,16 @@ package game;
 
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import score.DropType;
+import score.ScoreManager;
 
 // 키 조작 클래스
 
 public class GameController extends KeyAdapter {
     private GameLoop gameLoop;
     private ActionController actionController;
+    private GameStateManager gameStateManager;
+    private ScoreManager scoreManager;
 
     public GameController(GameLoop gameLoop, ActionController actionController) {
         this.gameLoop = gameLoop;
@@ -40,7 +44,10 @@ public class GameController extends KeyAdapter {
                 actionController.rotateAction();
                 break;
             case KeyEvent.VK_SPACE:
-                actionController.hardDropAction();
+                int distance = actionController.hardDropAction();
+                int currentLevel = gameStateManager.getCurrentLevel();
+                // ScoreManager에 하드드롭 점수 전달
+                scoreManager.addDropScore(distance, DropType.HARD, currentLevel);
                 break;
         }
     }

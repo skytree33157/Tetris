@@ -23,7 +23,7 @@ public class ActionController {
         this.block.setY(startY);
     }
 
-    // 블록을 아래로 이동시키는 메서드
+    // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
     private synchronized void moveDownBlock() {
         int x = block.getX();
         int y = block.getY();
@@ -33,12 +33,27 @@ public class ActionController {
         if (board.isValidPosition(block.getShape(),x, nextY)) {
             block.moveDown();
         } else { // 블록이 더 이상 내려갈 수 없으면 현재 위치에 블록을 고정 후 새로운 블록 생성
-            board.addBlock(x, y, block.getShape());
+            // rawShape : 블록 모양
+            int[][] rawShape = block.getShape();
+            // colorShape : 블록 모양에 색상 정보를 추가한 배열
+            int[][] colorShape = new int[rawShape.length][rawShape[0].length];
+            int blockValue = block.getType().getValue();
             
-            // 줄 삭제 및 하강 속도 증가
-            gameStateManager.onBlockPlaced();
+            // 블록 모양대로 색상 주입
+            for (int i = 0; i < rawShape.length; i++) {
+                for (int j = 0; j < rawShape[i].length; j++) {
+                    if(rawShape[i][j] != 0) {
+                        colorShape[i][j] = blockValue;
+                    }
+                }
+            }
+            
+            // 블록을 색상 정보와 함께 보드에 고정
+            board.addBlock(x, y, colorShape);
+            
+            // 줄 삭제 및 레벨 업(하강 속도 증가)
             int clearedLines = board.clearLines();
-            gameStateManager.onLinesCleared(clearedLines);
+            gameStateManager.updateLevelUp(clearedLines);
 
             // 새 블록 생성
             block = BlockFactory.createRandomBlock();
@@ -73,10 +88,13 @@ public class ActionController {
     }
 
     // 하드드롭
-    public synchronized void hardDropAction() {
+    public synchronized int hardDropAction() {
+        int dropDistance = 0;
         while (board.isValidPosition(block.getShape(), block.getX(), block.getY() + 1)) {
             block.moveDown();
+            dropDistance++;
         }
         moveDownBlock(); // 블록을 고정하고 새로운 블록 생성 -> moveDownBlock()의 else 실행
+        return dropDistance;
     }
 }
