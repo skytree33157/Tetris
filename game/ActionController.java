@@ -114,6 +114,9 @@ public class ActionController {
 
     // 하드드롭
     public synchronized int hardDropAction() {
+        if (gameStateManager.isGameOver()) {
+            return 0;
+        }
         int dropDistance = 0;
         while (board.isValidPosition(block.getShape(), block.getX(), block.getY() + 1)) {
             block.moveDown();
