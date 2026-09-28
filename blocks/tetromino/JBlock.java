@@ -1,4 +1,7 @@
-package blocks;
+package blocks.tetromino;
+
+import blocks.core.Block;
+import blocks.core.BlockType;
 
 public class JBlock extends Block {
 

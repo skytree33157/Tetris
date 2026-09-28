@@ -1,4 +1,4 @@
-package blocks;
+package blocks.core;
 
 public abstract class Block {
 
