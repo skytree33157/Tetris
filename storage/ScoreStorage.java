@@ -3,6 +3,7 @@ package storage;
 import menu.ScoreRecord;
 import java.util.ArrayList;
 import java.io.IOException;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FileReader;
@@ -11,7 +12,7 @@ import java.io.BufferedReader;
 
 public class ScoreStorage {
 
-    private static final String SCORE_FILE = "scores.txt";
+    private static final String SCORE_FILE = "storage/scores.txt";
 
     public void save(ArrayList<ScoreRecord> records){
         
@@ -34,6 +35,16 @@ public class ScoreStorage {
     public ArrayList<ScoreRecord> load() {
         
         ArrayList<ScoreRecord> records = new ArrayList<>();
+
+        File file = new File(SCORE_FILE);
+
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+        }
         
         try (FileReader reader = new FileReader(SCORE_FILE);
             BufferedReader buffer = new BufferedReader(reader)) {

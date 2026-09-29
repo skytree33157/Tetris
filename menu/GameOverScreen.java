@@ -107,10 +107,6 @@ public class GameOverScreen extends JFrame {
         if (records.size() < 10) {
             canRecord = true;
         } else {
-            records.sort(
-                    Comparator.comparingInt(ScoreRecord::getScore)
-                              .reversed()
-            );
 
             int tenthScore = records.get(9).getScore();
 
