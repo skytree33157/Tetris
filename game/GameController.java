@@ -42,7 +42,12 @@ public class GameController extends KeyAdapter {
             actionController.moveRightAction();
         }
         if(downPressed) {
-            actionController.moveDownAction();
+            boolean isMovedDown = actionController.moveDownAction();
+            if(isMovedDown) {
+                // Soft Drop 점수 계산
+                int currentLevel = gameStateManager.getCurrentLevel();
+                scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
+            }
         }
     }
 
@@ -74,7 +79,12 @@ public class GameController extends KeyAdapter {
                 break;
             case KeyEvent.VK_DOWN:
                 if(!downPressed){
-                    actionController.moveDownAction();
+                    boolean isMovedDown = actionController.moveDownAction();
+                    if(isMovedDown) {
+                        // Soft Drop 점수 계산
+                        int currentLevel = gameStateManager.getCurrentLevel();
+                        scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
+            }
                 }
                 downPressed = true;
                 break;

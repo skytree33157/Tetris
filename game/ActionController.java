@@ -3,6 +3,7 @@ package game;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import board.Board;
+import score.ScoreManager;
 
 // 블록 이동 클래스
 
@@ -11,14 +12,16 @@ public class ActionController {
     private Board board;
     private Block block;
     private GameStateManager gameStateManager;
+    private ScoreManager scoreManager;
 
     private int startX = 3;
     private int startY = 0;
 
-    public ActionController(Board board, Block block, GameStateManager gameStateManager) {
+    public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager) {
         this.board = board;
         this.block = block;
         this.gameStateManager = gameStateManager;
+        this.scoreManager = scoreManager;
         this.block.setX(startX);
         this.block.setY(startY);
 
@@ -59,6 +62,12 @@ public class ActionController {
             int clearedLines = board.clearLines();
             gameStateManager.updateLevelUp(clearedLines);
 
+            int currentLevel = gameStateManager.getCurrentLevel();
+
+            boolean perfectClear = board.isPerfectClear();
+
+            scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
+
             // 새 블록 생성
             block = BlockFactory.createRandomBlock();
             block.setX(startX);
@@ -93,12 +102,14 @@ public class ActionController {
         }
     }
 
-    public synchronized void moveDownAction() {
+    public synchronized boolean moveDownAction() {
         if(gameStateManager.isGameOver()) {
-            return;
+            return false;
         }
-
+        int currentY= block.getY();
         moveDownBlock();
+        // 블록이 아래로 이동하면 true
+        return block.getY()>currentY;
     }
 
     public synchronized void rotateAction(){
