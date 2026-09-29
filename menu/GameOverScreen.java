@@ -2,6 +2,8 @@ package menu;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -33,6 +35,13 @@ public class GameOverScreen extends JFrame {
     private ScoreRecord newRecord;
 
     private ScoreStorage storage;
+
+    private static final String[] MENU_ITEMS = {
+        "시작 메뉴",
+        "프로그램 종료"
+    };
+
+    private int selectedIndex = 0;
 
     public GameOverScreen(int score) {
 
@@ -97,6 +106,10 @@ public class GameOverScreen extends JFrame {
         checkNewRecord();
 
         drawScreen();
+
+        addKeyListener(new MenuKeyListener());
+        setFocusable(true);
+        requestFocusInWindow();
     }
 
 
@@ -165,7 +178,22 @@ public class GameOverScreen extends JFrame {
               .append("\n");
         }
 
-        sb.append("\n[Enter] 계속");
+        sb.append("\n");
+
+        for (int i = 0; i < MENU_ITEMS.length; i++) {
+
+            if (i == selectedIndex) {
+                sb.append("> ")
+                  .append(MENU_ITEMS[i])
+                  .append(" <\n");
+            } else {
+                sb.append("  ")
+                  .append(MENU_ITEMS[i])
+                  .append("\n");
+            }
+        }
+
+        sb.append("\n[Up/Down] 이동   [Enter] 선택");
 
         pane.setText(sb.toString());
 
@@ -215,6 +243,72 @@ public class GameOverScreen extends JFrame {
 
                 offset += line.length() + 1;
             }
+        }
+    }
+
+    private void moveUp() {
+
+        selectedIndex =
+                (selectedIndex - 1 + MENU_ITEMS.length)
+                % MENU_ITEMS.length;
+
+        drawScreen();
+    }
+
+    private void moveDown() {
+
+        selectedIndex =
+                (selectedIndex + 1)
+                % MENU_ITEMS.length;
+
+        drawScreen();
+    }
+
+    private void select() {
+
+        switch (selectedIndex) {
+
+            case 0:
+                dispose(); //GameOverScreen 종료(프로그램 자체 x)
+
+                StartMenu menu = new StartMenu(); //StartMenu 객체 생성
+                menu.setVisible(true); //화면에 보여주기
+
+                break;
+
+            case 1:
+                System.exit(0); //아예 프로그램 종료
+                break;
+        }
+    }
+
+    private class MenuKeyListener implements KeyListener {
+
+        @Override
+        public void keyTyped(KeyEvent e) {
+        }
+
+        @Override
+        public void keyPressed(KeyEvent e) {
+
+            switch (e.getKeyCode()) {
+
+                case KeyEvent.VK_UP:
+                    moveUp();
+                    break;
+
+                case KeyEvent.VK_DOWN:
+                    moveDown();
+                    break;
+
+                case KeyEvent.VK_ENTER:
+                    select();
+                    break;
+            }
+        }
+
+        @Override
+        public void keyReleased(KeyEvent e) {
         }
     }
 }
