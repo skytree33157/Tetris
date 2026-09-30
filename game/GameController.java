@@ -26,6 +26,8 @@ public class GameController extends KeyAdapter {
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
 
+
+        //ToDo : StartMenu의 select()와 연결
         keyTimer=new Timer(100, e->responseInput());
         keyTimer.start();
     }
