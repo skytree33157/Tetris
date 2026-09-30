@@ -32,7 +32,11 @@ public class GameController extends KeyAdapter {
 
     // 꾹 누르고 있는 키에 대한 입력 처리
     private void responseInput() {
-        if(gameLoop.isPaused()||gameStateManager.isGameOver()) {
+if (gameLoop.isPaused()) {
+            return;
+        }
+        if (gameStateManager.isGameOver()) {
+            keyTimer.stop();
             return;
         }
         if(leftPressed) {
