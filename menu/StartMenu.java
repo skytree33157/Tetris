@@ -22,7 +22,11 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
-import score.ScoreManager;
+
+import app.AppState;
+import app.AppStateManager;
+import menu.settings.SettingsScreen;
+
 
 public class StartMenu extends JFrame {
 
@@ -140,29 +144,10 @@ public class StartMenu extends JFrame {
     private void select() {
         switch (selectedIndex) {
             case 0:
-                Board board = new Board();
-                Block block = BlockFactory.createRandomBlock();
-                GameStateManager gameStateManager = new GameStateManager();
-                ActionController actionController = new ActionController(board, block, gameStateManager);
-                GameLoop gameLoop = new GameLoop(actionController, gameStateManager);
-                ScoreManager scoreManager = new ScoreManager();
-                GameController gameController = new GameController(gameLoop, actionController, gameStateManager, scoreManager);
-
-                //------------------------------------------------------
-
-                //TODO : 게임 화면 구현 후 구현할 것.
-
-                
-                //------------------------------------------------------
-
-                // 게임 루프 시작
-                new Thread(gameLoop).start();
-                //게임 시작 시 메뉴 창 닫기
-                dispose();
+                startGame();
                 break;
             case 1:
-                // TODO: settings 담당자가 설정 화면 전환 로직 연결
-                System.out.println("설정 선택됨 (미구현)");
+                startSettings();
                 break;
             case 2:
                 // TODO: score/storage 담당자가 스코어보드 화면 전환 로직 연결
@@ -172,6 +157,22 @@ public class StartMenu extends JFrame {
                 exitApplication();
                 break;
         }
+    }
+
+    // 게임 화면으로 전환
+    private void startGame() {
+        stateManager.transitionTo(AppState.PLAYING);
+        dispose();
+        GameScreen gameScreen = new GameScreen();
+        gameScreen.setVisible(true);
+    }
+
+    // 설정 화면으로 전환
+    private void startSettings() {
+        stateManager.transitionTo(AppState.SETTINGS);
+        dispose();
+        SettingsScreen settingsScreen = new SettingsScreen();
+        settingsScreen.setVisible(true);
     }
 
     // 상태를 EXIT로 전이한 뒤 창을 정리하고 종료
