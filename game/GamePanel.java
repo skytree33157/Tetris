@@ -10,7 +10,7 @@ import javax.swing.JPanel;
 import blocks.core.Block;
 import blocks.style.BlockStyle;
 import board.Board;
-import menu.settings.AppSettings;;
+import menu.settings.AppSettings;
 
 // 보드 상태 + 현재 낙하 중인 블록을 그리는 패널
 // Board.java / GameLoop.java는 수정하지 않고, 기존 public API만 사용
