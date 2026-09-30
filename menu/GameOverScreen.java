@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -109,7 +111,13 @@ public class GameOverScreen extends JFrame {
 
         addKeyListener(new MenuKeyListener());
         setFocusable(true);
-        requestFocusInWindow();
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                requestFocusInWindow();
+            }
+        });
     }
 
 
