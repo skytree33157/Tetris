@@ -2,30 +2,39 @@ package blocks.core;
 
 import blocks.tetromino.*;
 
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class BlockFactory {
 
-    private static final Random random = new Random();
+    private static final List<BlockType> bag = new ArrayList<>();
 
-    // How to use:
-    // Block random = BlockFactory.createRandomBlock();
-    // random.getType() == BlockType.I; // true if the block is of type I
-    // random.getWidth() == 4;          // true if the block width is 4
     public static Block createRandomBlock() {
-        int number = random.nextInt(7);
+        if (bag.isEmpty()) refillBag();
 
-        return switch (number) {
-            case 0 -> new IBlock();
-            case 1 -> new OBlock();
-            case 2 -> new TBlock();
-            case 3 -> new SBlock();
-            case 4 -> new ZBlock();
-            case 5 -> new JBlock();
-            case 6 -> new LBlock();
-            default -> throw new IllegalStateException(
-                    "Unexpected value: " + number
-            );
+        BlockType type = bag.remove(bag.size() - 1);
+
+        return switch (type) {
+            case I -> new IBlock();
+            case O -> new OBlock();
+            case T -> new TBlock();
+            case S -> new SBlock();
+            case Z -> new ZBlock();
+            case J -> new JBlock();
+            case L -> new LBlock();
         };
+    }
+
+    private static void refillBag() {
+        bag.add(BlockType.I);
+        bag.add(BlockType.O);
+        bag.add(BlockType.T);
+        bag.add(BlockType.S);
+        bag.add(BlockType.Z);
+        bag.add(BlockType.J);
+        bag.add(BlockType.L);
+
+        Collections.shuffle(bag);
     }
 }
