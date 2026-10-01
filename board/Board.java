@@ -82,6 +82,15 @@ public class Board {
         return linesCleared;
     }
 
+    public boolean isPerfectClear() {
+            for (int col = 0; col < COL; col++) {
+                if (board[ROW-1][col] != 0) {
+                    return false;
+                }
+        }
+        return true;
+    }
+
     public boolean isValidPosition(int[][] shape, int targetX, int targetY) {
         // 블록의 각 칸을 검사하여 충돌 여부 확인
         for (int row = 0; row < shape.length; row++) {
