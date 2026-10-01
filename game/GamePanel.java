@@ -8,17 +8,15 @@ import java.awt.Graphics2D;
 import javax.swing.JPanel;
 
 import blocks.core.Block;
-import blocks.style.BlockStyle;
+import blocks.style.ColorMode;
 import board.Board;
 import menu.settings.AppSettings;
+import ui.BlockRenderer;
 
 // 보드 상태 + 현재 낙하 중인 블록을 그리는 패널
-// Board.java / GameLoop.java는 수정하지 않고, 기존 public API만 사용
 public class GamePanel extends JPanel{
     
     private static final long serialVersionUID =1L;
-
-    private static final Color FIXED_CELL_COLOR = Color.LIGHT_GRAY;
 
     private final Board board;
     private final int cellSize;
@@ -39,55 +37,34 @@ public class GamePanel extends JPanel{
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        ColorMode colormode = AppSettings.getInstance().getColorMode();
         
-        drawFixedCells(g2);
-        drawCurrentBlock(g2);
+        drawFixedCells(g2, colormode);
+        drawCurrentBlock(g2, colormode);
         drawGridLines(g2);
     }
     
     // 이미 고정된(쌓인) 블록들을 그림
     // Board.addBlock이 블록 종류가 아닌 1만 저장하므로, 고정된 칸은 전부 동일한 색으로 표시됨.
     // (Board.java가 타입 값을 저장하도록 바뀌면 colorForValue로 교체 가능)
-    private void drawFixedCells(Graphics2D g2) {
+    private void drawFixedCells(Graphics2D g2, ColorMode colorMode) {
         int[][] cells = board.getBoard();
         for (int row = 0; row < cells.length; row++) {
             for (int col = 0; col < cells[row].length; col++) {
                 if (cells[row][col] != 0) {
-                    drawCell(g2, col, row, FIXED_CELL_COLOR);
+                    BlockRenderer.drawBoardCell(g2, col * cellSize, row * cellSize, cellSize, cells[row][col], colorMode);
                 }
             }
         }
     }
-    // 현재 낙하 중인 블록을 그림
-    private void drawCurrentBlock(Graphics2D g2) {
+    // 현재 낙하 중인 블록을 그림 (색상 + 무늬 반영)
+    private void drawCurrentBlock(Graphics2D g2, ColorMode colorMode) {
         Block block = currentBlock;
         if (block == null) {
             return;
         }
 
-        int[][] shape = block.getShape();
-        Color color = BlockStyle.of(block.getType(), AppSettings.getInstance().getColorMode()).getColor();
-
-        for (int row = 0; row < shape.length; row++) {
-            for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] != 0) {
-                    drawCell(g2, block.getX() + col, block.getY() + row, color);
-                }
-            }
-        }
-    }
-
-    private void drawCell(Graphics2D g2, int col, int row, Color color) {
-        if (row < 0) {
-            return; // 스폰 위치가 보드 위쪽 경계 밖일 때는 그리지 않음
-        }
-        int px = col * cellSize;
-        int py = row * cellSize;
-
-        g2.setColor(color);
-        g2.fillRect(px, py, cellSize, cellSize);
-        g2.setColor(Color.BLACK);
-        g2.drawRect(px, py, cellSize, cellSize);
+        BlockRenderer.drawBlock(g2, block, 0, 0, cellSize, colorMode);
     }
 
     private void drawGridLines(Graphics2D g2) {

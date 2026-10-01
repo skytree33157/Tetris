@@ -6,6 +6,7 @@ public class GameStateManager {
     private volatile int dropSpeed = 1000; // 1000ms = 1s
     private int countBlock = 0;
     private int countClearLine = 0;
+    private volatile int totalLinesCleared = 0; //레베업으로 리셋되지 않는 누적 줄 수 (HUD 표시)
     private int currentLevel = 1;
     private volatile boolean gameOver = false; // 게임 오버인지 아닌지 확인
 
@@ -30,6 +31,10 @@ public class GameStateManager {
         return currentLevel;
     }
 
+    public int getTotalLinesCleared(){
+        return totalLinesCleared;
+    }
+
     public boolean isGameOver() {
         return gameOver;
     }
@@ -40,6 +45,7 @@ public class GameStateManager {
 
     public void updateLevelUp(int linesCleared) {
         countBlock++;
+        totalLinesCleared += linesCleared;
         countClearLine += linesCleared;
         levelUp();
     }

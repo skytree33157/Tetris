@@ -29,6 +29,10 @@ public class ActionController {
             gameStateManager.setGameOver(true);
         }
     }
+    
+    public synchronized Block getCurrentBlock(){
+        return block;
+    }
 
     // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
     private synchronized void moveDownBlock() {
