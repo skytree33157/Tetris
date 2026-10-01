@@ -3,6 +3,8 @@ package game;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.Timer;
+import menu.settings.AppSettings;
+import menu.settings.KeyAction;
 import score.DropType;
 import score.ScoreManager;
 
@@ -69,22 +71,25 @@ if (gameLoop.isPaused()) {
             return;
         }
 
-        switch (e.getKeyCode()) {
-            // left, right down : 처음 눌렀을 때 즉시 반응
-            case KeyEvent.VK_LEFT:
-                if(!leftPressed){
+
+        AppSettings settings = AppSettings.getInstance();
+        int keyCode = e.getKeyCode();
+
+        // left, right, down : 처음 눌렀을 때 즉시 반응
+        if(keyCode==settings.getKey(KeyAction.MOVE_LEFT)){
+            if(!leftPressed){
                     actionController.moveLeftAction();
                 }
                 leftPressed = true;
-                break;
-            case KeyEvent.VK_RIGHT:
-                if(!rightPressed){
+        }
+        else if(keyCode==settings.getKey(KeyAction.MOVE_RIGHT)){
+            if(!rightPressed){
                     actionController.moveRightAction();
                 }
                 rightPressed = true;
-                break;
-            case KeyEvent.VK_DOWN:
-                if(!downPressed){
+        }
+        else if(keyCode==settings.getKey(KeyAction.MOVE_DOWN)){
+            if(!downPressed){
                     boolean isMovedDown = actionController.moveDownAction();
                     if(isMovedDown) {
                         // Soft Drop 점수 계산
@@ -93,32 +98,32 @@ if (gameLoop.isPaused()) {
             }
                 }
                 downPressed = true;
-                break;
-            case KeyEvent.VK_UP:
-                actionController.rotateAction();
-                break;
-            case KeyEvent.VK_SPACE:
-                int distance = actionController.hardDropAction();
-                int currentLevel = gameStateManager.getCurrentLevel();
-                // ScoreManager에 하드드롭 점수 전달
-                scoreManager.addDropScore(distance, DropType.HARD, currentLevel);
-                break;
+        }
+        else if(keyCode==settings.getKey(KeyAction.ROTATE)){
+            actionController.rotateAction();
+        }
+//Todo : KeyAction에 HARDDROP 추가 시 수정------
+        else if(keyCode==KeyEvent.VK_SPACE){
+//--------------------------------------------
+            int distance = actionController.hardDropAction();
+            int currentLevel = gameStateManager.getCurrentLevel();
+            // ScoreManager에 하드드롭 점수 전달
+            scoreManager.addDropScore(distance, DropType.HARD, currentLevel);
         }
     }
 
     // 키 해제 시 이동 중지
     @Override 
     public void keyReleased(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_LEFT:
-                leftPressed = false;
-                break;
-            case KeyEvent.VK_RIGHT:
-                rightPressed = false;
-                break;
-            case KeyEvent.VK_DOWN:
-                downPressed = false;
-                break;
+        AppSettings settings = AppSettings.getInstance();
+        int keyCode = e.getKeyCode();
+
+        if (keyCode == settings.getKey(KeyAction.MOVE_LEFT)) {
+            leftPressed = false;
+        } else if (keyCode == settings.getKey(KeyAction.MOVE_RIGHT)) {
+            rightPressed = false;
+        } else if (keyCode == settings.getKey(KeyAction.MOVE_DOWN)) {
+            downPressed = false;
         }
     }
 }
