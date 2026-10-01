@@ -26,6 +26,8 @@ public class GameController extends KeyAdapter {
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
 
+
+        //ToDo : StartMenu의 select()와 연결
         keyTimer=new Timer(100, e->responseInput());
         keyTimer.start();
     }
@@ -46,7 +48,12 @@ if (gameLoop.isPaused()) {
             actionController.moveRightAction();
         }
         if(downPressed) {
-            actionController.moveDownAction();
+            boolean isMovedDown = actionController.moveDownAction();
+            if(isMovedDown) {
+                // Soft Drop 점수 계산
+                int currentLevel = gameStateManager.getCurrentLevel();
+                scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
+            }
         }
     }
 
@@ -78,7 +85,12 @@ if (gameLoop.isPaused()) {
                 break;
             case KeyEvent.VK_DOWN:
                 if(!downPressed){
-                    actionController.moveDownAction();
+                    boolean isMovedDown = actionController.moveDownAction();
+                    if(isMovedDown) {
+                        // Soft Drop 점수 계산
+                        int currentLevel = gameStateManager.getCurrentLevel();
+                        scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
+            }
                 }
                 downPressed = true;
                 break;
