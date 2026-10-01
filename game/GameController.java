@@ -1,5 +1,7 @@
 package game;
 
+import app.AppState;
+import app.AppStateManager;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.Timer;
@@ -15,6 +17,7 @@ public class GameController extends KeyAdapter {
     private ActionController actionController;
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
+    private AppStateManager appStateManager;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
@@ -22,11 +25,12 @@ public class GameController extends KeyAdapter {
 
     private Timer keyTimer;
 
-    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager) {
+    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
+        this.appStateManager = appStateManager;
 
 
         //ToDo : StartMenu의 select()와 연결
@@ -36,7 +40,7 @@ public class GameController extends KeyAdapter {
 
     // 꾹 누르고 있는 키에 대한 입력 처리
     private void responseInput() {
-if (gameLoop.isPaused()) {
+        if (gameLoop.isPaused()) {
             return;
         }
         if (gameStateManager.isGameOver()) {
@@ -61,11 +65,21 @@ if (gameLoop.isPaused()) {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        // P 키 입력 시 일시정지 상태 변경
+        // Pause 기능
         if(e.getKeyCode() == KeyEvent.VK_P) {
+            if (gameStateManager.isGameOver()) {
+                return;
+            }
+            
+            // 일시정지 상태 변경
+            boolean wasPaused = gameLoop.isPaused();
             gameLoop.togglePause();
+            appStateManager.transitionTo(
+                    wasPaused ? AppState.PLAYING : AppState.PAUSED
+            );
             return;
         }
+
         // 일시정지, 게임 오버 시 키 입력 무시
         if(gameLoop.isPaused()||gameStateManager.isGameOver()) {
             return;
