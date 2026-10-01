@@ -10,7 +10,7 @@ public class BlockFactory {
 
     private static final List<BlockType> bag = new ArrayList<>();
 
-    public static Block createRandomBlock() {
+    public static synchronized Block createRandomBlock() {
         if (bag.isEmpty()) refillBag();
 
         BlockType type = bag.remove(bag.size() - 1);
