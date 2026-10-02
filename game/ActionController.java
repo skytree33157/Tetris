@@ -11,6 +11,7 @@ public class ActionController {
 
     private Board board;
     private Block block;
+    private Block nextBlock;
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
 
@@ -20,6 +21,7 @@ public class ActionController {
     public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager) {
         this.board = board;
         this.block = block;
+        this.nextBlock = BlockFactory.createRandomBlock();
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.block.setX(startX);
@@ -68,8 +70,9 @@ public class ActionController {
 
             scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
 
-            // 새 블록 생성
-            block = BlockFactory.createRandomBlock();
+            // 대기 중인 블록을 현재 블록으로 이동하고 다음 블록을 미리 생성
+            block = nextBlock;
+            nextBlock = BlockFactory.createRandomBlock();
             block.setX(startX);
             block.setY(startY);
 
@@ -110,6 +113,14 @@ public class ActionController {
         moveDownBlock();
         // 블록이 아래로 이동하면 true
         return block.getY()>currentY;
+    }
+
+    public synchronized Block getCurrentBlock() {
+        return block;
+    }
+
+    public synchronized Block getNextBlock() {
+        return nextBlock;
     }
 
     public synchronized void rotateAction(){
