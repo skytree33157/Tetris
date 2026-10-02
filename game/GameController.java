@@ -18,6 +18,7 @@ public class GameController extends KeyAdapter {
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
     private AppStateManager appStateManager;
+    private Runnable pauseHandler;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
@@ -25,16 +26,15 @@ public class GameController extends KeyAdapter {
 
     private Timer keyTimer;
 
-    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager) {
+    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager, Runnable pauseHandler) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.appStateManager = appStateManager;
+        this.pauseHandler = pauseHandler;
 
-
-        //ToDo : StartMenu의 select()와 연결
-        keyTimer=new Timer(100, e->responseInput());
+        keyTimer=new Timer(300, e->responseInput());
         keyTimer.start();
     }
 
@@ -77,6 +77,9 @@ public class GameController extends KeyAdapter {
             appStateManager.transitionTo(
                     wasPaused ? AppState.PLAYING : AppState.PAUSED
             );
+            if (!wasPaused) {
+                pauseHandler.run();
+            }
             return;
         }
 
@@ -126,9 +129,21 @@ public class GameController extends KeyAdapter {
         }
     }
 
+    // 게임 재시작
+    public void resumeGame() {
+        if (gameLoop.isPaused()) {
+            gameLoop.togglePause();
+            appStateManager.transitionTo(AppState.PLAYING);
+        }
+    }
+
     // 키 해제 시 이동 중지
     @Override 
     public void keyReleased(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_P) {
+            return;
+        }
+
         AppSettings settings = AppSettings.getInstance();
         int keyCode = e.getKeyCode();
 

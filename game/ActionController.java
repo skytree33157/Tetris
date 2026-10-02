@@ -32,8 +32,12 @@ public class ActionController {
         }
     }
     
-    public synchronized Block getCurrentBlock(){
+    public synchronized Block getCurrentBlock() {
         return block;
+    }
+
+    public synchronized Block getNextBlock() {
+        return nextBlock;
     }
 
     // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
@@ -117,14 +121,6 @@ public class ActionController {
         moveDownBlock();
         // 블록이 아래로 이동하면 true
         return block.getY()>currentY;
-    }
-
-    public synchronized Block getCurrentBlock() {
-        return block;
-    }
-
-    public synchronized Block getNextBlock() {
-        return nextBlock;
     }
 
     public synchronized void rotateAction(){
