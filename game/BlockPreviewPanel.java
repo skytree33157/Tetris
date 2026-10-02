@@ -18,7 +18,7 @@ public class BlockPreviewPanel extends JPanel {
     private volatile Block block;
 
     public BlockPreviewPanel() {
-        setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
+        setPreferredSize(new Dimension(PREVIEW_WIDTH * CELL_SIZE, PREVIEW_HEIGHT * CELL_SIZE));
         setBackground(Color.BLACK);
     }
 
