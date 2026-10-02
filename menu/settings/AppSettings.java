@@ -1,5 +1,6 @@
 package menu.settings;
 
+import blocks.style.ColorMode;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,11 +10,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Properties;
 
-import blocks.style.ColorMode;
-
 // 설정값 보관 + 파일 저장/불러오기
-// TODO: GameController.java가 여기 키 매핑을 참조하도록 연동하면
-//               조작 키 설정이 실제 게임 조작에도 반영됨
 public class AppSettings {
     
     private static final File SETTINGS_FILE =
