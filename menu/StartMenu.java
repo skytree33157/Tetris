@@ -150,8 +150,7 @@ public class StartMenu extends JFrame {
                 startSettings();
                 break;
             case 2:
-                // TODO: score/storage 담당자가 스코어보드 화면 전환 로직 연결
-                System.out.println("스코어보드 선택됨 (미구현)");
+                startScoreboard();
                 break;
             case 3:
                 exitApplication();
@@ -173,6 +172,13 @@ public class StartMenu extends JFrame {
         dispose();
         SettingsScreen settingsScreen = new SettingsScreen();
         settingsScreen.setVisible(true);
+    }
+
+    public void startScoreboard() {
+        dispose();
+
+        ScoreboardScreen scoreboardScreen = new ScoreboardScreen();
+        scoreboardScreen.setVisible(true);
     }
 
     // 상태를 EXIT로 전이한 뒤 창을 정리하고 종료
