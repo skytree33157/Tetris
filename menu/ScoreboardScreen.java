@@ -2,6 +2,7 @@ package menu;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
@@ -38,7 +39,8 @@ public class ScoreboardScreen extends JFrame {
         super("SeoulTech SE Tetris");
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1000, 1000);
+        setSize(600, 700);
+        setMinimumSize(new Dimension(600, 700));
         setLocationRelativeTo(null);
 
         // 스코어보드를 표시할 영역
@@ -107,6 +109,11 @@ public class ScoreboardScreen extends JFrame {
             @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                backToMenu();
             }
         });
     }

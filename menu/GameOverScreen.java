@@ -2,6 +2,7 @@ package menu;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
@@ -52,7 +53,8 @@ public class GameOverScreen extends JFrame {
         this.score = score;
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(1000, 1000);
+        setSize(600, 700);
+        setMinimumSize(new Dimension(600, 700));
         setLocationRelativeTo(null);
 
         pane = new JTextPane();

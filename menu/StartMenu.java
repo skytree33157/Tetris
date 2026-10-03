@@ -174,7 +174,9 @@ public class StartMenu extends JFrame {
         settingsScreen.setVisible(true);
     }
 
-    public void startScoreboard() {
+    private void startScoreboard() {
+        stateManager.transitionTo(AppState.SCOREBOARD);
+
         dispose();
 
         ScoreboardScreen scoreboardScreen = new ScoreboardScreen();
