@@ -38,6 +38,10 @@ public class GameController extends KeyAdapter {
         keyTimer.start();
     }
 
+    public void shutdown() {
+        keyTimer.stop();
+    }
+
     // 꾹 누르고 있는 키에 대한 입력 처리
     private void responseInput() {
         if (gameLoop.isPaused()) {
@@ -78,6 +82,9 @@ public class GameController extends KeyAdapter {
                     wasPaused ? AppState.PLAYING : AppState.PAUSED
             );
             if (!wasPaused) {
+                leftPressed = false;
+                rightPressed = false;
+                downPressed = false;
                 pauseHandler.run();
             }
             return;
@@ -119,9 +126,7 @@ public class GameController extends KeyAdapter {
         else if(keyCode==settings.getKey(KeyAction.ROTATE)){
             actionController.rotateAction();
         }
-//Todo : KeyAction에 HARDDROP 추가 시 수정------
         else if(keyCode==KeyEvent.VK_SPACE){
-//--------------------------------------------
             int distance = actionController.hardDropAction();
             int currentLevel = gameStateManager.getCurrentLevel();
             // ScoreManager에 하드드롭 점수 전달

@@ -149,6 +149,7 @@ public class GameScreen extends JFrame {
 
     private void stopGame() {
         renderTimer.stop();
+        gameController.shutdown();
         gameThread.interrupt();
     }
 

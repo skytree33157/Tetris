@@ -11,14 +11,14 @@ import menu.settings.AppSettings;
 
 public class BlockPreviewPanel extends JPanel {
 
-    private static final int CELL_SIZE = 30;
+    private static final int CELL_SIZE = 20;
     private static final int PREVIEW_WIDTH = 80;
     private static final int PREVIEW_HEIGHT = 80;
 
     private volatile Block block;
 
     public BlockPreviewPanel() {
-        setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
+        setPreferredSize(new Dimension(PREVIEW_WIDTH*CELL_SIZE, PREVIEW_HEIGHT*CELL_SIZE));
         setBackground(Color.BLACK);
     }
 
