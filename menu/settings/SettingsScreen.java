@@ -18,6 +18,7 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
 import blocks.style.ColorMode;
+import storage.ScoreStorage;
 
 public class SettingsScreen extends JDialog {
 
@@ -221,7 +222,6 @@ public class SettingsScreen extends JDialog {
         };
     }
 
-    // TODO: FR-24에서 스코어보드 파일 저장이 구현되면 실제 저장소를 초기화하도록 연동
     private void resetScoreboard() {
         int result = JOptionPane.showConfirmDialog(
                 this,
@@ -231,6 +231,9 @@ public class SettingsScreen extends JDialog {
         );
 
         if (result == JOptionPane.YES_OPTION) {
+            ScoreStorage storage = new ScoreStorage();
+            storage.clear();
+            
             JOptionPane.showMessageDialog(this, "스코어보드가 초기화되었습니다.");
         }
         drawMenu();

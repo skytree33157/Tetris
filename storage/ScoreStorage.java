@@ -81,5 +81,9 @@ public class ScoreStorage {
         records.add(record);
         save(records);
     }
+
+    public void clear() {
+        save(new ArrayList<ScoreRecord>());
+    }
     
 }
