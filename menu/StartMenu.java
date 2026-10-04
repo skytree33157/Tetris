@@ -2,13 +2,6 @@ package menu;
 
 import app.AppState;
 import app.AppStateManager;
-import blocks.core.Block;
-import blocks.core.BlockFactory;
-import board.Board;
-import game.ActionController;
-import game.GameController;
-import game.GameLoop;
-import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
@@ -23,8 +16,6 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import app.AppState;
-import app.AppStateManager;
 import menu.settings.SettingsScreen;
 
 
@@ -169,8 +160,11 @@ public class StartMenu extends JFrame {
     // 설정 화면으로 전환
     private void startSettings() {
         stateManager.transitionTo(AppState.SETTINGS);
-        dispose();
-        SettingsScreen settingsScreen = new SettingsScreen();
+        SettingsScreen settingsScreen = new SettingsScreen(this, () -> {
+            dispose();
+            StartMenu startMenu = new StartMenu();
+            startMenu.setVisible(true);
+        }, this::exitApplication);
         settingsScreen.setVisible(true);
     }
 

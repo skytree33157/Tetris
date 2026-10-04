@@ -19,7 +19,7 @@ public class GamePanel extends JPanel{
     private static final long serialVersionUID =1L;
 
     private final Board board;
-    private final int cellSize;
+    private int cellSize;
     private volatile Block currentBlock;
 
     public GamePanel(Board board) {
@@ -45,8 +45,6 @@ public class GamePanel extends JPanel{
     }
     
     // 이미 고정된(쌓인) 블록들을 그림
-    // Board.addBlock이 블록 종류가 아닌 1만 저장하므로, 고정된 칸은 전부 동일한 색으로 표시됨.
-    // (Board.java가 타입 값을 저장하도록 바뀌면 colorForValue로 교체 가능)
     private void drawFixedCells(Graphics2D g2, ColorMode colorMode) {
         int[][] cells = board.getBoard();
         for (int row = 0; row < cells.length; row++) {
@@ -57,6 +55,7 @@ public class GamePanel extends JPanel{
             }
         }
     }
+    
     // 현재 낙하 중인 블록을 그림 (색상 + 무늬 반영)
     private void drawCurrentBlock(Graphics2D g2, ColorMode colorMode) {
         Block block = currentBlock;
@@ -78,5 +77,12 @@ public class GamePanel extends JPanel{
         for (int row = 0; row <= board.getHeight(); row++) {
             g2.drawLine(0, row * cellSize, width, row * cellSize);
         }
+    }
+
+    public void refreshCellSize() {
+    this.cellSize = AppSettings.getInstance().getScreenSize().getCellSize();
+    setPreferredSize(new Dimension(board.getWidth() * cellSize, board.getHeight() * cellSize));
+    revalidate();
+    repaint();
     }
 }

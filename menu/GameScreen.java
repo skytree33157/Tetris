@@ -14,11 +14,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
+import app.AppState;
+import app.AppStateManager;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import board.Board;
 import game.*;
 import score.ScoreManager;
+import menu.settings.SettingsScreen;
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
 public class GameScreen extends JFrame {
@@ -27,11 +30,13 @@ public class GameScreen extends JFrame {
     private static final int RENDER_INTERVAL_MS = 50;
 
     private final GameStateManager gameStateManager;
+    private final AppStateManager appStateManager;
     private final ActionController actionController;
     private final ScoreManager scoreManager;
     private final GameLoop gameLoop;
     private final GameController gameController;
     private final GamePanel gamePanel;
+    private final BlockPreviewPanel nextBlockPanel;
     private final Thread gameThread;
     private final Timer renderTimer;
 
@@ -49,13 +54,28 @@ public class GameScreen extends JFrame {
         Board board = new Board();
         gameStateManager = new GameStateManager();
         Block firstBlock = BlockFactory.createRandomBlock();
+        appStateManager = new AppStateManager(AppState.PLAYING);
         scoreManager = new ScoreManager();
         actionController = new ActionController(board, firstBlock, gameStateManager, scoreManager);
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
-        gameController = new GameController(gameLoop, actionController, gameStateManager, scoreManager);
-
         gamePanel = new GamePanel(board);
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
+        nextBlockPanel = new BlockPreviewPanel();
+        nextBlockPanel.setBlock(actionController.getNextBlock());
+        gameController = new GameController(
+            gameLoop, actionController, gameStateManager, scoreManager, appStateManager, 
+                () -> {
+                    SettingsScreen settingsScreen = new SettingsScreen(GameScreen.this, () -> {}, () -> {
+                        stopGame();
+                        dispose();
+                        StartMenu startMenu = new StartMenu();
+                        startMenu.setVisible(true);
+                    });
+                    settingsScreen.setVisible(true);
+                    gamePanel.refreshCellSize();
+                    pack();;
+            }
+        );
 
         setLayout(new BorderLayout());
         add(gamePanel, BorderLayout.CENTER);
@@ -93,6 +113,7 @@ public class GameScreen extends JFrame {
     // 주기적으로 상태를 화면에 반영하고, 게임오서 시 결과 화면으로 전환
     private void onTick(){
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
+        nextBlockPanel.setBlock(actionController.getNextBlock());
         levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
         linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());
         scoreLabel.setText("SCORE: " + scoreManager.getScore());
@@ -113,7 +134,7 @@ public class GameScreen extends JFrame {
         side.setBackground(Color.BLACK);
         side.setPreferredSize(new Dimension(160, 0));
         side.setBorder(BorderFactory.createEmptyBorder(20, 15, 20, 15));
-        side.setLayout(new GridLayout(4, 1, 0, 10));
+        side.setLayout(new GridLayout(6, 1, 0, 10));
 
         JLabel title = new JLabel("TETRIS");
         title.setForeground(Color.WHITE);
@@ -132,6 +153,7 @@ public class GameScreen extends JFrame {
         scoreLabel.setFont(new Font("Courier", Font.PLAIN, 16));
 
         side.add(title);
+        side.add(nextBlockPanel);
         side.add(levelLabel);
         side.add(linesLabel);
         side.add(scoreLabel);

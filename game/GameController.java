@@ -18,6 +18,7 @@ public class GameController extends KeyAdapter {
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
     private AppStateManager appStateManager;
+    private Runnable openSettingAction;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
@@ -25,12 +26,20 @@ public class GameController extends KeyAdapter {
 
     private Timer keyTimer;
 
-    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager) {
+    public GameController(
+        GameLoop gameLoop, 
+        ActionController actionController, 
+        GameStateManager gameStateManager, 
+        ScoreManager scoreManager, 
+        AppStateManager appStateManager,
+        Runnable openSettingAction
+    ) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.appStateManager = appStateManager;
+        this.openSettingAction = openSettingAction;
 
 
         //ToDo : StartMenu의 select()와 연결
@@ -77,6 +86,35 @@ public class GameController extends KeyAdapter {
             appStateManager.transitionTo(
                     wasPaused ? AppState.PLAYING : AppState.PAUSED
             );
+            return;
+        }
+
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            if (gameStateManager.isGameOver()) {
+                return;
+            }
+            boolean wasPaused = gameLoop.isPaused();
+            if (!wasPaused) {
+                gameLoop.togglePause();
+            }
+            appStateManager.transitionTo(AppState.SETTINGS);
+
+            // modal 창이 포커스 가져가면 keyReleased를 못 받으므로,
+            // 누르고 있던 이동 키 초기화
+            leftPressed = false;
+            rightPressed = false;
+            downPressed = false;
+
+            openSettingAction.run(); // modal 블록
+
+            // P로 이미 일시정지된 상태에서 ESC로 설정을 열었다가 닫으면 
+            // PLAYING으로 돌아가지 않고 PAUSED를 유지
+            if (!wasPaused) {
+                gameLoop.togglePause();
+                appStateManager.transitionTo(AppState.PLAYING);
+            } else {
+                appStateManager.transitionTo(AppState.PAUSED);
+            }
             return;
         }
 
