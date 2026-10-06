@@ -82,8 +82,13 @@ public class ScoreStorage {
         save(records);
     }
 
-    public void clear() {
-        save(new ArrayList<ScoreRecord>());
+    public boolean clear() {
+        try (FileWriter writer = new FileWriter(SCORE_FILE)) {
+            return true;
+        } catch (IOException e) {
+            System.out.println(e);
+            return false;
+        }
     }
     
 }

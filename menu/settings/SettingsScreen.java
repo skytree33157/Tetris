@@ -232,9 +232,13 @@ public class SettingsScreen extends JDialog {
 
         if (result == JOptionPane.YES_OPTION) {
             ScoreStorage storage = new ScoreStorage();
-            storage.clear();
+            if (storage.clear()) {
+                JOptionPane.showMessageDialog(this, "스코어보드가 초기화되었습니다.");
+            }
+            else {
+                JOptionPane.showMessageDialog(this, "스코어보드 초기화에 실패했습니다.");
+            }
             
-            JOptionPane.showMessageDialog(this, "스코어보드가 초기화되었습니다.");
         }
         drawMenu();
     }
