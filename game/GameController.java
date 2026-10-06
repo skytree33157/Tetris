@@ -13,19 +13,19 @@ import score.ScoreManager;
 // 키 조작 클래스
 
 public class GameController extends KeyAdapter {
-    private GameLoop gameLoop;
-    private ActionController actionController;
-    private GameStateManager gameStateManager;
-    private ScoreManager scoreManager;
-    private AppStateManager appStateManager;
-    private Runnable pauseHandler;
-    private Runnable openSettingAction;
+    private final GameLoop gameLoop;
+    private final ActionController actionController;
+    private final GameStateManager gameStateManager;
+    private final ScoreManager scoreManager;
+    private final AppStateManager appStateManager;
+    private final Runnable pauseHandler;
+    private final Runnable openSettingAction;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
     private boolean downPressed = false;
 
-    private Timer keyTimer;
+    private final Timer keyTimer;
 
     public GameController(
         GameLoop gameLoop, 
@@ -97,6 +97,7 @@ public class GameController extends KeyAdapter {
                 downPressed = false;
                 pauseHandler.run();
             return;
+            }
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {

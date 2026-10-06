@@ -5,7 +5,12 @@ import app.AppStateManager;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import board.Board;
-import game.*;
+import game.ActionController;
+import game.BlockPreviewPanel;
+import game.GameController;
+import game.GameLoop;
+import game.GamePanel;
+import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -18,15 +23,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
-
-import app.AppState;
-import app.AppStateManager;
-import blocks.core.Block;
-import blocks.core.BlockFactory;
-import board.Board;
-import game.*;
-import score.ScoreManager;
 import menu.settings.SettingsScreen;
+import score.ScoreManager;
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
 public class GameScreen extends JFrame {
@@ -41,7 +39,6 @@ public class GameScreen extends JFrame {
     private final GameLoop gameLoop;
     private final GameController gameController;
     private final GamePanel gamePanel;
-    private final BlockPreviewPanel nextBlockPanel;
     private final Thread gameThread;
     private final Timer renderTimer;
     private final BlockPreviewPanel blockPreviewPanel;
@@ -62,18 +59,14 @@ public class GameScreen extends JFrame {
         gameStateManager = new GameStateManager();
         appStateManager = new AppStateManager(AppState.PLAYING);
         Block firstBlock = BlockFactory.createRandomBlock();
-        appStateManager = new AppStateManager(AppState.PLAYING);
         scoreManager = new ScoreManager();
         actionController = new ActionController(board, firstBlock, gameStateManager, scoreManager);
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
-        gameController = new GameController(gameLoop, actionController, gameStateManager, scoreManager, appStateManager, this::showPauseScreen);
 
         gamePanel = new GamePanel(board);
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
         blockPreviewPanel = new BlockPreviewPanel();
         blockPreviewPanel.setBlock(actionController.getNextBlock());
-        nextBlockPanel = new BlockPreviewPanel();
-        nextBlockPanel.setBlock(actionController.getNextBlock());
         gameController = new GameController(
             gameLoop, actionController, gameStateManager, scoreManager, appStateManager, 
                 () -> {
@@ -85,8 +78,9 @@ public class GameScreen extends JFrame {
                     });
                     settingsScreen.setVisible(true);
                     gamePanel.refreshCellSize();
-                    pack();;
-            }
+                    pack();
+                },
+                this::showPauseScreen
         );
 
         setLayout(new BorderLayout());
@@ -103,6 +97,7 @@ public class GameScreen extends JFrame {
           @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
+                gameThread.start();
             }
 
             @Override
@@ -115,8 +110,6 @@ public class GameScreen extends JFrame {
 
         gameThread = new Thread(gameLoop, "game-loop");
         gameThread.setDaemon(true);
-        gameThread.start();
-
         // GameLoop를 직접 호출하지 않고, 백그라운드에서 mutate되는 Board를 주기적으로 다시 그리기만 함
         renderTimer = new Timer(RENDER_INTERVAL_MS, e -> onTick());
         renderTimer.start();
@@ -126,7 +119,6 @@ public class GameScreen extends JFrame {
     private void onTick(){
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
         blockPreviewPanel.setBlock(actionController.getNextBlock());
-        nextBlockPanel.setBlock(actionController.getNextBlock());
         levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
         linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());
         scoreLabel.setText("SCORE: " + scoreManager.getScore());
@@ -167,7 +159,6 @@ public class GameScreen extends JFrame {
 
         side.add(title);
         side.add(blockPreviewPanel);
-        side.add(nextBlockPanel);
         side.add(levelLabel);
         side.add(linesLabel);
         side.add(scoreLabel);
