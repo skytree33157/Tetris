@@ -19,6 +19,7 @@ public class GameController extends KeyAdapter {
     private ScoreManager scoreManager;
     private AppStateManager appStateManager;
     private Runnable pauseHandler;
+    private Runnable openSettingAction;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
@@ -26,13 +27,22 @@ public class GameController extends KeyAdapter {
 
     private Timer keyTimer;
 
-    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager, Runnable pauseHandler) {
+    public GameController(
+        GameLoop gameLoop, 
+        ActionController actionController, 
+        GameStateManager gameStateManager, 
+        ScoreManager scoreManager, 
+        AppStateManager appStateManager,
+        Runnable openSettingAction,
+        Runnable pauseHandler
+    ) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.appStateManager = appStateManager;
         this.pauseHandler = pauseHandler;
+        this.openSettingAction = openSettingAction;
 
         keyTimer=new Timer(300, e->responseInput());
         keyTimer.start();
@@ -86,6 +96,34 @@ public class GameController extends KeyAdapter {
                 rightPressed = false;
                 downPressed = false;
                 pauseHandler.run();
+            return;
+        }
+
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            if (gameStateManager.isGameOver()) {
+                return;
+            }
+            boolean wasPaused = gameLoop.isPaused();
+            if (!wasPaused) {
+                gameLoop.togglePause();
+            }
+            appStateManager.transitionTo(AppState.SETTINGS);
+
+            // modal 창이 포커스 가져가면 keyReleased를 못 받으므로,
+            // 누르고 있던 이동 키 초기화
+            leftPressed = false;
+            rightPressed = false;
+            downPressed = false;
+
+            openSettingAction.run(); // modal 블록
+
+            // P로 이미 일시정지된 상태에서 ESC로 설정을 열었다가 닫으면 
+            // PLAYING으로 돌아가지 않고 PAUSED를 유지
+            if (!wasPaused) {
+                gameLoop.togglePause();
+                appStateManager.transitionTo(AppState.PLAYING);
+            } else {
+                appStateManager.transitionTo(AppState.PAUSED);
             }
             return;
         }

@@ -6,9 +6,10 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.Frame;
 
 import javax.swing.BorderFactory;
-import javax.swing.JFrame;
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.JTextPane;
 import javax.swing.border.CompoundBorder;
@@ -16,10 +17,9 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import menu.StartMenu;
 import blocks.style.ColorMode;
 
-public class SettingsScreen extends JFrame {
+public class SettingsScreen extends JDialog {
 
     private static final long serialVersionUID = 1L;
 
@@ -29,6 +29,7 @@ public class SettingsScreen extends JFrame {
         "조작 키 설정",
         "스코어보드 초기화",
         "기본값 복원",
+        "게임 종료",
         "저장하고 뒤로가기"
     };
 
@@ -37,7 +38,8 @@ public class SettingsScreen extends JFrame {
     private static final int KEY_CONFIG_INDEX = 2;
     private static final int RESET_SCOREBOARD_INDEX = 3;
     private static final int RESTORE_DEFAULTS_INDEX = 4;
-    private static final int SAVE_AND_BACK_INDEX = 5;
+    private static final int QUIT_GAME_INDEX = 5;
+    private static final int SAVE_AND_BACK_INDEX = 6;
 
     private final AppSettings settings = AppSettings.getInstance();
     private final KeyAction[] REBIND_ORDER = KeyAction.values();
@@ -49,12 +51,16 @@ public class SettingsScreen extends JFrame {
 
     // 조작 키 재설정 중일 때 진행 단계 (-1이면 재설정 중이 아님)
     private int rebindStep = -1;
+    private final Runnable onClose;
+    private final Runnable onQuit;
 
-    public SettingsScreen() {
-        super("SeoulTech SE Tetris - 설정");
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+    public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit) {
+        super(owner, "SeoulTech SE Tetris - 설정", true); // modal
+        this.onClose = onClose;
+        this.onQuit = onQuit;
+        setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setSize(420, 420);
-        setLocationRelativeTo(null);
+        setLocationRelativeTo(owner); // owner 중앙에 위치
 
         pane = new JTextPane();
         pane.setEditable(false);
@@ -190,6 +196,7 @@ public class SettingsScreen extends JFrame {
             case KEY_CONFIG_INDEX -> startKeyRebind();
             case RESET_SCOREBOARD_INDEX -> resetScoreboard();
             case RESTORE_DEFAULTS_INDEX -> restoreDefaults();
+            case QUIT_GAME_INDEX -> quitGame();
             case SAVE_AND_BACK_INDEX -> saveAndGoBack();
         }
     }
@@ -238,8 +245,19 @@ public class SettingsScreen extends JFrame {
     private void saveAndGoBack() {
         settings.save();
         dispose();
-        StartMenu startMenu = new StartMenu();
-        startMenu.setVisible(true);
+        onClose.run();
+    }
+
+    private void quitGame() {
+        int result = JOptionPane.showConfirmDialog(
+                this, "게임을 종료할까요?", "게임 종료", JOptionPane.YES_NO_OPTION);
+
+        if (result == JOptionPane.YES_OPTION) {
+            dispose();
+            onQuit.run();
+        } else {
+            drawMenu();
+        }
     }
 
     private void handleRebindKey(KeyEvent e) {
@@ -284,6 +302,7 @@ public class SettingsScreen extends JFrame {
                 case KeyEvent.VK_LEFT -> changeValue(-1);
                 case KeyEvent.VK_RIGHT -> changeValue(1);
                 case KeyEvent.VK_ENTER -> select();
+                case KeyEvent.VK_ESCAPE -> saveAndGoBack();
             }
         }
 

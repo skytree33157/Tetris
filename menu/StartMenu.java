@@ -2,13 +2,6 @@ package menu;
 
 import app.AppState;
 import app.AppStateManager;
-import blocks.core.Block;
-import blocks.core.BlockFactory;
-import board.Board;
-import game.ActionController;
-import game.GameController;
-import game.GameLoop;
-import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
@@ -23,8 +16,6 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import app.AppState;
-import app.AppStateManager;
 import menu.settings.SettingsScreen;
 
 
@@ -150,8 +141,7 @@ public class StartMenu extends JFrame {
                 startSettings();
                 break;
             case 2:
-                // TODO: score/storage 담당자가 스코어보드 화면 전환 로직 연결
-                System.out.println("스코어보드 선택됨 (미구현)");
+                startScoreboard();
                 break;
             case 3:
                 exitApplication();
@@ -170,9 +160,21 @@ public class StartMenu extends JFrame {
     // 설정 화면으로 전환
     private void startSettings() {
         stateManager.transitionTo(AppState.SETTINGS);
-        dispose();
-        SettingsScreen settingsScreen = new SettingsScreen();
+        SettingsScreen settingsScreen = new SettingsScreen(this, () -> {
+            dispose();
+            StartMenu startMenu = new StartMenu();
+            startMenu.setVisible(true);
+        }, this::exitApplication);
         settingsScreen.setVisible(true);
+    }
+
+    private void startScoreboard() {
+        stateManager.transitionTo(AppState.SCOREBOARD);
+
+        dispose();
+
+        ScoreboardScreen scoreboardScreen = new ScoreboardScreen();
+        scoreboardScreen.setVisible(true);
     }
 
     // 상태를 EXIT로 전이한 뒤 창을 정리하고 종료

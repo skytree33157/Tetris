@@ -123,6 +123,14 @@ public class ActionController {
         return block.getY()>currentY;
     }
 
+    public synchronized Block getCurrentBlock() {
+        return block;
+    }
+
+    public synchronized Block getNextBlock() {
+        return nextBlock;
+    }
+
     public synchronized void rotateAction(){
         if(gameStateManager.isGameOver()) {
             return;
