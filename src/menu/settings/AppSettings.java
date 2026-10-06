@@ -14,7 +14,7 @@ import java.util.Properties;
 public class AppSettings {
     
     private static final File SETTINGS_FILE =
-        new File("menu/settings/settings.properties");
+        new File("src/menu/settings/settings.properties");
 
     private static final AppSettings INSTANCE = new AppSettings();
 

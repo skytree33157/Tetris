@@ -12,7 +12,7 @@ import java.io.BufferedReader;
 
 public class ScoreStorage {
 
-    private static final String SCORE_FILE = "storage/scores.txt";
+    private static final String SCORE_FILE = "src/storage/scores.txt";
 
     public void save(ArrayList<ScoreRecord> records){
         
