@@ -11,14 +11,14 @@ import menu.settings.AppSettings;
 
 public class BlockPreviewPanel extends JPanel {
 
-    private static final int CELL_SIZE = 10;
-    private static final int PREVIEW_WIDTH = 10;
-    private static final int PREVIEW_HEIGHT = 10;
+    private static final int CELL_SIZE = 20;
+    private static final int PREVIEW_WIDTH = 80;
+    private static final int PREVIEW_HEIGHT = 80;
 
     private volatile Block block;
 
     public BlockPreviewPanel() {
-        setPreferredSize(new Dimension(PREVIEW_WIDTH * CELL_SIZE, PREVIEW_HEIGHT * CELL_SIZE));
+        setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
         setBackground(Color.BLACK);
     }
 
@@ -39,7 +39,7 @@ public class BlockPreviewPanel extends JPanel {
         int[][] shape = previewBlock.getShape();
         int shapeWidth = shape[0].length * CELL_SIZE;
         int shapeHeight = shape.length * CELL_SIZE;
-        int offsetX = (getWidth() - shapeWidth) / 2;
+        int offsetX = 0;
         int offsetY = (getHeight() - shapeHeight) / 2;
         Color color = BlockStyle.of(
                 previewBlock.getType(),

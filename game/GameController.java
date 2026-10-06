@@ -18,6 +18,7 @@ public class GameController extends KeyAdapter {
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
     private AppStateManager appStateManager;
+    private Runnable pauseHandler;
     private Runnable openSettingAction;
 
     private boolean leftPressed = false;
@@ -32,19 +33,23 @@ public class GameController extends KeyAdapter {
         GameStateManager gameStateManager, 
         ScoreManager scoreManager, 
         AppStateManager appStateManager,
-        Runnable openSettingAction
+        Runnable openSettingAction,
+        Runnable pauseHandler
     ) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.appStateManager = appStateManager;
+        this.pauseHandler = pauseHandler;
         this.openSettingAction = openSettingAction;
 
-
-        //ToDo : StartMenu의 select()와 연결
-        keyTimer=new Timer(100, e->responseInput());
+        keyTimer=new Timer(300, e->responseInput());
         keyTimer.start();
+    }
+
+    public void shutdown() {
+        keyTimer.stop();
     }
 
     // 꾹 누르고 있는 키에 대한 입력 처리
@@ -86,6 +91,11 @@ public class GameController extends KeyAdapter {
             appStateManager.transitionTo(
                     wasPaused ? AppState.PLAYING : AppState.PAUSED
             );
+            if (!wasPaused) {
+                leftPressed = false;
+                rightPressed = false;
+                downPressed = false;
+                pauseHandler.run();
             return;
         }
 
@@ -154,9 +164,7 @@ public class GameController extends KeyAdapter {
         else if(keyCode==settings.getKey(KeyAction.ROTATE)){
             actionController.rotateAction();
         }
-//Todo : KeyAction에 HARDDROP 추가 시 수정------
         else if(keyCode==KeyEvent.VK_SPACE){
-//--------------------------------------------
             int distance = actionController.hardDropAction();
             int currentLevel = gameStateManager.getCurrentLevel();
             // ScoreManager에 하드드롭 점수 전달
@@ -164,9 +172,21 @@ public class GameController extends KeyAdapter {
         }
     }
 
+    // 게임 재시작
+    public void resumeGame() {
+        if (gameLoop.isPaused()) {
+            gameLoop.togglePause();
+            appStateManager.transitionTo(AppState.PLAYING);
+        }
+    }
+
     // 키 해제 시 이동 중지
     @Override 
     public void keyReleased(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_P) {
+            return;
+        }
+
         AppSettings settings = AppSettings.getInstance();
         int keyCode = e.getKeyCode();
 

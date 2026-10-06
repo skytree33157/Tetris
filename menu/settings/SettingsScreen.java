@@ -208,7 +208,8 @@ public class SettingsScreen extends JDialog {
 
     private void drawRebindPrompt() {
         KeyAction action = REBIND_ORDER[rebindStep];
-        pane.setText("KEY CONFIG\n\n" + actionLabel(action) + " 키를 누르세요\n\n(ESC: 취소)");
+        pane.setText("KEY CONFIG\n\n" + actionLabel(action)
+                + " 키를 누르세요\n\n(P: 일시정지 전용, ESC: 취소)");
         applyStyles();
     }
 
@@ -263,6 +264,11 @@ public class SettingsScreen extends JDialog {
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             rebindStep = -1;
             drawMenu();
+            return;
+        }
+
+        if (e.getKeyCode() == KeyEvent.VK_P) {
+            drawRebindPrompt();
             return;
         }
 
