@@ -82,6 +82,7 @@ public class Board {
         return linesCleared;
     }
 
+    // 지정한 줄 삭제 후 한칸 씩 아래로 이동시킴(clearLine 아이템용)
     public boolean eraseLine(int row) {
         if (row < 0 || row >= ROW) {
             return false;
@@ -97,6 +98,40 @@ public class Board {
             board[0][col] = 0;
         }
         return true;
+    }
+
+    // 지정한 행 아래의 블록을 삭제하는 메서드(무게추 아이템용)
+    public void clearOneRowBelow(int startX, int bottomRow, int width) {
+        int firstColumn = Math.max(0, startX);
+        int lastColumn = Math.min(COL, startX + width);
+        int row = bottomRow + 1;
+
+        if (row < 0 || row >= ROW) {
+            return;
+        }
+        // board[row][col]=0을 통해 지정한 행 아래의 블록을 삭제
+        for (int col = firstColumn; col < lastColumn; col++) {
+            board[row][col] = 0;
+        }
+    }
+
+    // 충돌 확인 메서드(무게추 아이템용)
+    public boolean hasBlockCollision(int[][] shape, int targetX, int targetY) {
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[row].length; col++) {
+                // 해당 칸에 보드에 블록이 없으면 continue
+                if (shape[row][col] == 0) {
+                    continue;
+                }
+                int boardX = targetX + col;
+                int boardY = targetY + row;
+                // 보드 내부에 있는지 확인
+                if (boardX >= 0 && boardX < COL && boardY >= 0 && boardY < ROW && board[boardY][boardX] != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isPerfectClear() {

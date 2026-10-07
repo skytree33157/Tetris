@@ -3,6 +3,7 @@ package game;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import item.LineClearItem;
+import item.WeightItem;
 import board.Board;
 import score.ScoreManager;
 
@@ -46,9 +47,22 @@ public class ActionController {
         int x = block.getX();
         int y = block.getY();
         int nextY = y + 1;
-        
-        // 다음 위치가 유효한지 확인
-        if (board.isValidPosition(block.getShape(),x, nextY)) {
+
+        // 블록이 아래로 이동 가능한지 확인
+        boolean canMoveDown = board.isValidPosition(block.getShape(), x, nextY);
+
+        // 무게추 아이템 처리
+        // 블록이 WeightItem이고, 더 이상 아래로 이동 불가, 기존 블록과 충돌
+        if (block instanceof WeightItem weightItem
+                && !canMoveDown
+                && board.hasBlockCollision(block.getShape(), x, nextY)) {
+            // 고정 블록에 닿은 순간부터 좌우 이동 금지, 바로 아래 한 행 제거
+            weightItem.markLanded();
+            weightItem.clearBlocksBelow(board);
+            canMoveDown = board.isValidPosition(block.getShape(), x, nextY);
+        }
+
+        if (canMoveDown) {
             block.moveDown();
         } else { // 블록이 더 이상 내려갈 수 없으면 현재 위치에 블록을 고정 후 새로운 블록 생성
             // rawShape : 블록 모양
@@ -84,21 +98,27 @@ public class ActionController {
                 lineClearItem.activate(board);
                 clearedLines++;
             }
+
+            // 무게추 - 바닥에 닿은 경우, 블록과 충돌 후 아랫줄 삭제 뒤 처리
+            if (block instanceof WeightItem weightItem) {
+                weightItem.markLanded();
+            }
+
+            // 꽉 찬 줄 제거 후 제거된 line 수 반환
             clearedLines += board.clearLines();
             int previousTotalLines = gameStateManager.getTotalLinesCleared();
             gameStateManager.updateLevelUp(clearedLines);
             boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
 
+            // 점수 계산
             int currentLevel = gameStateManager.getCurrentLevel();
-
             boolean perfectClear = board.isPerfectClear();
-
             scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
 
             // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
             if (shouldSpawnItem) {
-// --------------Todo: 블록 외형 결정 시 수정
-                //block = BlockFactory.createRandomLineClearItem();
+// Todo : 아이템 생성 로직 추가 후 변경 예정
+                block = BlockFactory.createRandomItem();
                 nextBlock = BlockFactory.createRandomBlock();
             } else {
                 block = nextBlock;
