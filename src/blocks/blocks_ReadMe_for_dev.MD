@@ -52,41 +52,6 @@ EASY의 최대 가중치는 12, NORMAL/HARD의 최대 가중치는 10입니다.
 [Roulette-wheel selection via stochastic acceptance](https://arxiv.org/abs/1109.3627),
 Physica A 391 (2012), 2193–2196, II절.
 
-### 테스트와 실행 (NFR-11)
-
-Requirements 2, 5쪽의 최소 1,000회 및 ±5% 기준을 검증합니다.
-`test/blocks/core/BlockFactoryTest.java`는 난이도마다 100,000회를 실행하며,
-7종 전체의 측정 확률과 독립적으로 계산한 기대 확률을 비교합니다.
-
-허용 오차는 기대 확률 대비 **상대 오차 5%**로 정의합니다:
-
-```text
-abs(observedProbability - expectedProbability) / expectedProbability <= 0.05
-```
-
-±5퍼센트포인트보다 엄격한 기준입니다. ±5퍼센트포인트만 허용하면
-EASY/HARD에서도 균등 생성하는 결함을 놓칠 수 있어 상대 오차를 사용합니다.
-고정 seed 20261007로 재현 가능한 분포 검증과 실제 공개 API의 분포 검증을 함께 실행합니다.
-인자 없는 API의 NORMAL 호환성, 수락 경계, 거절 후 후보 재선택,
-선택 타입과 생성 클래스의 일치, 블록 객체 상태의 독립성도 검사합니다.
-난수 주입은 같은 패키지의 생성 경로를 사용하며 공유 난수의 seed를 변경하지 않습니다.
-
-프로젝트 루트에서 전체 테스트:
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-Factory만 실행:
-
-```powershell
-.\mvnw.cmd '-Dtest=blocks.core.BlockFactoryTest' test
-```
-
-결과는 `target/surefire-reports`에 저장됩니다. Maven 빌드 설정은 기존 `src`/`test` 구조를 유지합니다.
-현재 게임의 인자 없는 호출은 NORMAL입니다. 선택 난이도를 게임에 적용하려면
-첫 블록 생성과 ActionController의 다음 블록 생성에 같은 Difficulty를 전달해야 합니다.
-
 ## Block.java
 
 - `getType()` : 블록 종류를 반환합니다.
