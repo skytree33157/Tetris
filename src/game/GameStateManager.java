@@ -35,6 +35,10 @@ public class GameStateManager {
         return totalLinesCleared;
     }
 
+    public int[] getLevelSettings() {
+        return new int[] {SPEED_DECREASE_AMOUNT, MIN_DROP_SPEED, BLOCKS_FOR_LEVEL_UP, LINES_FOR_LEVEL_UP, dropSpeed};
+    }
+
     public boolean isGameOver() {
         return gameOver;
     }
