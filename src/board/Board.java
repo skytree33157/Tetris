@@ -82,6 +82,23 @@ public class Board {
         return linesCleared;
     }
 
+    public boolean eraseLine(int row) {
+        if (row < 0 || row >= ROW) {
+            return false;
+        }
+
+        for (int currentRow = row; currentRow > 0; currentRow--) {
+            for (int col = 0; col < COL; col++) {
+                board[currentRow][col] = board[currentRow - 1][col];
+            }
+        }
+
+        for (int col = 0; col < COL; col++) {
+            board[0][col] = 0;
+        }
+        return true;
+    }
+
     public boolean isPerfectClear() {
             for (int col = 0; col < COL; col++) {
                 if (board[ROW-1][col] != 0) {
