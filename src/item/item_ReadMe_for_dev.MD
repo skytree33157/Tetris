@@ -1,5 +1,21 @@
 # item 패키지 사용법
 
+## ItemType.java
+
+생성할 아이템 종류를 나타냅니다. 일반 블록 모양인 `BlockType`과 별개입니다.
+
+```java
+ItemType.LINE_CLEAR
+ItemType.WEIGHT
+ItemType.BOMB
+ItemType.BONUS
+```
+
+- `getId()` : Registry에 등록할 문자열 id를 반환합니다.
+
+원하는 종류는 `BlockFactory.createItem(ItemType, Difficulty)`로 생성합니다.
+종류까지 무작위로 고르려면 기존 `createRandomItem(Difficulty)`을 사용합니다.
+
 ## BombItem.java
 
 1×1 폭탄 블록입니다. `BlockType.BOMB`를 사용합니다.
@@ -53,3 +69,12 @@ ItemRegistry.register("bonus", BonusItem.class, BlockFactory::createRandomBonusI
 위 Bonus 등록은 이미 되어 있습니다. 같은 id나 클래스를 다시 등록하면 오류가 발생합니다.
 표시 칸 판별은 현재 모양을 조회해야 회전 후에도 문자가 따라갑니다.
 등록은 생성·표시를 연결합니다. 효과를 자동으로 실행하지는 않습니다.
+
+
+### 종류를 지정해서 생성
+
+`ItemRegistry.create(ItemType, Difficulty)`는 해당 id의 생성 함수를 실행합니다.
+기존 문자열 등록 방식은 유지합니다. 랜덤 생성과 지정 생성은 같은 등록 정보를 사용합니다.
+
+새 아이템을 지정 생성에도 쓰려면 `ItemType`에 종류·id를 추가하고 같은 id로 등록합니다.
+문자열 등록만 해도 기존처럼 랜덤 생성·표시는 사용할 수 있습니다.

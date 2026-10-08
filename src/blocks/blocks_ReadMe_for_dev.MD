@@ -134,6 +134,18 @@ BlockStyle style = BlockStyle.of(block.getType(),currentColorMode);
 
 ## 아이템 생성
 
+- `createItem(ItemType)` : 지정한 종류의 아이템을 생성합니다. 기본 난이도는 NORMAL입니다.
+- `createItem(ItemType, Difficulty)` : 지정한 종류·난이도로 아이템을 생성합니다.
+
+```java
+Block bomb = BlockFactory.createItem(ItemType.BOMB);
+Block bonus = BlockFactory.createItem(ItemType.BONUS, Difficulty.HARD);
+```
+
+`ItemType`은 아이템 종류, `BlockType`은 블록 모양·스타일 타입입니다.
+통합 생성 API의 반환형은 `Block`입니다. 아이템 전용 메서드가 필요하면 실제 클래스를 확인합니다.
+기존 개별 생성 메서드와 랜덤 생성 메서드도 그대로 사용할 수 있습니다.
+
 - `createRandomItem()` : 등록된 아이템 중 하나를 생성합니다. 기본 난이도는 NORMAL입니다.
 - `createRandomItem(Difficulty)` : 지정한 난이도로 아이템을 생성합니다.
 - `createRandomLineClearItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 L을 붙입니다.

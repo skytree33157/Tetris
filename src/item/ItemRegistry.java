@@ -48,6 +48,20 @@ public final class ItemRegistry {
                 block -> appearance.apply(blockClass.cast(block))));
     }
 
+    // 지정한 종류의 등록 정보 조회. 기존 문자열 등록 방식 유지.
+    public static Block create(ItemType type, Difficulty difficulty) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(difficulty, "difficulty");
+        Definition selected;
+        synchronized (ItemRegistry.class) {
+            selected = ITEMS.get(type.getId());
+        }
+        if (selected == null) {
+            throw new IllegalArgumentException("Unregistered item type: " + type);
+        }
+        return createFrom(selected, difficulty);
+    }
+
     // 등록 목록을 복사한 뒤 후보를 균등 선택하고, 선택한 생성 함수에 난이도를 전달한다.
     public static Block createRandom(Difficulty difficulty, RandomGenerator random) {
         Objects.requireNonNull(difficulty, "difficulty");
@@ -57,6 +71,11 @@ public final class ItemRegistry {
             candidates = ITEMS.values().toArray(Definition[]::new);
         }
         Definition selected = candidates[random.nextInt(candidates.length)];
+        return createFrom(selected, difficulty);
+    }
+
+    // 지정 생성·랜덤 생성이 같은 생성 함수와 반환 클래스 검사 사용.
+    private static Block createFrom(Definition selected, Difficulty difficulty) {
         Block result = Objects.requireNonNull(selected.creator().apply(difficulty), "created item");
         if (result.getClass() != selected.blockClass()) {
             throw new IllegalStateException("Creator returned a different item class: " + selected.id());

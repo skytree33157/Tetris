@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.random.RandomGenerator;
 import difficulty.Difficulty;
 import item.ItemRegistry;
+import item.ItemType;
 import item.LineClearItem;
 import item.BombItem;
 import item.BonusItem;
@@ -37,6 +38,16 @@ public class BlockFactory {
         Objects.requireNonNull(difficulty, "difficulty");
         Objects.requireNonNull(generator, "generator");
         return createBlock(selectBlockType(difficulty, generator));
+    }
+
+    // 지정한 아이템 생성. 기본 난이도 NORMAL.
+    public static Block createItem(ItemType type) {
+        return createItem(type, Difficulty.NORMAL);
+    }
+
+    // 종류는 지정하고, 부착형의 원본 블록에는 난이도 적용.
+    public static Block createItem(ItemType type, Difficulty difficulty) {
+        return ItemRegistry.create(type, difficulty);
     }
 
     /** 기본 난이도 NORMAL로 등록된 아이템 중 하나를 생성한다. */
