@@ -161,8 +161,48 @@ public final class BlockRenderer {
     private static void drawAppearance(Graphics2D g, int x, int y, int size,
                                         ItemAppearanceResolver.CellAppearance cell, ColorMode mode) {
         drawCell(g, x, y, size, cell.type(), mode);
+        if (cell.type() == BlockType.BOMB) {
+            drawBomb(g, x, y, size);
+            return;
+        }
         if (cell.symbol() != '\0') {
             drawItemSymbol(g, x, y, size, cell.symbol(), BlockStyle.of(cell.type(), mode).getColor());
+        }
+    }
+
+    // 한 칸 안에 폭탄 몸체·심지·B 표시. NEXT도 같은 메서드 사용.
+    private static void drawBomb(Graphics2D g, int x, int y, int size) {
+        if (size < 8) return;
+        Graphics2D bombGraphics = (Graphics2D) g.create();
+        try {
+            bombGraphics.clipRect(x + 1, y + 1, size - 2, size - 2);
+            bombGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            int diameter = Math.max(4, size * 2 / 3);
+            int bodyX = x + (size - diameter) / 2;
+            int bodyY = y + size / 4;
+            int neckX = x + size / 2;
+            int neckY = bodyY - Math.max(1, size / 10);
+            bombGraphics.setStroke(new BasicStroke(Math.max(1.0f, size / 20.0f)));
+
+            // 검은 몸체·밝은 테두리로 형태 구분. 색상에만 의존 X.
+            bombGraphics.setColor(Color.BLACK);
+            bombGraphics.fillOval(bodyX, bodyY, diameter, diameter);
+            bombGraphics.setColor(new Color(0xE8EDF2));
+            bombGraphics.drawOval(bodyX, bodyY, diameter, diameter);
+            bombGraphics.drawLine(neckX, neckY, neckX, bodyY);
+
+            int sparkX = x + size * 4 / 5;
+            int sparkY = y + size / 8;
+            bombGraphics.setColor(new Color(0xFFD166));
+            bombGraphics.drawLine(neckX, neckY, sparkX, sparkY);
+            int sparkRadius = Math.max(1, size / 12);
+            bombGraphics.drawLine(sparkX - sparkRadius, sparkY, sparkX + sparkRadius, sparkY);
+            bombGraphics.drawLine(sparkX, sparkY - sparkRadius, sparkX, sparkY + sparkRadius);
+
+            drawItemSymbol(bombGraphics, bodyX, bodyY, diameter, 'B', Color.BLACK);
+        } finally {
+            bombGraphics.dispose();
         }
     }
 

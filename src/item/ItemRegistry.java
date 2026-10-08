@@ -24,6 +24,10 @@ public final class ItemRegistry {
         // 일부 칸이 삭제되어도 구분할 수 있도록 Weight의 채워진 칸마다 W를 표시한다.
         register("weight", WeightItem.class, difficulty -> new WeightItem(),
                 item -> new ItemAppearance(BlockType.WEIGHT, 'W', (row, col) -> true));
+        register("bomb", BombItem.class, difficulty -> BlockFactory.createBombItem(),
+                item -> new ItemAppearance(BlockType.BOMB, 'B', (row, col) -> true));
+        register("bonus", BonusItem.class, BlockFactory::createRandomBonusItem,
+                item -> new ItemAppearance(item.getSourceType(), 'P', item::isMarkerCell));
     }
 
     private ItemRegistry() {}

@@ -70,13 +70,16 @@ block.setY(0);
 
 ## BlockType.java
 
-- `getValue()` : 블록 종류를 보드 저장용 숫자 `1~7`로 변환합니다.
-- `BlockType.fromValue(int)` : 보드의 숫자 `1~7`을 `BlockType`으로 변환합니다.
+- `getValue()` : 블록 종류를 타입 값 `1~10`로 변환합니다.
+- `BlockType.fromValue(int)` : 타입 값 `1~10`을 `BlockType`으로 변환합니다.
 
 ```java
 int boardValue = block.getType().getValue();
 BlockType type = BlockType.fromValue(boardValue);
 ```
+
+일반 블록은 `1~7`, LINE_CLEAR는 `8`, WEIGHT는 `9`, BOMB는 `10`입니다.
+아이템 문자까지 저장된 값은 `ui.ItemAppearanceResolver.fromBoardCell()`로 읽습니다.
 
 ## ColorMode.java
 
@@ -129,11 +132,18 @@ BlockPattern pattern = style.getPattern();
 BlockStyle style = BlockStyle.of(block.getType(),currentColorMode);
 ```
 
+## 아이템 생성
 
+- `createRandomItem()` : 등록된 아이템 중 하나를 생성합니다. 기본 난이도는 NORMAL입니다.
+- `createRandomItem(Difficulty)` : 지정한 난이도로 아이템을 생성합니다.
+- `createRandomLineClearItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 L을 붙입니다.
+- `createRandomBonusItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 P를 붙입니다.
+- `createBombItem()` : 1×1 Bomb을 생성합니다.
 
-```
-Block normalItem = BlockFactory.createRandomItem();
-Block easyItem = BlockFactory.createRandomItem(Difficulty.EASY);
+```java
+Block item = BlockFactory.createRandomItem(Difficulty.HARD);
+BombItem bomb = BlockFactory.createBombItem();
+BonusItem bonus = BlockFactory.createRandomBonusItem(Difficulty.HARD);
 ```
 
 인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 `Difficulty`별 확률로 생성하고,
@@ -174,4 +184,7 @@ ItemAppearance는 배경 스타일·문자·표시 칸 판별을 보관합니다
 같은 부착형이라면 Renderer/Preview 수정 없이 등록을 추가할 수 있습니다.
 독립형 아이템은 모양 클래스와 BlockStyle의 전용 스타일도 추가해야 합니다.
 등록은 생성·표시를 연결하며, 효과 발동을 자동으로 구현하지는 않습니다.
+L과 Bonus의 원본 블록은 난이도별 확률로 생성합니다. 일반 블록 추첨 후보는 기존 7종입니다.
 
+아이템 클래스·등록 방법은 [item 사용법](../item/item_ReadMe_for_dev.MD),
+화면 표시·보드 값 변환은 [ui 사용법](../ui/ui_ReadMe_for_dev.MD)을 참고합니다.

@@ -8,6 +8,8 @@ import java.util.random.RandomGenerator;
 import difficulty.Difficulty;
 import item.ItemRegistry;
 import item.LineClearItem;
+import item.BombItem;
+import item.BonusItem;
 
 public class BlockFactory {
 
@@ -52,6 +54,18 @@ public class BlockFactory {
         Block source = createRandomBlock(difficulty);
         int[] marker = selectRandomOccupiedCell(source);
         return new LineClearItem(source, marker[0], marker[1]);
+    }
+
+    /** 채워진 칸 하나에 P 부착. 원본 블록은 난이도별 확률로 생성. */
+    public static BonusItem createRandomBonusItem(Difficulty difficulty) {
+        Block source = createRandomBlock(difficulty);
+        int[] marker = selectRandomOccupiedCell(source);
+        return new BonusItem(source, marker[0], marker[1]);
+    }
+
+    /** 난이도와 무관하게 1×1 폭탄 생성. */
+    public static BombItem createBombItem() {
+        return new BombItem();
     }
 
     /** 표시 칸을 포함한 모든 채워진 칸 중 하나를 균등 선택해 {행, 열}로 반환한다. */
