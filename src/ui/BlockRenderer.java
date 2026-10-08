@@ -9,6 +9,8 @@ import blocks.style.ColorMode;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.RenderingHints;
 
 public final class BlockRenderer {
@@ -124,14 +126,7 @@ public final class BlockRenderer {
                 int pixelX = boardX + boardCol * cellSize;
                 int pixelY = boardY + boardRow * cellSize;
 
-                drawCell(
-                        g,
-                        pixelX,
-                        pixelY,
-                        cellSize,
-                        block.getType(),
-                        mode
-                );
+                drawBlockCell(g, block, row, col, pixelX, pixelY, cellSize, mode);
             }
         }
     }
@@ -147,16 +142,62 @@ public final class BlockRenderer {
     ) {
         if (cellValue == 0) return;
 
-        BlockType type = BlockType.fromValue(cellValue);
+        if (g == null || mode == null || size <= 0) return;
+        ItemAppearanceResolver.CellAppearance cell = ItemAppearanceResolver.fromBoardCell(cellValue);
+        drawAppearance(g, x, y, size, cell, mode);
+    }
 
-        drawCell(
-                g,
-                x,
-                y,
-                size,
-                type,
-                mode
-        );
+    /** 낙하 화면과 NEXT가 공유한다. 블록의 보드 좌표 대신 전달받은 화면 좌표에 한 칸을 그린다. */
+    public static void drawBlockCell(Graphics2D g, Block block, int row, int col,
+                                     int x, int y, int size, ColorMode mode) {
+        if (g == null || block == null || mode == null || size <= 0) return;
+        int[][] shape = block.getShape();
+        if (row < 0 || row >= shape.length || col < 0 || col >= shape[row].length
+                || shape[row][col] == 0) return;
+        drawAppearance(g, x, y, size, ItemAppearanceResolver.resolve(block, row, col), mode);
+    }
+
+    // 원본 배경·패턴을 먼저 그린 뒤 필요한 칸에만 아이템 문자를 덧그린다.
+    private static void drawAppearance(Graphics2D g, int x, int y, int size,
+                                        ItemAppearanceResolver.CellAppearance cell, ColorMode mode) {
+        drawCell(g, x, y, size, cell.type(), mode);
+        if (cell.symbol() != '\0') {
+            drawItemSymbol(g, x, y, size, cell.symbol(), BlockStyle.of(cell.type(), mode).getColor());
+        }
+    }
+
+    // 작은 NEXT 셀에서도 문자가 패턴에 묻히지 않도록 대비되는 외곽선을 사용한다.
+    private static void drawItemSymbol(Graphics2D g, int x, int y, int size,
+                                       char symbol, Color background) {
+        if (size < 8) return;
+        Graphics2D textGraphics = (Graphics2D) g.create();
+        try {
+            textGraphics.clipRect(x + 1, y + 1, size - 2, size - 2);
+            textGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            String text = String.valueOf(symbol);
+            int fontSize = Math.max(1, size * 2 / 3);
+            FontMetrics metrics;
+            do {
+                textGraphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, fontSize));
+                metrics = textGraphics.getFontMetrics();
+                if (metrics.stringWidth(text) <= size - 4 && metrics.getHeight() <= size - 2) break;
+                fontSize--;
+            } while (fontSize > 1);
+            int textX = x + (size - metrics.stringWidth(text)) / 2;
+            int textY = y + (size - metrics.getHeight()) / 2 + metrics.getAscent();
+            Color ink = getPatternColor(background);
+            Color outline = ink.equals(Color.BLACK) ? Color.WHITE : Color.BLACK;
+            textGraphics.setColor(outline);
+            textGraphics.drawString(text, textX - 1, textY);
+            textGraphics.drawString(text, textX + 1, textY);
+            textGraphics.drawString(text, textX, textY - 1);
+            textGraphics.drawString(text, textX, textY + 1);
+            textGraphics.setColor(ink);
+            textGraphics.drawString(text, textX, textY);
+        } finally {
+            textGraphics.dispose();
+        }
     }
 
     // 패턴을 그리는 메서드
@@ -175,6 +216,7 @@ public final class BlockRenderer {
             case DIAGONAL_LEFT -> drawDiagonalLeft(g, x, y, size);
             case GRID -> drawGrid(g, x, y, size);
             case VERTICAL -> drawVertical(g, x, y, size);
+            case BRICK -> drawBrick(g, x, y, size);
         }
     }
 
@@ -323,6 +365,20 @@ public final class BlockRenderer {
                     x + offset + size,
                     y + size
             );
+        }
+    }
+
+    // Weight 전용 패턴: 행마다 세로 이음매를 반 칸 엇갈리게 배치한다.
+    private static void drawBrick(Graphics2D g, int x, int y, int size) {
+        int brickHeight = 5;
+        int brickWidth = 10;
+        for (int offsetY = 0; offsetY < size; offsetY += brickHeight) {
+            if (offsetY > 0) g.drawLine(x, y + offsetY, x + size, y + offsetY);
+            int shift = (offsetY / brickHeight) % 2 == 0 ? brickWidth / 2 : 0;
+            for (int offsetX = shift; offsetX < size; offsetX += brickWidth) {
+                g.drawLine(x + offsetX, y + offsetY, x + offsetX,
+                        y + Math.min(size, offsetY + brickHeight));
+            }
         }
     }
 

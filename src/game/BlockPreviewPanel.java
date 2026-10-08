@@ -48,12 +48,14 @@ public class BlockPreviewPanel extends JPanel {
                 if (shape[row][col] != 0) {
                     int x = offsetX + col * CELL_SIZE;
                     int y = offsetY + row * CELL_SIZE;
-                    BlockRenderer.drawCell(
+                    BlockRenderer.drawBlockCell(
                             graphics2D,
+                            previewBlock,
+                            row,
+                            col,
                             x,
                             y,
                             CELL_SIZE,
-                            previewBlock.getType(),
                             AppSettings.getInstance().getColorMode()
                     );
                 }
