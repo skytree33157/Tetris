@@ -11,6 +11,7 @@ import item.core.ItemType;
 import item.types.LineClearItem;
 import item.types.BombItem;
 import item.types.BonusItem;
+import item.types.SlowItem;
 
 public class BlockFactory {
 
@@ -72,6 +73,13 @@ public class BlockFactory {
         Block source = createRandomBlock(difficulty);
         int[] marker = selectRandomOccupiedCell(source);
         return new BonusItem(source, marker[0], marker[1]);
+    }
+
+    // FR-36-3: 채워진 칸 하나에 S 부착. 원본 블록은 난이도별 확률로 생성.
+    public static SlowItem createRandomSlowItem(Difficulty difficulty) {
+        Block source = createRandomBlock(difficulty);
+        int[] marker = selectRandomOccupiedCell(source);
+        return new SlowItem(source, marker[0], marker[1]);
     }
 
     /** 난이도와 무관하게 1×1 폭탄 생성. */

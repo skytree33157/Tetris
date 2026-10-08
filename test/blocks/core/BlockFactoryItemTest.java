@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class BlockFactoryItemTest {
     @Test
     void specifiedAndLegacyApisCreateRequestedItems() {
-        Class<?>[] expected = {LineClearItem.class, WeightItem.class, BombItem.class, BonusItem.class};
+        Class<?>[] expected = {LineClearItem.class, WeightItem.class, BombItem.class, BonusItem.class, SlowItem.class};
         for (Difficulty difficulty : Difficulty.values()) {
             for (int i = 0; i < ItemType.values().length; i++) {
                 ItemType type = ItemType.values()[i];
@@ -21,13 +21,14 @@ class BlockFactoryItemTest {
             }
             assertInstanceOf(LineClearItem.class, BlockFactory.createRandomLineClearItem(difficulty));
             assertInstanceOf(BonusItem.class, BlockFactory.createRandomBonusItem(difficulty));
+            assertInstanceOf(SlowItem.class, BlockFactory.createRandomSlowItem(difficulty));
         }
         assertInstanceOf(BombItem.class, BlockFactory.createBombItem());
     }
 
     @Test
     void randomItemApisReturnRegisteredItems() {
-        Set<Class<?>> allowed = Set.of(LineClearItem.class, WeightItem.class, BombItem.class, BonusItem.class);
+        Set<Class<?>> allowed = Set.of(LineClearItem.class, WeightItem.class, BombItem.class, BonusItem.class, SlowItem.class);
         for (Difficulty difficulty : Difficulty.values()) {
             for (int i = 0; i < 200; i++) {
                 assertTrue(allowed.contains(BlockFactory.createRandomItem(difficulty).getClass()));
@@ -37,11 +38,11 @@ class BlockFactoryItemTest {
     }
 
     @Test
-    void lineAndBonusHaveExactlyOneMarkerOnOccupiedCells() {
+    void attachedItemsHaveExactlyOneMarkerOnOccupiedCells() {
         for (Difficulty difficulty : Difficulty.values()) {
             for (int i = 0; i < 300; i++) {
                 for (Block block : List.of(BlockFactory.createRandomLineClearItem(difficulty),
-                        BlockFactory.createRandomBonusItem(difficulty))) {
+                        BlockFactory.createRandomBonusItem(difficulty), BlockFactory.createRandomSlowItem(difficulty))) {
                     int occupied = 0, markers = 0;
                     ItemAppearance appearance = ItemRegistry.appearanceOf(block);
                     for (int row = 0; row < block.getHeight(); row++) {

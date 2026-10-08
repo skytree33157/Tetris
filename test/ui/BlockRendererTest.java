@@ -35,7 +35,7 @@ class BlockRendererTest {
     void attachedMarkersChangeOnlyMarkedCellAndKeepUnmarkedBackground() {
         for (ColorMode mode : ColorMode.values()) {
             OBlock source=new OBlock();
-            for (Block item : new Block[]{new BonusItem(source,0,0),new LineClearItem(source,0,0)}) {
+            for (Block item : new Block[]{new BonusItem(source,0,0),new LineClearItem(source,0,0),new SlowItem(source,0,0)}) {
                 assertArrayEquals(pixels(cell(source,0,1,mode,40)),pixels(cell(item,0,1,mode,40)));
                 assertFalse(Arrays.equals(pixels(cell(source,0,0,mode,40)),pixels(cell(item,0,0,mode,40))));
             }
@@ -44,7 +44,7 @@ class BlockRendererTest {
     @Test
     void objectAndStoredCellMatchAndPreserveLegacyBorder() {
         for (ColorMode mode : ColorMode.values()) for (int size : new int[]{7,8,20,40})
-            for (Block block : new Block[]{new BonusItem(new OBlock(),0,0),new LineClearItem(new OBlock(),0,0),new WeightItem(),new BombItem()}) {
+            for (Block block : new Block[]{new BonusItem(new OBlock(),0,0),new LineClearItem(new OBlock(),0,0),new WeightItem(),new BombItem(),new SlowItem(new OBlock(),0,0)}) {
                 int row=0,col=0;
                 search: for(int r=0;r<block.getHeight();r++) for(int c=0;c<block.getWidth();c++)
                     if(block.getShape()[r][c]!=0) {row=r;col=c;break search;}
@@ -108,7 +108,7 @@ class BlockRendererTest {
             Paint paint=g.getPaint(); Stroke stroke=g.getStroke(); Font font=g.getFont();
             AffineTransform transform=g.getTransform(); Rectangle clip=g.getClipBounds();
             Composite composite=g.getComposite(); RenderingHints hints=g.getRenderingHints();
-            for(Block item:new Block[]{new BombItem(),new WeightItem(),new BonusItem(new OBlock(),0,0)}) {
+            for(Block item:new Block[]{new BombItem(),new WeightItem(),new BonusItem(new OBlock(),0,0),new SlowItem(new OBlock(),0,0)}) {
                 int row=item instanceof WeightItem ? 1:0;
                 BlockRenderer.drawBlockCell(g,item,row,0,10,10,40,ColorMode.NORMAL);
                 assertEquals(paint,g.getPaint()); assertEquals(stroke,g.getStroke()); assertEquals(font,g.getFont());
