@@ -10,7 +10,7 @@
   - 난이도에 맞는 가중치로 테트로미노 하나를 생성합니다.
   - `difficulty`가 `null`이면 `NullPointerException`을 던집니다.
 
-```java
+```
 Block block = BlockFactory.createRandomBlock();
 ```
 
@@ -18,7 +18,7 @@ Block block = BlockFactory.createRandomBlock();
 
 `difficulty.Difficulty`는 공용 enum입니다. 게임 진행 레벨과는 별개입니다.
 
-```java
+```
 import difficulty.Difficulty;
 
 Block easyBlock = BlockFactory.createRandomBlock(Difficulty.EASY);
@@ -60,7 +60,7 @@ Physica A 391 (2012), 2193–2196, II절.
 - `getX()`, `getY()` : 현재 위치를 반환합니다.
 - `setX(int)`, `setY(int)` : 현재 위치를 변경합니다.
 
-```java
+```
 BlockType type = block.getType();
 int[][] shape = block.getShape();
 
@@ -73,7 +73,7 @@ block.setY(0);
 - `getValue()` : 블록 종류를 타입 값 `1~10`로 변환합니다.
 - `BlockType.fromValue(int)` : 타입 값 `1~10`을 `BlockType`으로 변환합니다.
 
-```java
+```
 int boardValue = block.getType().getValue();
 BlockType type = BlockType.fromValue(boardValue);
 ```
@@ -85,7 +85,7 @@ BlockType type = BlockType.fromValue(boardValue);
 
 현재 선택된 색상 모드를 나타냅니다.
 
-```java
+```
 ColorMode.NORMAL
 ColorMode.PROTANOPIA
 ColorMode.DEUTERANOPIA
@@ -96,11 +96,6 @@ ColorMode.TRITANOPIA
 
 `BlockStyle`은 블록 종류(`BlockType`)와 색상 모드(`ColorMode`)에 따라
 렌더링에 사용할 색상과 패턴 정보를 제공합니다.
-
-> ⚠️ `pattern`은 현재 **패턴의 종류만 정의된 상태**입니다.  
-> `HORIZONTAL`, `DOT`, `GRID` 등의 값은 패턴의 의미만 나타내며,
-> 선의 굵기, 간격, 점의 크기, 패턴 색상과 같은 실제 시각적 표현 방식은
-> UI/Renderer에서 구현해야 합니다.
 
 ### Pattern Reference
 

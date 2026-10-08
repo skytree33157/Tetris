@@ -4,7 +4,7 @@
 
 생성할 아이템 종류를 나타냅니다. 일반 블록 모양인 `BlockType`과 별개입니다.
 
-```java
+```
 ItemType.LINE_CLEAR
 ItemType.WEIGHT
 ItemType.BOMB
