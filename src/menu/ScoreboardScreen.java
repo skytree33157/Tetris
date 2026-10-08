@@ -31,8 +31,13 @@ public class ScoreboardScreen extends JFrame {
     private SimpleAttributeSet titleStyle;
 
     private ArrayList<ScoreRecord> records;
+    private ArrayList<ScoreRecord> catagoryRecords;
+
 
     private ScoreStorage storage;
+
+    private String difficulty = "NORMAL";
+    private String mode = "NORMAL";
 
     public ScoreboardScreen() {
 
@@ -90,10 +95,9 @@ public class ScoreboardScreen extends JFrame {
 
         // 점수가 높은 순서대로 정렬
         records.sort(
-                Comparator.comparingInt(ScoreRecord::getScore)
-                          .reversed()
-        );
+                Comparator.comparingInt(ScoreRecord::getScore).reversed());
 
+        updateCatagoryRecords();
 
         // 화면 출력
         drawScreen();
@@ -118,6 +122,28 @@ public class ScoreboardScreen extends JFrame {
         });
     }
 
+    public ScoreboardScreen(String difficulty, String mode) {
+        this();
+
+        this.difficulty = difficulty;
+        this.mode = mode;
+
+        updateCatagoryRecords();
+        drawScreen();
+    }
+
+    private void updateCatagoryRecords() {
+            catagoryRecords = new ArrayList<>();
+
+            for (ScoreRecord record : records) {
+                if (record.getDifficulty().equals(difficulty) && record.getMode().equals(mode)) {
+                    catagoryRecords.add(record);
+                }
+            }
+
+            catagoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
+    }
+
 
     // 스코어보드 화면 출력
     private void drawScreen() {
@@ -125,13 +151,15 @@ public class ScoreboardScreen extends JFrame {
         StringBuilder sb = new StringBuilder();
 
         sb.append("SCOREBOARD\n\n");
+        sb.append("난이도: ").append(difficulty).append("\n");
+        sb.append("모드: ").append(mode).append("\n");
 
         // 기록이 10개보다 적으면 실제 기록 개수만큼만 출력
-        int count = Math.min(records.size(), 10);
+        int count = Math.min(catagoryRecords.size(), 10);
 
         for (int i = 0; i < count; i++) {
 
-            ScoreRecord record = records.get(i);
+            ScoreRecord record = catagoryRecords.get(i);
 
             sb.append(i + 1)
               .append(". ")
@@ -141,7 +169,8 @@ public class ScoreboardScreen extends JFrame {
               .append("\n");
         }
 
-        // 선택지가 하나뿐이므로 ↑↓ 이동은 필요 없음
+        sb.append("\n[← →] 난이도 변경");
+        sb.append("\n[↑ ↓] 모드 변경");
         sb.append("\n> 시작 메뉴 <");
         sb.append("\n\n[Enter] 선택");
 
@@ -203,6 +232,46 @@ public class ScoreboardScreen extends JFrame {
             // Enter를 누르면 시작 메뉴로 돌아감
             if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                 backToMenu();
+            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { //오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
+                if (difficulty.equals("EASY")) {
+                    difficulty = "NORMAL";
+                } else if (difficulty.equals("NORMAL")) {
+                    difficulty = "HARD";
+                } else {
+                    difficulty = "EASY";
+                }
+                
+                updateCatagoryRecords();
+                drawScreen();
+            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { //왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
+                if (difficulty.equals("HARD")) {
+                    difficulty = "NORMAL";
+                } else if (difficulty.equals("NORMAL")) {
+                    difficulty = "EASY";
+                } else {
+                    difficulty = "HARD";
+                }
+                
+                updateCatagoryRecords();
+                drawScreen();
+            } else if (e.getKeyCode() == KeyEvent.VK_UP) { //위 방향키를 눌러 NORMAL -> ITEM으로 이동
+                if (mode.equals("NORMAL")) {
+                    mode = "ITEM";
+                } else {
+                    mode = "NORMAL";
+                }
+                
+                updateCatagoryRecords();
+                drawScreen();
+            } else if (e.getKeyCode() == KeyEvent.VK_DOWN) { //아래 방향키를 눌러 위 방향키와 똑같이 시전되도록 설정
+                if (mode.equals("NORMAL")) {
+                    mode = "ITEM";
+                } else {
+                    mode = "NORMAL";
+                }
+                
+                updateCatagoryRecords();
+                drawScreen();
             }
         }
 
