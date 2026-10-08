@@ -17,22 +17,33 @@ public class ActionController {
     private Block nextBlock;
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
+    // FR-37: 일반 모드와 아이템 모드 구분
+    private boolean itemMode;
 
     private int startX = 3;
     private int startY = 0;
 
-    public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager) {
+    public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager, boolean itemMode) {
         this.board = board;
         this.block = block;
         this.nextBlock = BlockFactory.createRandomBlock();
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
+        // FR-37
+        this.itemMode = itemMode;
         this.block.setX(startX);
         this.block.setY(startY);
 
         if (!board.isValidPosition(block.getShape(), startX, startY)) {
             gameStateManager.setGameOver(true);
         }
+    }
+
+    // FR-37 기존 생성자 호환성 유지
+    public ActionController(Board board, Block block,
+                            GameStateManager gameStateManager,
+                            ScoreManager scoreManager) {
+        this(board, block, gameStateManager, scoreManager, false);
     }
     
     public synchronized Block getCurrentBlock() {
@@ -142,8 +153,8 @@ public class ActionController {
 
     // 다음 블록 또는 아이템을 생성하는 메서드
     private void spawnNextBlock(boolean shouldSpawnItem) {
-        if (shouldSpawnItem) {
-// Todo : 아이템 생성 로직 추가 후 변경 예정
+        // FR-37 itemMode if 조건문에 추가
+        if (itemMode && shouldSpawnItem) {
             block = BlockFactory.createRandomItem();
             nextBlock = BlockFactory.createRandomBlock();
         } else {

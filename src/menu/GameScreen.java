@@ -42,6 +42,8 @@ public class GameScreen extends JFrame {
     private final Thread gameThread;
     private final Timer renderTimer;
     private final BlockPreviewPanel blockPreviewPanel;
+    // FR-37
+    private final boolean itemMode;
     private PauseScreen pauseScreen;
 
     private  JLabel levelLabel;
@@ -49,10 +51,16 @@ public class GameScreen extends JFrame {
     private  JLabel scoreLabel;
     private boolean gameOverHandled = false;
 
-
+    // FR-37: 기존 생성자는 일반 모드로 실행
     public GameScreen() {
+        this(false);
+    }
+
+    // FR-37: 게임 모드 전달
+    public GameScreen(boolean itemMode) {
         
         super("SeoulTech SE Tetris");
+        this.itemMode = itemMode; // FR-37
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         Board board = new Board();
@@ -60,7 +68,7 @@ public class GameScreen extends JFrame {
         appStateManager = new AppStateManager(AppState.PLAYING);
         Block firstBlock = BlockFactory.createRandomBlock();
         scoreManager = new ScoreManager();
-        actionController = new ActionController(board, firstBlock, gameStateManager, scoreManager);
+        actionController = new ActionController(board, firstBlock, gameStateManager, scoreManager, itemMode);
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
         gamePanel = new GamePanel(board);
@@ -128,7 +136,7 @@ public class GameScreen extends JFrame {
             gameOverHandled = true;
             stopGame();
             dispose();
-            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore(), "NORMAL", "NORMAL");
+            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore(), "NORMAL", itemMode ? "ITEM" : "NORMAL"); // FR-37
             gameOverScreen.setVisible(true);
         }
     }
