@@ -137,6 +137,9 @@ Block bomb = BlockFactory.createItem(ItemType.BOMB);
 Block bonus = BlockFactory.createItem(ItemType.BONUS, Difficulty.HARD);
 ```
 
+인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 `Difficulty`별 확률로 생성하고,
+실제로 채워진 칸 중 하나를 균등하게 골라 LineClearItem 생성자에 전달합니다.
+Weight 모양과 효과는 대운이의 WeightItem을 그대로 사용합니다.
 `ItemType`은 아이템 종류, `BlockType`은 블록 모양·스타일 타입입니다.
 통합 생성 API의 반환형은 `Block`입니다. 아이템 전용 메서드가 필요하면 실제 클래스를 확인합니다.
 기존 개별 생성 메서드와 랜덤 생성 메서드도 그대로 사용할 수 있습니다.
@@ -151,39 +154,6 @@ Block bonus = BlockFactory.createItem(ItemType.BONUS, Difficulty.HARD);
 Block item = BlockFactory.createRandomItem(Difficulty.HARD);
 BombItem bomb = BlockFactory.createBombItem();
 BonusItem bonus = BlockFactory.createRandomBonusItem(Difficulty.HARD);
-```
-
-인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 `Difficulty`별 확률로 생성하고,
-실제로 채워진 칸 중 하나를 균등하게 골라 LineClearItem 생성자에 전달합니다.
-Weight 모양과 효과는 대운이의 WeightItem을 그대로 사용합니다.
-
-### 표시
-
-- L: getSourceType()의 색맹 색상·기존 패턴 유지. isMarkerCell()인 한 칸에만 L 표시.
-- Weight: 모든 색상 모드에서 은회색(#C8CDD3), 전용 BRICK 패턴, 채워진 칸마다 W 표시.
-- 게임 화면과 NEXT는 BlockRenderer.drawBlockCell()을 공유합니다.
-- 문자는 대비되는 외곽선을 사용하며 Graphics2D의 변경은 복제 객체 안에서 처리합니다.
-- BlockType 값은 기존 I/O/T/S/Z/J/L=1~7을 유지하고 LINE_CLEAR=8, WEIGHT=9를 추가합니다.
-  일반 블록 생성 후보는 계속 7종만 포함합니다.
-
-### 새 부착형 아이템 추가
-
-LineClearItem/WeightItem에 표시 인터페이스를 추가하지 않습니다.
-ItemRegistry에 클래스·생성 함수·표시 정보를 게임 시작 전에 한 번 등록합니다.
-동일한 id 또는 클래스의 중복 등록은 오류이며, 등록된 정확한 클래스에 표시가 적용됩니다.
-생성 후보에 등록하면 즉시 랜덤 생성 대상이 되므로 효과까지 준비된 클래스만 등록하세요.
-
-아래는 미래에 팀이 BombItem을 구현한 후의 예시입니다. 현재 존재하는 클래스가 아닙니다.
-생성자의 인자와 표시 메서드는 그때 확정된 실제 클래스에 맞춥니다.
-
-```
-ItemRegistry.register("bomb", BombItem.class,
-    difficulty -> {
-        Block source = BlockFactory.createRandomBlock(difficulty);
-        int[] marker = BlockFactory.selectRandomOccupiedCell(source);
-        return new BombItem(source, marker[0], marker[1]);
-    },
-    bomb -> new ItemAppearance(bomb.getSourceType(), 'B', bomb::isMarkerCell));
 ```
 
 ItemAppearance는 배경 스타일·문자·표시 칸 판별을 보관합니다. 판별 함수는 현재 모양을
