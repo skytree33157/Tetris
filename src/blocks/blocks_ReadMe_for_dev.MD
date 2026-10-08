@@ -135,6 +135,7 @@ BlockStyle style = BlockStyle.of(block.getType(),currentColorMode);
 ```java
 Block bomb = BlockFactory.createItem(ItemType.BOMB);
 Block bonus = BlockFactory.createItem(ItemType.BONUS, Difficulty.HARD);
+Block slow = BlockFactory.createItem(ItemType.SLOW, Difficulty.HARD);
 ```
 
 인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 `Difficulty`별 확률로 생성하고,
@@ -148,6 +149,7 @@ Weight 모양과 효과는 대운이의 WeightItem을 그대로 사용합니다.
 - `createRandomItem(Difficulty)` : 지정한 난이도로 아이템을 생성합니다.
 - `createRandomLineClearItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 L을 붙입니다.
 - `createRandomBonusItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 P를 붙입니다.
+- `createRandomSlowItem(Difficulty)` : 일반 블록의 채워진 칸 하나에 S를 붙입니다. FR-36-3.
 - `createBombItem()` : 1×1 Bomb을 생성합니다.
 
 ```java
@@ -161,7 +163,7 @@ ItemAppearance는 배경 스타일·문자·표시 칸 판별을 보관합니다
 같은 부착형이라면 Renderer/Preview 수정 없이 등록을 추가할 수 있습니다.
 독립형 아이템은 모양 클래스와 BlockStyle의 전용 스타일도 추가해야 합니다.
 등록은 생성·표시를 연결하며, 효과 발동을 자동으로 구현하지는 않습니다.
-L과 Bonus의 원본 블록은 난이도별 확률로 생성합니다. 일반 블록 추첨 후보는 기존 7종입니다.
+L·Bonus·Slow의 원본 블록은 난이도별 확률로 생성합니다. 일반 블록 추첨 후보는 기존 7종입니다.
 
 아이템 클래스·등록 방법은 [item 사용법](../item/item_ReadMe_for_dev.MD),
 화면 표시·보드 값 변환은 [ui 사용법](../ui/ui_ReadMe_for_dev.MD)을 참고합니다.

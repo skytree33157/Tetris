@@ -9,6 +9,7 @@ ItemType.LINE_CLEAR
 ItemType.WEIGHT
 ItemType.BOMB
 ItemType.BONUS
+ItemType.SLOW
 ```
 
 - `getId()` : Registry에 등록할 문자열 id를 반환합니다.
@@ -49,6 +50,30 @@ int col = bonus.getTargetCol();
 고정 후 P를 유지하는 방법은 [ui 사용법](../ui/ui_ReadMe_for_dev.MD)을 참고합니다.
 보너스 발동 판정·점수 호출은 게임 로직에서 구현합니다.
 
+## SlowItem.java (FR-36-3)
+
+일반 블록의 채워진 칸 하나에 S를 표시합니다. 원본 블록의 색상·패턴 유지.
+
+- `getSourceType()` : 원본 블록 타입 반환.
+- `isMarkerCell(row, col)` : 현재 모양에서 S가 있는 칸인지 확인.
+- `getMarkerRow()`, `getMarkerCol()` : 모양 배열 안의 S 위치 반환.
+- `getTargetRow()`, `getTargetCol()` : 현재 위치·회전을 반영한 보드 좌표 반환.
+
+```java
+SlowItem slow = BlockFactory.createRandomSlowItem(Difficulty.HARD);
+Block item = BlockFactory.createItem(ItemType.SLOW, Difficulty.HARD);
+```
+
+`S_CELL_VALUE = -3`은 모양 배열에서 표시 칸을 찾는 값. 보드 저장 값으로 직접 사용 X.
+고정 시 `ItemAppearanceResolver.toBoardCell(block, row, col)`로 저장하면 원본 타입과 S 유지.
+저장한 셀은 `ItemAppearanceResolver.fromBoardCell(value)`의 `symbol() == 'S'`로 구분.
+빈칸 값은 0. 표시가 없는 칸은 기존 원본 타입 값 유지.
+
+S가 포함된 줄이 삭제되면 이후 블록의 하강 속도가 느려지는 아이템입니다.
+줄 삭제 전에 S를 확인하는 판정과 속도 효과는 게임 로직에서 구현.
+생성·외형·저장 변환 API만 제공. 실제 보드 고정 연결과 속도 변경은 이번 작업에 포함 X.
+화면과 NEXT는 기존 `drawBlockCell()` 사용. Renderer/Preview 수정 X.
+
 ## ItemAppearance.java
 
 아이템의 배경 타입·문자·표시 칸 판별 함수를 보관합니다.
@@ -59,7 +84,7 @@ int col = bonus.getTargetCol();
 ## ItemRegistry.java
 
 아이템 클래스·생성 함수·표시 정보를 등록합니다. 등록 즉시 랜덤 생성 후보에 포함됩니다.
-현재 L·Weight·Bomb·Bonus를 같은 확률로 선택합니다.
+현재 L·Weight·Bomb·Bonus·Slow를 같은 확률로 선택합니다.
 
 ```java
 ItemRegistry.register("bonus", BonusItem.class, BlockFactory::createRandomBonusItem,
