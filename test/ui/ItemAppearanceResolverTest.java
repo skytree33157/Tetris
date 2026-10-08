@@ -38,6 +38,15 @@ class ItemAppearanceResolverTest {
         assertEquals(BlockType.O.getValue(), ItemAppearanceResolver.toBoardCell(new OBlock(),0,0));
     }
     @Test
+    void slowMarkerSurvivesStoredCellConversionWithoutUsingShapeMarkerValue() {
+        SlowItem slow = new SlowItem(new TBlock(), 0, 1);
+        int stored = ItemAppearanceResolver.toBoardCell(slow, 0, 1);
+        assertNotEquals(SlowItem.S_CELL_VALUE, stored);
+        var cell = ItemAppearanceResolver.fromBoardCell(stored);
+        assertEquals(BlockType.T, cell.type()); assertEquals('S', cell.symbol());
+        assertEquals(BlockType.T.getValue(), ItemAppearanceResolver.toBoardCell(slow, 1, 0));
+    }
+    @Test
     void legacyMarkerIsReadableAndInvalidPackedValuesAreRejected() {
         assertEquals('L', ItemAppearanceResolver.fromBoardCell(-1).symbol());
         assertEquals(BlockType.LINE_CLEAR, ItemAppearanceResolver.fromBoardCell(-1).type());
