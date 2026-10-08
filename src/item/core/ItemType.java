@@ -1,4 +1,4 @@
-package item;
+package item.core;
 
 /** 생성할 아이템 종류. 블록 모양을 나타내는 BlockType과 별개.
  * 추후 리팩터링 해야할 거 같음. 중간고사 이후.

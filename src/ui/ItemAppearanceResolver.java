@@ -2,8 +2,8 @@ package ui;
 
 import blocks.core.Block;
 import blocks.core.BlockType;
-import item.ItemAppearance;
-import item.ItemRegistry;
+import item.core.ItemAppearance;
+import item.core.ItemRegistry;
 import java.util.Objects;
 
 /** 기존 아이템의 효과 코드를 수정하지 않고 객체를 렌더링 정보로 변환한다. */

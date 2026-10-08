@@ -1,9 +1,14 @@
-package item;
+package item.core;
 
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import blocks.core.BlockType;
 import difficulty.Difficulty;
+import item.types.BombItem;
+import item.types.BonusItem;
+import item.types.LineClearItem;
+import item.types.WeightItem;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;

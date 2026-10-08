@@ -1,4 +1,4 @@
-package item;
+package item.core;
 
 import blocks.core.BlockType;
 import java.util.Objects;

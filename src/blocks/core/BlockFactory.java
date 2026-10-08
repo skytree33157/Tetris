@@ -6,11 +6,11 @@ import java.util.Random;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 import difficulty.Difficulty;
-import item.ItemRegistry;
-import item.ItemType;
-import item.LineClearItem;
-import item.BombItem;
-import item.BonusItem;
+import item.core.ItemRegistry;
+import item.core.ItemType;
+import item.types.LineClearItem;
+import item.types.BombItem;
+import item.types.BonusItem;
 
 public class BlockFactory {
 

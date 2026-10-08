@@ -1,4 +1,4 @@
-package item;
+package item.types;
 
 import blocks.core.Block;
 import blocks.core.BlockType;
