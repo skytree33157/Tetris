@@ -14,6 +14,7 @@ public class GameStateManager {
     private static final int MIN_DROP_SPEED = 100; // 최소 드롭 속도
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
+    private static final int LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값
 
     public int getDropSpeed() {
         return dropSpeed;
@@ -52,6 +53,11 @@ public class GameStateManager {
         totalLinesCleared += linesCleared;
         countClearLine += linesCleared;
         levelUp();
+    }
+
+    // 이번 줄 삭제로 누적 줄 수가 10줄 단위를 넘었는지 확인
+    public boolean shouldSpawnItem(int previousTotalLines) {
+        return totalLinesCleared / LINES_FOR_ITEM > previousTotalLines / LINES_FOR_ITEM;
     }
 
     // 레벨 업(하강 속도 증가) 메서드
