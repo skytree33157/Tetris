@@ -29,28 +29,35 @@ public class GameOverScreen extends JFrame {
 
     private SimpleAttributeSet defaultStyle;
     private SimpleAttributeSet gameOverStyle;
-    private SimpleAttributeSet newRecordStyle;
 
     private int score;
 
+    private String difficulty;
+
+    private String mode;
+
     private ArrayList<ScoreRecord> records;
+    private ArrayList<ScoreRecord> categoryRecords;
 
     private ScoreRecord newRecord;
 
     private ScoreStorage storage;
 
     private static final String[] MENU_ITEMS = {
+        "스코어보드",
         "시작 메뉴",
         "프로그램 종료"
     };
 
     private int selectedIndex = 0;
 
-    public GameOverScreen(int score) {
+    public GameOverScreen(int score, String difficulty, String mode) {
 
         super("SeoulTech SE Tetris");
 
         this.score = score;
+        this.difficulty = difficulty;
+        this.mode = mode;
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(600, 700);
@@ -81,23 +88,12 @@ public class GameOverScreen extends JFrame {
         );
 
         gameOverStyle = new SimpleAttributeSet();
-        StyleConstants.setFontSize(gameOverStyle, 24);
+        StyleConstants.setFontSize(gameOverStyle, 32);
         StyleConstants.setFontFamily(gameOverStyle, "Courier");
         StyleConstants.setBold(gameOverStyle, true);
-        StyleConstants.setForeground(gameOverStyle, Color.YELLOW);
+        StyleConstants.setForeground(gameOverStyle, new Color(255, 82, 82));
         StyleConstants.setAlignment(
                 gameOverStyle,
-                StyleConstants.ALIGN_CENTER
-        );
-
-        // 새 기록 강조
-        newRecordStyle = new SimpleAttributeSet();
-        StyleConstants.setFontSize(newRecordStyle, 20);
-        StyleConstants.setFontFamily(newRecordStyle, "Courier");
-        StyleConstants.setBold(newRecordStyle, true);
-        StyleConstants.setForeground(newRecordStyle, Color.YELLOW);
-        StyleConstants.setAlignment(
-                newRecordStyle,
                 StyleConstants.ALIGN_CENTER
         );
 
@@ -125,13 +121,23 @@ public class GameOverScreen extends JFrame {
 
     private void checkNewRecord() {
 
+        categoryRecords = new ArrayList<>();
+
+        for (ScoreRecord record : records) {
+            if (record.getDifficulty().equals(difficulty) && record.getMode().equals(mode)) {
+                categoryRecords.add(record);
+            }
+        }
+
+        categoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
+
         boolean canRecord;
 
-        if (records.size() < 10) {
+        if (categoryRecords.size() < 10) {
             canRecord = true;
         } else {
 
-            int tenthScore = records.get(9).getScore();
+            int tenthScore = categoryRecords.get(9).getScore();
 
             canRecord = score > tenthScore;
         }
@@ -145,21 +151,24 @@ public class GameOverScreen extends JFrame {
                     JOptionPane.PLAIN_MESSAGE
             );
 
-            if (name == null || name.trim().isEmpty()) {
+            if (name == null || name.trim().isEmpty() || name.contains(",")) {
                 name = "PLAYER";
             }
 
-            newRecord = new ScoreRecord(name.trim(), score);
+            newRecord = new ScoreRecord(name.trim(), score, difficulty, mode);
 
             records.add(newRecord);
+            categoryRecords.add(newRecord);
+            categoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
 
             records.sort(
                     Comparator.comparingInt(ScoreRecord::getScore)
                               .reversed()
             );
 
-            if (records.size() > 10) {
-                records.remove(records.size() - 1);
+            if (categoryRecords.size() > 10) {
+                ScoreRecord lowestRecord = categoryRecords.get(categoryRecords.size()-1);
+                records.remove(lowestRecord);
             }
 
             storage.save(records);
@@ -171,24 +180,9 @@ public class GameOverScreen extends JFrame {
         StringBuilder sb = new StringBuilder();
 
         sb.append("GAME OVER\n\n");
-        sb.append("SCORE : ").append(score).append("\n\n");
-        sb.append("SCOREBOARD\n");
-
-        int count = Math.min(records.size(), 10);
-
-        for (int i = 0; i < count; i++) {
-
-            ScoreRecord record = records.get(i);
-
-            sb.append(i + 1)
-              .append(". ")
-              .append(record.getName())
-              .append("  ")
-              .append(record.getScore())
-              .append("\n");
-        }
-
-        sb.append("\n");
+        sb.append("SCORE : ").append(score).append("\n");
+        sb.append("DIFFICULTY: ").append(difficulty).append("\n");
+        sb.append("MODE: ").append(mode).append("\n\n");
 
         for (int i = 0; i < MENU_ITEMS.length; i++) {
 
@@ -210,6 +204,13 @@ public class GameOverScreen extends JFrame {
         applyStyles();
     }
 
+    private void openScoreboard() {
+        dispose();
+
+        ScoreboardScreen scoreboard = new ScoreboardScreen(difficulty, mode);
+        scoreboard.setVisible(true);
+    }
+
     private void applyStyles() {
 
         StyledDocument doc = pane.getStyledDocument();
@@ -221,6 +222,13 @@ public class GameOverScreen extends JFrame {
                 false
         );
 
+        doc.setCharacterAttributes(
+                0, 
+                doc.getLength(), 
+                defaultStyle, 
+                false
+        );
+
         String firstLine = "GAME OVER";
 
         doc.setCharacterAttributes(
@@ -229,31 +237,6 @@ public class GameOverScreen extends JFrame {
                 gameOverStyle,
                 false
         );
-
-        if (newRecord != null) {
-
-            String[] lines = pane.getText().split("\n");
-
-            int offset = 0;
-
-            for (String line : lines) {
-
-                if (line.contains(newRecord.getName())
-                        && line.contains(String.valueOf(newRecord.getScore()))) {
-
-                    doc.setCharacterAttributes(
-                            offset,
-                            line.length(),
-                            newRecordStyle,
-                            false
-                    );
-
-                    break;
-                }
-
-                offset += line.length() + 1;
-            }
-        }
     }
 
     private void moveUp() {
@@ -277,8 +260,12 @@ public class GameOverScreen extends JFrame {
     private void select() {
 
         switch (selectedIndex) {
-
+            
             case 0:
+                openScoreboard(); //ScoreboardScreen 열기
+                break;
+
+            case 1:
                 dispose(); //GameOverScreen 종료(프로그램 자체 x)
 
                 StartMenu menu = new StartMenu(); //StartMenu 객체 생성
@@ -286,7 +273,7 @@ public class GameOverScreen extends JFrame {
 
                 break;
 
-            case 1:
+            case 2:
                 System.exit(0); //아예 프로그램 종료
                 break;
         }
@@ -301,20 +288,14 @@ public class GameOverScreen extends JFrame {
         @Override
         public void keyPressed(KeyEvent e) {
 
-            switch (e.getKeyCode()) {
-
-                case KeyEvent.VK_UP:
-                    moveUp();
-                    break;
-
-                case KeyEvent.VK_DOWN:
-                    moveDown();
-                    break;
-
-                case KeyEvent.VK_ENTER:
-                    select();
-                    break;
+            if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                select();
+            } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                moveUp();
+            } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                moveDown();
             }
+
         }
 
         @Override

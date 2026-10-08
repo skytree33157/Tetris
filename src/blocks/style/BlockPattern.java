@@ -7,5 +7,6 @@ public enum BlockPattern {
     DIAGONAL_RIGHT,  // 오른쪽 대각선 패턴 (/)
     DIAGONAL_LEFT,   // 왼쪽 대각선 패턴 (\)
     GRID,            // 격자 패턴
+    BRICK,          // 무게추 전용 벽돌 패턴
     VERTICAL         // 세로줄 패턴
 }

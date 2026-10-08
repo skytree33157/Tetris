@@ -12,6 +12,26 @@ DropType.HARD
 
 ## ScoreManager.java
 
+### 생성 및 난이도
+
+```java
+ScoreManager scoreManager = new ScoreManager(); // 기존 방식: NORMAL
+ScoreManager hardScoreManager = new ScoreManager(Difficulty.HARD);
+```
+
+`Difficulty`는 `difficulty.Difficulty`를 import합니다. 게임 시작 시 선택한 난이도로
+한 객체를 만들고, 게임 루프·입력·줄 삭제 처리·화면에서 같은 객체를 사용합니다.
+
+| 난이도 | 점수 배율 |
+| --- | --- |
+| EASY | ×0.8 |
+| NORMAL | ×1.0 |
+| HARD | ×1.2 |
+
+기존 하강·줄 삭제 계산 결과와 Bonus 추가 점수에 배율을 적용하고, 각 호출의 마지막에
+한 번 반올림합니다. 예를 들어 1점의 HARD 하강 점수는 반올림 후 1점입니다.
+`getScore()`의 누적 점수에 배율을 다시 적용하지 않습니다.
+
 ### 주요 메서드
 
 - `addDropScore(int distance, DropType type, int level)`
@@ -53,6 +73,23 @@ scoreManager.addLineClearScore(linesCleared, level, perfectClear);
 ⚠️⚠️ 줄을 삭제하지 않은 경우에도 `linesCleared = 0`으로 호출해야 Combo가 초기화됩니다!! ⚠️⚠️
 
 
+- `addBonusScore(int bonusCount)`
+    - Bonus 한 개당 기본 1,000점에 난이도 배율을 적용해 추가합니다.
+    - NORMAL 1,000점 / EASY 800점 / HARD 1,200점입니다.
+    - `bonusCount`는 0 이상이며, 반환값은 이번 호출로 추가된 점수입니다.
+    - 레벨·콤보·퍼펙트 클리어 배율을 적용하지 않고 콤보도 변경하지 않습니다.
+
+```java
+// 게임 로직에서 삭제할 줄의 Bonus 개수를 지우기 전에 집계합니다.
+// 기존 줄 삭제 점수와 Bonus 점수는 각각 한 번만 호출합니다.
+scoreManager.addLineClearScore(linesCleared, level, perfectClear);
+scoreManager.addBonusScore(clearedBonusCount);
+```
+
+Bonus 발동 여부와 개수는 게임 로직 담당자가 전달합니다. Bomb 등 다른 효과로
+제거된 Bonus를 지급 대상으로 포함할지는 아이템 명세에서 정하며, 이 메서드는
+그 조건에 맞는 개수만 전달받습니다. Bonus 생성·표시·보드 저장은 이 PR에 포함하지 않습니다.
+
 - `getScore()`
     - 현재 누적 점수를 반환합니다.
     - UI에서는 이 값을 이용해 현재 점수를 표시할 수 있습니다.
@@ -71,7 +108,7 @@ int combo = scoreManager.getComboCount();
 
 
 - `reset()`
-    - 현재 점수와 Combo를 초기화합니다.
+    - 현재 점수와 Combo를 초기화합니다. 생성할 때 정한 난이도는 유지합니다.
 
 ```
 scoreManager.reset();
@@ -159,16 +196,18 @@ MAX : 5 × 2 × 2 = 20
 
 `rawMultiplier`의 1~20 범위를 최종 배율 1~10 범위로 선형 변환해서 사용합니다.
 
-최종 배율은 최대 ×10을 넘지 않습니다.
+정규화한 배율은 최대 ×10입니다. 그 뒤에 난이도 배율을 적용하므로 줄 삭제
+기본 점수 대비 최대 배율은 EASY ×8, NORMAL ×10, HARD ×12입니다.
+난이도 적용 후 다시 ×10으로 제한하지 않습니다.
 
 
 ## 전체 점수 구조
 
 하강 점수
 
-- AUTO : `distance × Level 하강 배율`
-- SOFT : `distance × 1`
-- HARD : `distance × 2`
+- AUTO : `반올림(distance × Level 하강 배율 × 난이도 배율)`
+- SOFT : `반올림(distance × 1 × 난이도 배율)`
+- HARD : `반올림(distance × 2 × 난이도 배율)`
 
 줄 삭제 점수
 
@@ -176,7 +215,15 @@ MAX : 5 × 2 × 2 = 20
 - Level 배율
 - Combo 배율
 - Perfect Clear 배율
-- 최종 배율 최대 ×10
+- 정규화 배율 최대 ×10
+- 난이도 배율을 곱한 뒤 최종 점수를 반올림
+
+아이템 점수
+
+- L : 삭제된 줄 수에 포함하여 기존 `addLineClearScore()`로 계산합니다. 별도 중복 보너스는 없습니다.
+- Weight·Bomb : 제거 효과 자체는 0점이며, 점수 추가 메서드를 호출하지 않습니다.
+- 하강 점수는 제거 효과 점수와 별개이며 기존 호출을 유지합니다.
+- Bonus : `반올림(Bonus 개수 × 1,000 × 난이도 배율)`을 줄 삭제 점수에 별도로 추가합니다.
 
 `ScoreManager`는 점수 계산만 담당합니다.
 

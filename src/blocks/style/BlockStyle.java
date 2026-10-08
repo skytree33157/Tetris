@@ -38,6 +38,11 @@ public class BlockStyle {
     private static final Color TRITANOPIA_J = new Color(0x995736);
     private static final Color TRITANOPIA_L = new Color(0xF5C056);
 
+    // Weight는 모든 색상 모드에서 동일한 은회색을 사용하고 BRICK 패턴으로 구분한다.
+    private static final Color WEIGHT_COLOR = new Color(0xC8CDD3);
+    // 폭탄은 모든 색상 모드에서 어두운 배경·대비되는 외곽선·B 문자로 구분.
+    private static final Color BOMB_COLOR = new Color(0x454B54);
+
     private final Color color;
     private final BlockPattern pattern;
 
@@ -76,6 +81,8 @@ public class BlockStyle {
             case Z -> NORMAL_Z;
             case J -> NORMAL_J;
             case L -> NORMAL_L;
+            case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
+            case BOMB -> BOMB_COLOR;
         };
     }
 
@@ -88,6 +95,8 @@ public class BlockStyle {
             case Z -> PROTANOPIA_Z;
             case J -> PROTANOPIA_J;
             case L -> PROTANOPIA_L;
+            case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
+            case BOMB -> BOMB_COLOR;
         };
     }
 
@@ -100,6 +109,8 @@ public class BlockStyle {
             case Z -> DEUTERANOPIA_Z;
             case J -> DEUTERANOPIA_J;
             case L -> DEUTERANOPIA_L;
+            case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
+            case BOMB -> BOMB_COLOR;
         };
     }
 
@@ -112,6 +123,8 @@ public class BlockStyle {
             case Z -> TRITANOPIA_Z;
             case J -> TRITANOPIA_J;
             case L -> TRITANOPIA_L;
+            case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
+            case BOMB -> BOMB_COLOR;
         };
     }
 
@@ -124,6 +137,9 @@ public class BlockStyle {
             case Z -> BlockPattern.DIAGONAL_LEFT;
             case J -> BlockPattern.GRID;
             case L -> BlockPattern.VERTICAL;
+            case WEIGHT -> BlockPattern.BRICK;
+            case BOMB -> BlockPattern.DOT;
+            case LINE_CLEAR -> BlockPattern.HORIZONTAL;
         };
     }
 }

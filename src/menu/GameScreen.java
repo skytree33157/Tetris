@@ -128,7 +128,7 @@ public class GameScreen extends JFrame {
             gameOverHandled = true;
             stopGame();
             dispose();
-            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore());
+            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore(), "NORMAL", "NORMAL");
             gameOverScreen.setVisible(true);
         }
     }

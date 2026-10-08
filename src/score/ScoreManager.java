@@ -1,9 +1,28 @@
 package score;
 
+import difficulty.Difficulty;
+import java.util.Objects;
+
 public class ScoreManager {
 
     private int score = 0;
     private int comboCount = 0;
+    private final double difficultyMultiplier;
+
+    private static final int BONUS_POINT = 1_000;
+
+    public ScoreManager() {
+        this(Difficulty.NORMAL);
+    }
+
+    // 한 게임 동안 사용할 난이도
+    public ScoreManager(Difficulty difficulty) {
+        difficultyMultiplier = switch (Objects.requireNonNull(difficulty, "difficulty")) {
+            case EASY -> 0.8;
+            case NORMAL -> 1.0;
+            case HARD -> 1.2;
+        };
+    }
 
     private static final int SOFT_DROP_POINT = 1;
     private static final int HARD_DROP_POINT = 2;
@@ -37,7 +56,7 @@ public class ScoreManager {
             case HARD -> HARD_DROP_POINT;
         };
 
-        int addedScore = distance * pointPerCell;
+        int addedScore = applyDifficulty((double) distance * pointPerCell);
         score += addedScore;
 
         return addedScore;
@@ -71,10 +90,27 @@ public class ScoreManager {
         double rawMultiplier = levelMultiplier * comboMultiplier * perfectMultiplier;
         double finalMultiplier = normalizeMultiplier(rawMultiplier);
 
-        int addedScore = (int) Math.round(baseScore * finalMultiplier);
+        // 난이도 배율은 정규화 뒤에 적용
+        int addedScore = applyDifficulty(baseScore * finalMultiplier);
         score += addedScore;
 
         return addedScore;
+    }
+
+    // 게임 로직이 삭제된 줄의 Bonus 개수를 전달
+    public synchronized int addBonusScore(int bonusCount) {
+        if (bonusCount < 0) {
+            throw new IllegalArgumentException("bonusCount must be non-negative");
+        }
+
+        int addedScore = applyDifficulty((double) bonusCount * BONUS_POINT);
+        score += addedScore;
+        return addedScore;
+    }
+
+    // 모든 점수는 난이도를 적용한 뒤 마지막에 한 번 반올림한다.
+    private int applyDifficulty(double points) {
+        return (int) Math.round(points * difficultyMultiplier);
     }
 
     // 현재 누적 점수
