@@ -29,7 +29,7 @@ class ItemRegistryTest {
 
     @Test
     void builtInSymbolsAreDistinctAndSourceStyleIsPreserved() {
-        char[] symbols = {'L', 'W', 'B', 'P'};
+        char[] symbols = {'L', 'W', 'B', 'P', 'S'};
         for (int i = 0; i < ItemType.values().length; i++) {
             ItemType type = ItemType.values()[i];
             assertFalse(type.getId().isBlank());
@@ -42,21 +42,22 @@ class ItemRegistryTest {
             }
             assertTrue(found);
             if (block instanceof BonusItem bonus) assertSame(bonus.getSourceType(), appearance.baseType());
+            if (block instanceof SlowItem slow) assertSame(slow.getSourceType(), appearance.baseType());
             if (block instanceof LineClearItem line) assertSame(line.getSourceType(), appearance.baseType());
         }
         assertNull(ItemRegistry.appearanceOf(new OBlock()));
     }
 
     @Test
-    void seededRandomCreationUsesAllFourRegisteredKindsEqually() {
+    void seededRandomCreationUsesAllFiveRegisteredKindsEqually() {
         Random random = new Random(20261008L);
         Map<Class<?>, Integer> counts = new HashMap<>();
         for (int i = 0; i < 20000; i++) {
             Block block = ItemRegistry.createRandom(Difficulty.NORMAL, random);
             counts.merge(block.getClass(), 1, Integer::sum);
         }
-        assertEquals(4, counts.size());
-        for (int count : counts.values()) assertEquals(5000, count, 250);
+        assertEquals(5, counts.size());
+        for (int count : counts.values()) assertEquals(4000, count, 200);
     }
 
     @Test
@@ -87,6 +88,12 @@ class ItemRegistryTest {
         assertThrows(NullPointerException.class, () -> ItemRegistry.createRandom(Difficulty.NORMAL, null));
         assertThrows(NullPointerException.class, () -> new ItemAppearance(null, 'Q', (r,c) -> true));
         assertThrows(NullPointerException.class, () -> new ItemAppearance(BlockType.O, 'Q', null));
+    }
+
+    @Test
+    void slowIsAvailableAsRegisteredItem() {
+        assertTrue(Arrays.stream(ItemType.values()).anyMatch(type -> type.name().equals("SLOW")),
+                "Slow 생성·표시 등록 필요");
     }
 
     private static class CustomItem extends Block {

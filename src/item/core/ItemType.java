@@ -7,7 +7,8 @@ public enum ItemType {
     LINE_CLEAR("line-clear"),
     WEIGHT("weight"),
     BOMB("bomb"),
-    BONUS("bonus");
+    BONUS("bonus"),
+    SLOW("slow");
 
     private final String id;
 
