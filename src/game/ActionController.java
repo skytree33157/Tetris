@@ -2,6 +2,7 @@ package game;
 
 import blocks.core.Block;
 import blocks.core.BlockFactory;
+import item.types.BombItem;
 import item.types.LineClearItem;
 import item.types.WeightItem;
 import board.Board;
@@ -50,6 +51,25 @@ public class ActionController {
 
         // 블록이 아래로 이동 가능한지 확인
         boolean canMoveDown = board.isValidPosition(block.getShape(), x, nextY);
+
+        // 폭탄 아이템 처리
+        // 블록이 BombItem이고, 더 이상 아래로 이동 불가 시
+        if (block instanceof BombItem bombItem && !canMoveDown) {
+
+            // 폭탄 발동
+            bombItem.explode(board);
+            // 폭탄 발동 후 line clear
+            int clearedLines = board.clearLines();
+            int previousTotalLines = gameStateManager.getTotalLinesCleared();
+            gameStateManager.updateLevelUp(clearedLines);
+            // 10줄 단위로 아이템 생성
+            boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
+            // 점수 계산
+            int currentLevel = gameStateManager.getCurrentLevel();
+            scoreManager.addLineClearScore(clearedLines, currentLevel, board.isPerfectClear());
+            spawnNextBlock(shouldSpawnItem);
+            return;
+        }
 
         // 무게추 아이템 처리
         // 블록이 WeightItem이고, 더 이상 아래로 이동 불가, 기존 블록과 충돌
@@ -116,21 +136,25 @@ public class ActionController {
             scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
 
             // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
-            if (shouldSpawnItem) {
-// Todo : 아이템 생성 로직 추가 후 변경 예정
-                block = BlockFactory.createRandomItem();
-                nextBlock = BlockFactory.createRandomBlock();
-            } else {
-                block = nextBlock;
-                nextBlock = BlockFactory.createRandomBlock();
-            }
-            block.setX(startX);
-            block.setY(startY);
+            spawnNextBlock(shouldSpawnItem);
+        }
+    }
 
-            // 새 블록을 시작 위치에 배치 못하면? -> gameover
-            if (!board.isValidPosition(block.getShape(), startX, startY)) {
-                gameStateManager.setGameOver(true);
-            }
+    // 다음 블록 또는 아이템을 생성하는 메서드
+    private void spawnNextBlock(boolean shouldSpawnItem) {
+        if (shouldSpawnItem) {
+// Todo : 아이템 생성 로직 추가 후 변경 예정
+            block = BlockFactory.createRandomItem();
+            nextBlock = BlockFactory.createRandomBlock();
+        } else {
+            block = nextBlock;
+            nextBlock = BlockFactory.createRandomBlock();
+        }
+        block.setX(startX);
+        block.setY(startY);
+        // 새 블록을 시작 위치에 배치 못하면? -> gameover
+        if (!board.isValidPosition(block.getShape(), startX, startY)) {
+            gameStateManager.setGameOver(true);
         }
     }
 
