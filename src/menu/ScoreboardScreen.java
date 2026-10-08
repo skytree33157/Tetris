@@ -31,7 +31,7 @@ public class ScoreboardScreen extends JFrame {
     private SimpleAttributeSet titleStyle;
 
     private ArrayList<ScoreRecord> records;
-    private ArrayList<ScoreRecord> catagoryRecords;
+    private ArrayList<ScoreRecord> categoryRecords;
 
 
     private ScoreStorage storage;
@@ -97,7 +97,7 @@ public class ScoreboardScreen extends JFrame {
         records.sort(
                 Comparator.comparingInt(ScoreRecord::getScore).reversed());
 
-        updateCatagoryRecords();
+        updateCategoryRecords();
 
         // 화면 출력
         drawScreen();
@@ -128,20 +128,20 @@ public class ScoreboardScreen extends JFrame {
         this.difficulty = difficulty;
         this.mode = mode;
 
-        updateCatagoryRecords();
+        updateCategoryRecords();
         drawScreen();
     }
 
-    private void updateCatagoryRecords() {
-            catagoryRecords = new ArrayList<>();
+    private void updateCategoryRecords() {
+            categoryRecords = new ArrayList<>();
 
             for (ScoreRecord record : records) {
                 if (record.getDifficulty().equals(difficulty) && record.getMode().equals(mode)) {
-                    catagoryRecords.add(record);
+                    categoryRecords.add(record);
                 }
             }
 
-            catagoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
+            categoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
     }
 
 
@@ -155,11 +155,11 @@ public class ScoreboardScreen extends JFrame {
         sb.append("모드: ").append(mode).append("\n");
 
         // 기록이 10개보다 적으면 실제 기록 개수만큼만 출력
-        int count = Math.min(catagoryRecords.size(), 10);
+        int count = Math.min(categoryRecords.size(), 10);
 
         for (int i = 0; i < count; i++) {
 
-            ScoreRecord record = catagoryRecords.get(i);
+            ScoreRecord record = categoryRecords.get(i);
 
             sb.append(i + 1)
               .append(". ")
@@ -241,7 +241,7 @@ public class ScoreboardScreen extends JFrame {
                     difficulty = "EASY";
                 }
                 
-                updateCatagoryRecords();
+                updateCategoryRecords();
                 drawScreen();
             } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { //왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
                 if (difficulty.equals("HARD")) {
@@ -252,7 +252,7 @@ public class ScoreboardScreen extends JFrame {
                     difficulty = "HARD";
                 }
                 
-                updateCatagoryRecords();
+                updateCategoryRecords();
                 drawScreen();
             } else if (e.getKeyCode() == KeyEvent.VK_UP) { //위 방향키를 눌러 NORMAL -> ITEM으로 이동
                 if (mode.equals("NORMAL")) {
@@ -261,7 +261,7 @@ public class ScoreboardScreen extends JFrame {
                     mode = "NORMAL";
                 }
                 
-                updateCatagoryRecords();
+                updateCategoryRecords();
                 drawScreen();
             } else if (e.getKeyCode() == KeyEvent.VK_DOWN) { //아래 방향키를 눌러 위 방향키와 똑같이 시전되도록 설정
                 if (mode.equals("NORMAL")) {
@@ -270,7 +270,7 @@ public class ScoreboardScreen extends JFrame {
                     mode = "NORMAL";
                 }
                 
-                updateCatagoryRecords();
+                updateCategoryRecords();
                 drawScreen();
             }
         }
