@@ -136,7 +136,7 @@ Block normalItem = BlockFactory.createRandomItem();
 Block easyItem = BlockFactory.createRandomItem(Difficulty.EASY);
 ```
 
-인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 PR1 난이도 확률로 생성하고,
+인자 없는 API는 NORMAL입니다. L의 원본 테트로미노는 `Difficulty`별 확률로 생성하고,
 실제로 채워진 칸 중 하나를 균등하게 골라 LineClearItem 생성자에 전달합니다.
 Weight 모양과 효과는 대운이의 WeightItem을 그대로 사용합니다.
 
