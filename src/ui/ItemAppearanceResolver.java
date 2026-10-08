@@ -38,7 +38,12 @@ public final class ItemAppearanceResolver {
         if (value == -1) return new CellAppearance(BlockType.LINE_CLEAR, 'L');
         if (value >= 0) {
             BlockType type = BlockType.fromValue(value);
-            return new CellAppearance(type, type == BlockType.WEIGHT ? 'W' : '\0');
+            char symbol = switch (type) {
+                case WEIGHT -> 'W';
+                case BOMB -> 'B';
+                default -> '\0';
+            };
+            return new CellAppearance(type, symbol);
         }
         long packed = -(long) value;
         if ((packed & 0xFF000000L) != 0x1000000L) {

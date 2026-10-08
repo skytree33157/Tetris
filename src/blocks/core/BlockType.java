@@ -9,7 +9,8 @@ public enum BlockType {
     J(6),
     L(7),
     LINE_CLEAR(8), // 줄 삭제 아이템의 객체 타입. 원본 스타일은 아이템에서 별도로 조회한다.
-    WEIGHT(9);     // 무게추 셀의 보드 저장 값과 전용 스타일 타입
+    WEIGHT(9),     // 무게추 셀의 보드 저장 값과 전용 스타일 타입
+    BOMB(10);      // 1×1 폭탄의 전용 스타일 타입
 
     private final int value;
 
