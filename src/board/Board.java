@@ -115,6 +115,20 @@ public class Board {
         }
     }
 
+    // 폭탄 아이템 3*3 영역 삭제
+    public void clearArea(int centerX, int centerY, int width, int height) {
+        int columnRadius = width / 2;
+        int rowRadius = height / 2;
+
+        for (int row = centerY - rowRadius; row <= centerY + rowRadius; row++) {
+            for (int col = centerX - columnRadius; col <= centerX + columnRadius; col++) {
+                if (row >= 0 && row < ROW && col >= 0 && col < COL) {
+                    board[row][col] = 0;
+                }
+            }
+        }
+    }
+
     // 충돌 확인 메서드(무게추 아이템용)
     public boolean hasBlockCollision(int[][] shape, int targetX, int targetY) {
         for (int row = 0; row < shape.length; row++) {
