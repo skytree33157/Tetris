@@ -3,10 +3,11 @@ package board;
 public class Board {
     private static final int ROW = 20;
     private static final int COL = 10;
-    private static final int BONUS_MARKER_PREFIX = 0x01000000;
+    private static final int ITEM_MARKER_PREFIX = 0x01000000;
 
     private int[][] board;
     private int lastClearedBonusLines;
+    private int lastClearedSlowLines;
 
     public Board() {
         board = new int[ROW][COL];
@@ -52,10 +53,15 @@ public class Board {
         return lastClearedBonusLines;
     }
 
+    public int getLastClearedSlowLines() {
+        return lastClearedSlowLines;
+    }
+
     // 보드의 꽉 찬 줄 제거 후 제거된 line 수 반환
     public int clearLines(){
         int linesCleared=0;
         lastClearedBonusLines = 0;
+        lastClearedSlowLines = 0;
 
         // 맨 아래줄부터 검사해서 꽉 찬 줄이 있으면 isFull=true
         for(int curRow=ROW-1;curRow>=0;curRow--){
@@ -68,9 +74,13 @@ public class Board {
             }
             if(isFull){
                 linesCleared++;
-                // 삭제될 줄에 보너스 마커가 있는지 확인
-                if (containsBonusMarker(board[curRow])) {
+                
+                // 삭제될 줄에 보너스, 슬로우 마커가 있는지 확인
+                if (containsMarker(board[curRow], 'P')) {
                     lastClearedBonusLines++;
+                }
+                if (containsMarker(board[curRow], 'S')) {
+                    lastClearedSlowLines++;
                 }
 
                 // 현재 줄부터 시작해서 한 줄씩 아래로 이동
@@ -93,10 +103,11 @@ public class Board {
         return linesCleared;
     }
 
-    // 보드에 보너스 마커가 있는지 확인
-    private boolean containsBonusMarker(int[] row) {
+    // 아이템 마커 확인 (P, S)
+    private boolean containsMarker(int[] row, char marker) {
         for (int value : row) {
-            if (value < 0 && (-(long) value & 0xFF000000L) == BONUS_MARKER_PREFIX) {
+            if (value < 0 && (-(long) value & 0xFF000000L) == ITEM_MARKER_PREFIX
+                    && ((-(long) value >>> 8) & 0xFFFFL) == marker) {
                 return true;
             }
         }
@@ -109,7 +120,8 @@ public class Board {
             return false;
         }
         // 삭제될 줄에 보너스 마커가 있는지 확인
-        lastClearedBonusLines = containsBonusMarker(board[row]) ? 1 : 0;
+        lastClearedBonusLines = containsMarker(board[row], 'P') ? 1 : 0;
+        lastClearedSlowLines = containsMarker(board[row], 'S') ? 1 : 0;
 
         for (int currentRow = row; currentRow > 0; currentRow--) {
             for (int col = 0; col < COL; col++) {

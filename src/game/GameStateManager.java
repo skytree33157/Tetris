@@ -12,6 +12,8 @@ public class GameStateManager {
 
     private static final int SPEED_DECREASE_AMOUNT = 100; // 한 레벨 당 감소할 속도
     private static final int MIN_DROP_SPEED = 100; // 최소 드롭 속도
+    private static final int MAX_DROP_SPEED = 1000; // 최대 드롭 속도
+    private static final int SLOW_ITEM_DELAY = 500; // S 한 줄당 증가할 하강 간격
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
     private static final int LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값
@@ -48,6 +50,10 @@ public class GameStateManager {
         this.gameOver = gameOver;
     }
 
+    public void applySlowItem(int slowLines) {
+        dropSpeed = Math.min(MAX_DROP_SPEED, dropSpeed + slowLines * SLOW_ITEM_DELAY);
+    }
+
     public void updateLevelUp(int linesCleared) {
         countBlock++;
         totalLinesCleared += linesCleared;
@@ -77,7 +83,7 @@ public class GameStateManager {
         }
 
         // 위 조건 중 한 개 이상의 조건을 만족하고, 제한 속도보다 느릴 때만 속도 증가
-        if (levelUp && dropSpeed > MIN_DROP_SPEED) {
+        if (levelUp && dropSpeed-SPEED_DECREASE_AMOUNT > MIN_DROP_SPEED) {
             dropSpeed -= SPEED_DECREASE_AMOUNT;
             currentLevel++;
         }
