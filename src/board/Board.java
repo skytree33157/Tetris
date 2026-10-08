@@ -3,8 +3,10 @@ package board;
 public class Board {
     private static final int ROW = 20;
     private static final int COL = 10;
+    private static final int BONUS_MARKER_PREFIX = 0x01000000;
 
     private int[][] board;
+    private int lastClearedBonusLines;
 
     public Board() {
         board = new int[ROW][COL];
@@ -46,9 +48,14 @@ public class Board {
         return ROW;
     }
 
+    public int getLastClearedBonusLines() {
+        return lastClearedBonusLines;
+    }
+
     // 보드의 꽉 찬 줄 제거 후 제거된 line 수 반환
     public int clearLines(){
         int linesCleared=0;
+        lastClearedBonusLines = 0;
 
         // 맨 아래줄부터 검사해서 꽉 찬 줄이 있으면 isFull=true
         for(int curRow=ROW-1;curRow>=0;curRow--){
@@ -61,6 +68,10 @@ public class Board {
             }
             if(isFull){
                 linesCleared++;
+                // 삭제될 줄에 보너스 마커가 있는지 확인
+                if (containsBonusMarker(board[curRow])) {
+                    lastClearedBonusLines++;
+                }
 
                 // 현재 줄부터 시작해서 한 줄씩 아래로 이동
                 for (int r = curRow; r > 0; r--) {
@@ -82,11 +93,23 @@ public class Board {
         return linesCleared;
     }
 
+    // 보드에 보너스 마커가 있는지 확인
+    private boolean containsBonusMarker(int[] row) {
+        for (int value : row) {
+            if (value < 0 && (-(long) value & 0xFF000000L) == BONUS_MARKER_PREFIX) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // 지정한 줄 삭제 후 한칸 씩 아래로 이동시킴(clearLine 아이템용)
     public boolean eraseLine(int row) {
         if (row < 0 || row >= ROW) {
             return false;
         }
+        // 삭제될 줄에 보너스 마커가 있는지 확인
+        lastClearedBonusLines = containsBonusMarker(board[row]) ? 1 : 0;
 
         for (int currentRow = row; currentRow > 0; currentRow--) {
             for (int col = 0; col < COL; col++) {
@@ -112,6 +135,20 @@ public class Board {
         // board[row][col]=0을 통해 지정한 행 아래의 블록을 삭제
         for (int col = firstColumn; col < lastColumn; col++) {
             board[row][col] = 0;
+        }
+    }
+
+    // 폭탄 아이템 3*3 영역 삭제
+    public void clearArea(int centerX, int centerY, int width, int height) {
+        int columnRadius = width / 2;
+        int rowRadius = height / 2;
+
+        for (int row = centerY - rowRadius; row <= centerY + rowRadius; row++) {
+            for (int col = centerX - columnRadius; col <= centerX + columnRadius; col++) {
+                if (row >= 0 && row < ROW && col >= 0 && col < COL) {
+                    board[row][col] = 0;
+                }
+            }
         }
     }
 

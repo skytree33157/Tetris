@@ -4,8 +4,11 @@ import blocks.core.Block;
 import blocks.core.BlockFactory;
 import item.types.LineClearItem;
 import item.types.WeightItem;
+import item.types.BombItem;
+import item.types.BonusItem;
 import board.Board;
 import score.ScoreManager;
+import ui.ItemAppearanceResolver;
 
 // 블록 이동 클래스
 
@@ -51,6 +54,27 @@ public class ActionController {
         // 블록이 아래로 이동 가능한지 확인
         boolean canMoveDown = board.isValidPosition(block.getShape(), x, nextY);
 
+        // 폭탄 아이템 처리
+        // 블록이 BombItem이고, 더 이상 아래로 이동 불가 시
+        if (block instanceof BombItem bombItem && !canMoveDown) {
+
+            // 폭탄 발동
+            bombItem.explode(board);
+            // 폭탄 발동 후 line clear
+            int clearedLines = board.clearLines();
+            int bonusLinesCleared = board.getLastClearedBonusLines();
+            int previousTotalLines = gameStateManager.getTotalLinesCleared();
+            gameStateManager.updateLevelUp(clearedLines);
+            // 10줄 단위로 아이템 생성
+            boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
+            // 점수 계산
+            int currentLevel = gameStateManager.getCurrentLevel();
+            scoreManager.addLineClearScore(clearedLines, currentLevel, board.isPerfectClear());
+            scoreManager.addBonusScore(bonusLinesCleared);
+            spawnNextBlock(shouldSpawnItem);
+            return;
+        }
+
         // 무게추 아이템 처리
         // 블록이 WeightItem이고, 더 이상 아래로 이동 불가, 기존 블록과 충돌
         if (block instanceof WeightItem weightItem
@@ -72,13 +96,16 @@ public class ActionController {
             int blockValue = block.getType().getValue();
             // 블록이 LineClearItem인지 확인
             LineClearItem lineClearItem = block instanceof LineClearItem item ? item : null;
+            BonusItem bonusItem = block instanceof BonusItem item ? item : null;
             
             // 블록 모양대로 색상 주입
             for (int i = 0; i < rawShape.length; i++) {
                 for (int j = 0; j < rawShape[i].length; j++) {
                     if(rawShape[i][j] != 0) {
                         // LineClearItem이면 L 셀인지 확인 후 색상 주입
-                        if (lineClearItem == null) {
+                        if (bonusItem != null) {
+                            colorShape[i][j] = ItemAppearanceResolver.toBoardCell(block, i, j);
+                        } else if (lineClearItem == null) {
                             colorShape[i][j] = blockValue;
                         } else if (lineClearItem.isMarkerCell(i, j)) { // L 셀엔 임의 숫자 입력
                             colorShape[i][j] = LineClearItem.L_CELL_VALUE;
@@ -94,9 +121,11 @@ public class ActionController {
             
             // 아이템 효과를 먼저 적용한 뒤 일반적인 꽉 찬 줄을 삭제
             int clearedLines = 0;
+            int bonusLinesCleared = 0;
             if (lineClearItem != null) {
                 lineClearItem.activate(board);
                 clearedLines++;
+                bonusLinesCleared += board.getLastClearedBonusLines();
             }
 
             // 무게추 - 바닥에 닿은 경우, 블록과 충돌 후 아랫줄 삭제 뒤 처리
@@ -106,6 +135,7 @@ public class ActionController {
 
             // 꽉 찬 줄 제거 후 제거된 line 수 반환
             clearedLines += board.clearLines();
+            bonusLinesCleared += board.getLastClearedBonusLines();
             int previousTotalLines = gameStateManager.getTotalLinesCleared();
             gameStateManager.updateLevelUp(clearedLines);
             boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
@@ -114,23 +144,28 @@ public class ActionController {
             int currentLevel = gameStateManager.getCurrentLevel();
             boolean perfectClear = board.isPerfectClear();
             scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
+            scoreManager.addBonusScore(bonusLinesCleared);
 
             // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
-            if (shouldSpawnItem) {
-// Todo : 아이템 생성 로직 추가 후 변경 예정
-                block = BlockFactory.createRandomItem();
-                nextBlock = BlockFactory.createRandomBlock();
-            } else {
-                block = nextBlock;
-                nextBlock = BlockFactory.createRandomBlock();
-            }
-            block.setX(startX);
-            block.setY(startY);
+            spawnNextBlock(shouldSpawnItem);
+        }
+    }
 
-            // 새 블록을 시작 위치에 배치 못하면? -> gameover
-            if (!board.isValidPosition(block.getShape(), startX, startY)) {
-                gameStateManager.setGameOver(true);
-            }
+    // 다음 블록 또는 아이템을 생성하는 메서드
+    private void spawnNextBlock(boolean shouldSpawnItem) {
+        if (shouldSpawnItem) {
+// Todo : 아이템 생성 로직 추가 후 변경 예정
+            block = BlockFactory.createRandomItem();
+            nextBlock = BlockFactory.createRandomBlock();
+        } else {
+            block = nextBlock;
+            nextBlock = BlockFactory.createRandomBlock();
+        }
+        block.setX(startX);
+        block.setY(startY);
+        // 새 블록을 시작 위치에 배치 못하면? -> gameover
+        if (!board.isValidPosition(block.getShape(), startX, startY)) {
+            gameStateManager.setGameOver(true);
         }
     }
 
