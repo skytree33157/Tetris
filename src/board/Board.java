@@ -1,10 +1,14 @@
 package board;
 
+import ui.ItemAppearanceResolver;
+
 public class Board {
     private static final int ROW = 20;
     private static final int COL = 10;
 
     private int[][] board;
+    private int lastClearedBonusLines;
+    private int lastClearedSlowLines;
 
     public Board() {
         board = new int[ROW][COL];
@@ -46,9 +50,19 @@ public class Board {
         return ROW;
     }
 
+    public int getLastClearedBonusLines() {
+        return lastClearedBonusLines;
+    }
+
+    public int getLastClearedSlowLines() {
+        return lastClearedSlowLines;
+    }
+
     // 보드의 꽉 찬 줄 제거 후 제거된 line 수 반환
     public int clearLines(){
         int linesCleared=0;
+        lastClearedBonusLines = 0;
+        lastClearedSlowLines = 0;
 
         // 맨 아래줄부터 검사해서 꽉 찬 줄이 있으면 isFull=true
         for(int curRow=ROW-1;curRow>=0;curRow--){
@@ -61,6 +75,10 @@ public class Board {
             }
             if(isFull){
                 linesCleared++;
+                
+                // 삭제될 줄에 보너스, 슬로우 마커가 있는지 확인
+                lastClearedBonusLines += countMarker(board[curRow], 'P');
+                lastClearedSlowLines += countMarker(board[curRow], 'S');
 
                 // 현재 줄부터 시작해서 한 줄씩 아래로 이동
                 for (int r = curRow; r > 0; r--) {
@@ -82,11 +100,27 @@ public class Board {
         return linesCleared;
     }
 
+    // 아이템 마커 개수 확인 (P, S)
+    private int countMarker(int[] row, char marker) {
+        int count = 0;
+        for (int value : row) {
+            if(value!=0){
+                if(ItemAppearanceResolver.fromBoardCell(value).symbol()==marker){
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     // 지정한 줄 삭제 후 한칸 씩 아래로 이동시킴(clearLine 아이템용)
     public boolean eraseLine(int row) {
         if (row < 0 || row >= ROW) {
             return false;
         }
+        // 삭제될 줄에 보너스 마커가 있는지 확인
+        lastClearedBonusLines = countMarker(board[row], 'P');
+        lastClearedSlowLines = countMarker(board[row], 'S');
 
         for (int currentRow = row; currentRow > 0; currentRow--) {
             for (int col = 0; col < COL; col++) {
