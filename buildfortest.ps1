@@ -10,4 +10,4 @@ if (Test-Path out) {
 
 javac -d out (Get-ChildItem -Recurse -Filter *.java).FullName
 
-Write-Host "빌드 완료: out\"
+Write-Host "PATH: out\"

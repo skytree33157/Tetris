@@ -6,6 +6,7 @@ import item.types.LineClearItem;
 import item.types.WeightItem;
 import board.Board;
 import score.ScoreManager;
+import difficulty.Difficulty;
 
 // 블록 이동 클래스
 
@@ -16,14 +17,19 @@ public class ActionController {
     private Block nextBlock;
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
+    private final Difficulty difficulty;
+    private final GameMode mode;
 
     private int startX = 3;
     private int startY = 0;
 
-    public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager) {
+    public ActionController(Board board, Block block, GameStateManager gameStateManager, 
+                            ScoreManager scoreManager, Difficulty difficulty, GameMode mode) {
         this.board = board;
         this.block = block;
-        this.nextBlock = BlockFactory.createRandomBlock();
+        this.mode = mode;
+        this.difficulty = difficulty;
+        this.nextBlock = BlockFactory.createRandomBlock(difficulty);
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.block.setX(startX);
@@ -40,6 +46,10 @@ public class ActionController {
 
     public synchronized Block getNextBlock() {
         return nextBlock;
+    }
+
+    public GameMode getMode() {
+        return mode;
     }
 
     // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
@@ -108,7 +118,8 @@ public class ActionController {
             clearedLines += board.clearLines();
             int previousTotalLines = gameStateManager.getTotalLinesCleared();
             gameStateManager.updateLevelUp(clearedLines);
-            boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
+            boolean shouldSpawnItem = mode == GameMode.ITEM 
+                    && gameStateManager.shouldSpawnItem(previousTotalLines);
 
             // 점수 계산
             int currentLevel = gameStateManager.getCurrentLevel();
@@ -117,12 +128,11 @@ public class ActionController {
 
             // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
             if (shouldSpawnItem) {
-// Todo : 아이템 생성 로직 추가 후 변경 예정
-                block = BlockFactory.createRandomItem();
-                nextBlock = BlockFactory.createRandomBlock();
+                block = BlockFactory.createRandomItem(difficulty);
+                nextBlock = BlockFactory.createRandomBlock(difficulty);
             } else {
                 block = nextBlock;
-                nextBlock = BlockFactory.createRandomBlock();
+                nextBlock = BlockFactory.createRandomBlock(difficulty);
             }
             block.setX(startX);
             block.setY(startY);

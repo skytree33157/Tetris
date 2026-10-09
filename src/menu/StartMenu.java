@@ -15,6 +15,7 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import game.GameMode;
 
 import menu.settings.SettingsScreen;
 
@@ -25,7 +26,8 @@ public class StartMenu extends JFrame {
 
     // 메뉴 항목 목록
     private static final String[] MENU_ITEMS = {
-        "게임 시작",
+        "일반 모드",
+        "아이템 모드",
         "설정",
         "스코어보드",
         "게임 종료"
@@ -135,25 +137,28 @@ public class StartMenu extends JFrame {
     private void select() {
         switch (selectedIndex) {
             case 0:
-                startGame();
+                startGame(GameMode.NORMAL);
                 break;
             case 1:
-                startSettings();
+                startGame(GameMode.ITEM);
                 break;
             case 2:
-                startScoreboard();
+                startSettings();
                 break;
             case 3:
+                startScoreboard();
+                break;
+            case 4:
                 exitApplication();
                 break;
         }
     }
 
     // 게임 화면으로 전환
-    private void startGame() {
+    private void startGame(GameMode mode) {
         stateManager.transitionTo(AppState.PLAYING);
         dispose();
-        GameScreen gameScreen = new GameScreen();
+        GameScreen gameScreen = new GameScreen(mode);
         gameScreen.setVisible(true);
     }
 

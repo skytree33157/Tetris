@@ -13,18 +13,23 @@ import game.GamePanel;
 import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 import menu.settings.SettingsScreen;
+import menu.settings.AppSettings;
 import score.ScoreManager;
+import difficulty.Difficulty;
+import game.GameMode;
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
 public class GameScreen extends JFrame {
@@ -42,25 +47,38 @@ public class GameScreen extends JFrame {
     private final Thread gameThread;
     private final Timer renderTimer;
     private final BlockPreviewPanel blockPreviewPanel;
+    private final Difficulty difficulty;
+    private final GameMode mode;
     private PauseScreen pauseScreen;
 
     private  JLabel levelLabel;
     private  JLabel linesLabel;
     private  JLabel scoreLabel;
+    private  JLabel difficultyLabel;
+    private  JLabel modeLabel;
     private boolean gameOverHandled = false;
 
 
-    public GameScreen() {
+    public GameScreen(GameMode mode) {
         
         super("SeoulTech SE Tetris");
+        this.mode = mode;
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         Board board = new Board();
+        difficulty = AppSettings.getInstance().getDifficulty();
         gameStateManager = new GameStateManager();
         appStateManager = new AppStateManager(AppState.PLAYING);
-        Block firstBlock = BlockFactory.createRandomBlock();
-        scoreManager = new ScoreManager();
-        actionController = new ActionController(board, firstBlock, gameStateManager, scoreManager);
+        Block firstBlock = BlockFactory.createRandomBlock(difficulty);
+        scoreManager = new ScoreManager(difficulty);
+        actionController = new ActionController(
+            board, 
+            firstBlock, 
+            gameStateManager, 
+            scoreManager, 
+            difficulty,
+            mode
+            );
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
         gamePanel = new GamePanel(board);
@@ -137,33 +155,42 @@ public class GameScreen extends JFrame {
     private JPanel createSidePanel() {
         JPanel side = new JPanel();
         side.setBackground(Color.BLACK);
-        side.setPreferredSize(new Dimension(160, 0));
+        side.setPreferredSize(new Dimension(170, 0));
         side.setBorder(BorderFactory.createEmptyBorder(20, 15, 20, 15));
-        side.setLayout(new GridLayout(6, 1, 0, 10));
+        // 각 항목이 필요한 높이만 차지하도록 세로 배치 (GridLayout은 칸을 균등 분할해 SMALL에서 잘림)
+        side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
 
-        JLabel title = new JLabel("TETRIS");
-        title.setForeground(Color.WHITE);
-        title.setFont(new Font("Courier", Font.BOLD, 20));
+        modeLabel = createInfoLabel("MODE: " + mode.name());
+        difficultyLabel = createInfoLabel("DIFF: " + difficulty.name());
+        levelLabel = createInfoLabel("LEVEL: " + gameStateManager.getCurrentLevel());
+        linesLabel = createInfoLabel("LINES: " + gameStateManager.getTotalLinesCleared());
+        scoreLabel = createInfoLabel("SCORE: " + scoreManager.getScore());
 
-        levelLabel = new JLabel("LEVEL: " + gameStateManager.getCurrentLevel());
-        levelLabel.setForeground(Color.WHITE);
-        levelLabel.setFont(new Font("Courier", Font.PLAIN, 16));
+        blockPreviewPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        blockPreviewPanel.setMaximumSize(blockPreviewPanel.getPreferredSize());
 
-        linesLabel = new JLabel("LINES: " + gameStateManager.getTotalLinesCleared());
-        linesLabel.setForeground(Color.WHITE);
-        linesLabel.setFont(new Font("Courier", Font.PLAIN, 16));
-
-        scoreLabel = new JLabel("SCORE: " + scoreManager.getScore());
-        scoreLabel.setForeground(Color.WHITE);
-        scoreLabel.setFont(new Font("Courier", Font.PLAIN, 16));
-
-        side.add(title);
+        side.add(modeLabel);
+        side.add(Box.createVerticalStrut(8));
+        side.add(difficultyLabel);
+        side.add(Box.createVerticalStrut(15));
         side.add(blockPreviewPanel);
+        side.add(Box.createVerticalStrut(15));
         side.add(levelLabel);
+        side.add(Box.createVerticalStrut(8));
         side.add(linesLabel);
+        side.add(Box.createVerticalStrut(8));
         side.add(scoreLabel);
 
         return side;
+    }
+
+    // 사이드 패널 정보 라벨 공통 생성
+    private JLabel createInfoLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(Color.WHITE);
+        label.setFont(new Font("Courier", Font.PLAIN, 16));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return label;
     }
 
     private void stopGame() {

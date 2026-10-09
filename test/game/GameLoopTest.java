@@ -2,6 +2,7 @@ package game;
 
 import blocks.tetromino.OBlock;
 import board.Board;
+import difficulty.Difficulty;
 import org.junit.jupiter.api.Test;
 import score.ScoreManager;
 
@@ -16,7 +17,9 @@ class GameLoopTest {
     @BeforeEach 
     void setUp() {
         manager = new GameStateManager();
-        loop = new GameLoop(new ActionController(new Board(), new OBlock(), manager, new ScoreManager()), 
+        loop = new GameLoop(
+                new ActionController(new Board(), new OBlock(), manager, new ScoreManager(),
+                        Difficulty.NORMAL, GameMode.NORMAL),
                 manager, new ScoreManager());
     }
 
