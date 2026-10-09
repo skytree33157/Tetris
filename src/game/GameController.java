@@ -2,8 +2,17 @@ package game;
 
 import app.AppState;
 import app.AppStateManager;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.HashSet;
+import java.util.Set;
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
+import javax.swing.JRootPane;
+import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
@@ -24,18 +33,17 @@ public class GameController extends KeyAdapter {
     private boolean leftPressed = false;
     private boolean rightPressed = false;
     private boolean downPressed = false;
+    // 좌우 키를 함께 누르면 마지막으로 누른 방향을 반복 이동에 사용
+    private int lastHorizontalDirection = 0;
+    // 최초 이동이 중복 실행되는 것을 방지
+    private final Set<Integer> pressedKeys = new HashSet<>();
+    // 설정 변경 후 이전 키 바인딩을 제거하기 위해 현재 등록 키를 보관
+    private final Set<Integer> boundKeyCodes = new HashSet<>();
 
     private final Timer keyTimer;
 
-    public GameController(
-        GameLoop gameLoop, 
-        ActionController actionController, 
-        GameStateManager gameStateManager, 
-        ScoreManager scoreManager, 
-        AppStateManager appStateManager,
-        Runnable openSettingAction,
-        Runnable pauseHandler
-    ) {
+    public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager,
+        Runnable openSettingAction, Runnable pauseHandler) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
@@ -44,12 +52,59 @@ public class GameController extends KeyAdapter {
         this.pauseHandler = pauseHandler;
         this.openSettingAction = openSettingAction;
 
-        keyTimer=new Timer(300, e->responseInput());
-        keyTimer.start();
+        // 최초 입력은 즉시 처리하고, 누르고 있을 때만 지연 후 반복
+        keyTimer = new Timer(60, e -> responseInput());
+        keyTimer.setInitialDelay(250);
     }
 
     public void shutdown() {
         keyTimer.stop();
+        pressedKeys.clear();
+    }
+
+    public void installKeyBindings(JRootPane rootPane) {
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = rootPane.getActionMap();
+        
+        // 키 설정을 다시 적용할 때 이전 입력 및 액션 매핑을 먼저 정리
+        for (int keyCode : boundKeyCodes) {
+            inputMap.remove(KeyStroke.getKeyStroke(keyCode, 0, false));
+            inputMap.remove(KeyStroke.getKeyStroke(keyCode, 0, true));
+            actionMap.remove("game.key.pressed." + keyCode);
+            actionMap.remove("game.key.released." + keyCode);
+        }
+        boundKeyCodes.clear();
+
+        AppSettings settings = AppSettings.getInstance();
+        boundKeyCodes.add(settings.getKey(KeyAction.MOVE_LEFT));
+        boundKeyCodes.add(settings.getKey(KeyAction.MOVE_RIGHT));
+        boundKeyCodes.add(settings.getKey(KeyAction.MOVE_DOWN));
+        boundKeyCodes.add(settings.getKey(KeyAction.ROTATE));
+        boundKeyCodes.add(KeyEvent.VK_P);
+        boundKeyCodes.add(KeyEvent.VK_ESCAPE);
+        boundKeyCodes.add(KeyEvent.VK_SPACE);
+
+        // 창 내부 어느 컴포넌트에 포커스가 있어도 누름/해제 이벤트를 받도록 등록
+        for (int keyCode : boundKeyCodes) {
+            String pressedAction = "game.key.pressed." + keyCode;
+            String releasedAction = "game.key.released." + keyCode;
+            inputMap.put(KeyStroke.getKeyStroke(keyCode, 0, false), pressedAction);
+            inputMap.put(KeyStroke.getKeyStroke(keyCode, 0, true), releasedAction);
+            actionMap.put(pressedAction, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    handleKeyPressed(keyCode);
+                }
+            });
+            actionMap.put(releasedAction, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    handleKeyReleased(keyCode);
+                }
+            });
+        }
+        // 설정 화면 등에서 키 해제 이벤트를 놓쳤을 수 있으므로 입력 상태 초기화
+        pressedKeys.clear();
     }
 
     // 꾹 누르고 있는 키에 대한 입력 처리
@@ -61,26 +116,36 @@ public class GameController extends KeyAdapter {
             keyTimer.stop();
             return;
         }
-        if(leftPressed) {
+        // 양쪽 키가 눌려 있으면 마지막으로 눌린 쪽만 반복해 상쇄 이동 방지
+        if (leftPressed && rightPressed) {
+            if (lastHorizontalDirection < 0) {
+                actionController.moveLeftAction();
+            } else {
+                actionController.moveRightAction();
+            }
+        } else if (leftPressed) {
             actionController.moveLeftAction();
-        }
-        if(rightPressed) {
+        } else if (rightPressed) {
             actionController.moveRightAction();
         }
         if(downPressed) {
-            boolean isMovedDown = actionController.moveDownAction();
-            if(isMovedDown) {
-                // Soft Drop 점수 계산
-                int currentLevel = gameStateManager.getCurrentLevel();
-                scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
-            }
+            moveDownWithScore();
         }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
+        handleKeyPressed(e.getKeyCode());
+    }
+
+    private void handleKeyPressed(int keyCode) {
+        // 누르고 있는 동안 전달되는 중복 keyPressed는 새 입력으로 처리하지 않음
+        if (!pressedKeys.add(keyCode)) {
+            return;
+        }
+
         // Pause 기능
-        if(e.getKeyCode() == KeyEvent.VK_P) {
+        if(keyCode == KeyEvent.VK_P) {
             if (gameStateManager.isGameOver()) {
                 return;
             }
@@ -95,12 +160,13 @@ public class GameController extends KeyAdapter {
                 leftPressed = false;
                 rightPressed = false;
                 downPressed = false;
+                keyTimer.stop();
                 pauseHandler.run();
             return;
             }
         }
 
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+        if (keyCode == KeyEvent.VK_ESCAPE) {
             if (gameStateManager.isGameOver()) {
                 return;
             }
@@ -115,6 +181,8 @@ public class GameController extends KeyAdapter {
             leftPressed = false;
             rightPressed = false;
             downPressed = false;
+            keyTimer.stop();
+            pressedKeys.clear();
 
             openSettingAction.run(); // modal 블록
 
@@ -136,31 +204,23 @@ public class GameController extends KeyAdapter {
 
 
         AppSettings settings = AppSettings.getInstance();
-        int keyCode = e.getKeyCode();
-
-        // left, right, down : 처음 눌렀을 때 즉시 반응
+        // 이동 키는 눌린 순간 한 번 이동한 뒤, 타이머로 꾹 누르기 반복을 시작
         if(keyCode==settings.getKey(KeyAction.MOVE_LEFT)){
-            if(!leftPressed){
-                    actionController.moveLeftAction();
-                }
-                leftPressed = true;
+            leftPressed = true;
+            lastHorizontalDirection = -1;
+            actionController.moveLeftAction();
+            keyTimer.restart();
         }
         else if(keyCode==settings.getKey(KeyAction.MOVE_RIGHT)){
-            if(!rightPressed){
-                    actionController.moveRightAction();
-                }
-                rightPressed = true;
+            rightPressed = true;
+            lastHorizontalDirection = 1;
+            actionController.moveRightAction();
+            keyTimer.restart();
         }
         else if(keyCode==settings.getKey(KeyAction.MOVE_DOWN)){
-            if(!downPressed){
-                    boolean isMovedDown = actionController.moveDownAction();
-                    if(isMovedDown) {
-                        // Soft Drop 점수 계산
-                        int currentLevel = gameStateManager.getCurrentLevel();
-                        scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
-            }
-                }
-                downPressed = true;
+            downPressed = true;
+            moveDownWithScore();
+            keyTimer.restart();
         }
         else if(keyCode==settings.getKey(KeyAction.ROTATE)){
             actionController.rotateAction();
@@ -184,19 +244,37 @@ public class GameController extends KeyAdapter {
     // 키 해제 시 이동 중지
     @Override 
     public void keyReleased(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_P) {
+        handleKeyReleased(e.getKeyCode());
+    }
+
+    private void handleKeyReleased(int keyCode) {
+        pressedKeys.remove(keyCode);
+        if (keyCode == KeyEvent.VK_P) {
             return;
         }
 
         AppSettings settings = AppSettings.getInstance();
-        int keyCode = e.getKeyCode();
-
         if (keyCode == settings.getKey(KeyAction.MOVE_LEFT)) {
             leftPressed = false;
         } else if (keyCode == settings.getKey(KeyAction.MOVE_RIGHT)) {
             rightPressed = false;
         } else if (keyCode == settings.getKey(KeyAction.MOVE_DOWN)) {
             downPressed = false;
+        }
+
+        if (!leftPressed && !rightPressed && !downPressed) {
+            keyTimer.stop();
+        } else {
+            keyTimer.restart();
+        }
+    }
+
+    private void moveDownWithScore() {
+        // 실제 하강한 경우에만 소프트 드롭 점수를 부여
+        boolean isMovedDown = actionController.moveDownAction();
+        if (isMovedDown) {
+            int currentLevel = gameStateManager.getCurrentLevel();
+            scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
         }
     }
 }
