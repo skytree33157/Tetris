@@ -4,7 +4,7 @@ import blocks.core.Block;
 import blocks.core.BlockType;
 import java.util.Objects;
 
-/** 일반 블록 한 칸에 P 표시. 보드 저장·보너스 발동은 아직 미구현. */
+/** 일반 블록 한 칸에 P 표시.*/
 public class BonusItem extends Block {
     // 모양 배열에서 표시 칸을 찾는 값. 보드 저장 값으로 직접 사용 X.
     public static final int P_CELL_VALUE = -2;
