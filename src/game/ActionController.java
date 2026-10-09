@@ -162,12 +162,10 @@ public class ActionController {
 
     // 다음 블록 또는 아이템을 생성하는 메서드
     private void spawnNextBlock(boolean shouldSpawnItem) {
+        block = nextBlock;
         if (shouldSpawnItem) {
-// Todo : 아이템 생성 로직 추가 후 변경 예정
-            block = BlockFactory.createRandomItem();
-            nextBlock = BlockFactory.createRandomBlock();
+            nextBlock = BlockFactory.createRandomItem();
         } else {
-            block = nextBlock;
             nextBlock = BlockFactory.createRandomBlock();
         }
         block.setX(startX);
