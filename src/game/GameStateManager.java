@@ -1,5 +1,7 @@
 package game;
 
+import difficulty.Difficulty;
+
 // 게임 상태(게임오버, 하강속도(레벨업)) 관리 클래스
 
 public class GameStateManager {
@@ -9,6 +11,7 @@ public class GameStateManager {
     private volatile int totalLinesCleared = 0; //레베업으로 리셋되지 않는 누적 줄 수 (HUD 표시)
     private int currentLevel = 1;
     private volatile boolean gameOver = false; // 게임 오버인지 아닌지 확인
+    private Difficulty difficulty = Difficulty.NORMAL; // 게임 난이도
 
     private static final int SPEED_DECREASE_AMOUNT = 100; // 한 레벨 당 감소할 속도
     private static final int MIN_DROP_SPEED = 100; // 최소 드롭 속도
@@ -43,6 +46,14 @@ public class GameStateManager {
         return new int[] {SPEED_DECREASE_AMOUNT, MIN_DROP_SPEED, BLOCKS_FOR_LEVEL_UP, LINES_FOR_LEVEL_UP, dropSpeed};
     }
 
+    public Difficulty getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
+    }
+
     public boolean isGameOver() {
         return gameOver;
     }
@@ -66,23 +77,6 @@ public class GameStateManager {
     public boolean shouldSpawnItem(int previousTotalLines) {
         return totalLinesCleared / LINES_FOR_ITEM > previousTotalLines / LINES_FOR_ITEM;
     }
-
-// --------------------------------------------------------
-// FR-26 구현 후 수정 예정
-    public enum Difficulty {
-        EASY, NORMAL, HARD
-    }
-
-    private Difficulty difficulty = Difficulty.NORMAL;
-
-    public Difficulty getDifficulty() {
-        return difficulty;
-    }
-
-    public void setDifficulty(Difficulty difficulty) {
-        this.difficulty = difficulty;
-    }
-// ---------------------------------------------------------
 
     // 레벨 업(하강 속도 증가) 메서드
     private void levelUp() {
