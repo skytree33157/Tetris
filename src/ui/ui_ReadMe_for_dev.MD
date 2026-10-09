@@ -4,7 +4,7 @@
 
 일반 블록과 아이템을 그립니다. 색상 모드에 맞는 색깔·패턴을 사용합니다.
 
-- L·Bonus : 원본 블록 색깔·패턴 유지. 표시 칸 하나에 L 또는 P 표시.
+- L·Bonus·Slow : 원본 블록 색깔·패턴 유지. 표시 칸 하나에 L·P·S 표시.
 - Weight : 은회색·BRICK 패턴. 채워진 칸마다 W 표시.
 - Bomb : 어두운 배경·둥근 몸체·심지·B 표시.
 
@@ -22,7 +22,7 @@
 
 ### 고정 후 표시 유지
 
-기존 타입만 저장하면 Bonus의 P가 사라집니다. 고정 로직에서 각 칸을 변환해 저장합니다.
+기존 타입만 저장하면 Bonus·Slow의 P·S가 사라집니다. 고정 로직에서 각 칸을 변환해 저장합니다.
 
 ```java
 storedShape[row][col] = ItemAppearanceResolver.toBoardCell(block, row, col);
@@ -34,7 +34,8 @@ storedShape[row][col] = ItemAppearanceResolver.toBoardCell(block, row, col);
 ```java
 ItemAppearanceResolver.CellAppearance cell = ItemAppearanceResolver.fromBoardCell(value);
 boolean isBonus = cell.symbol() == 'P';
+boolean isSlow = cell.symbol() == 'S';
 ```
 
 저장되는 것은 타입·문자입니다. 발동 조건·효과는 저장하거나 실행하지 않습니다.
-이번 작업에는 보드 고정 연결·폭발·보너스 발동·점수 호출을 포함하지 않았습니다.
+이번 작업에는 보드 고정 연결·폭발·보너스 발동·속도 변경·점수 호출을 포함하지 않았습니다.
