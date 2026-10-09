@@ -2,6 +2,7 @@ package game;
 
 import blocks.core.Block;
 import blocks.core.BlockFactory;
+import item.types.BombItem;
 import item.types.LineClearItem;
 import item.types.WeightItem;
 import item.types.BombItem;
