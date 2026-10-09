@@ -19,8 +19,7 @@ public class ScoreStorage {
         try(FileWriter writer = new FileWriter(SCORE_FILE);) {
             
             for (ScoreRecord record : records) {
-                writer.write(record.getName() + "," + record.getScore() + "\n");
-
+                writer.write(record.getName() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
             }
 
         } catch (FileNotFoundException e) {
@@ -54,12 +53,14 @@ public class ScoreStorage {
 
                 String[] parts = line.split(",");
 
-                if (parts.length == 2) {
+                if (parts.length == 4) {
                     try {
                         String name = parts[0].trim();
                         int score = Integer.parseInt(parts[1].trim());
+                        String difficulty = parts[2].trim();
+                        String mode = parts[3].trim();
 
-                        ScoreRecord record = new ScoreRecord(name, score);
+                        ScoreRecord record = new ScoreRecord(name, score, difficulty, mode);
                         records.add(record);
                     } catch (NumberFormatException e) {// 잘못된 점수 형식 건너뜀 
                     }

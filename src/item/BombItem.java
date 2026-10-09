@@ -1,4 +1,4 @@
-package item.types;
+package item;
 
 import blocks.core.Block;
 import blocks.core.BlockType;
@@ -6,7 +6,7 @@ import board.Board;
 
 public class BombItem extends Block {
     public BombItem() {
-        shape = new int[][] { { 1 } };
+        shape = new int[][]{{1}};
         type = BlockType.BOMB;
     }
 

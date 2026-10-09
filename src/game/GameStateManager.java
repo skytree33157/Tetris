@@ -20,6 +20,7 @@ public class GameStateManager {
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
     private static final int LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값
+    private static final int MAX_LEVEL = 10;
 
     public int getDropSpeed() {
         return dropSpeed;
@@ -77,7 +78,6 @@ public class GameStateManager {
         return totalLinesCleared / LINES_FOR_ITEM > previousTotalLines / LINES_FOR_ITEM;
     }
 
-
     // 레벨 업(하강 속도 증가) 메서드
     private void levelUp() {
         boolean levelUp = false;
@@ -108,13 +108,8 @@ public class GameStateManager {
                     currentDecreaseAmount *= 1.2;
                 }
             }
-            if(dropSpeed - currentDecreaseAmount > MIN_DROP_SPEED) {
-                dropSpeed -= currentDecreaseAmount;
-                currentLevel++;
-            }else{
-                dropSpeed = MIN_DROP_SPEED;
-                currentLevel++;
-            }
+            dropSpeed = Math.max(MIN_DROP_SPEED, dropSpeed - currentDecreaseAmount);
+            currentLevel = Math.min(MAX_LEVEL, currentLevel + 1);
         }
     }
 }
