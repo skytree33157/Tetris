@@ -1,9 +1,10 @@
 package board;
 
+import ui.ItemAppearanceResolver;
+
 public class Board {
     private static final int ROW = 20;
     private static final int COL = 10;
-    private static final int ITEM_MARKER_PREFIX = 0x01000000;
 
     private int[][] board;
     private int lastClearedBonusLines;
@@ -76,12 +77,8 @@ public class Board {
                 linesCleared++;
                 
                 // 삭제될 줄에 보너스, 슬로우 마커가 있는지 확인
-                if (containsMarker(board[curRow], 'P')) {
-                    lastClearedBonusLines++;
-                }
-                if (containsMarker(board[curRow], 'S')) {
-                    lastClearedSlowLines++;
-                }
+                lastClearedBonusLines += countMarker(board[curRow], 'P');
+                lastClearedSlowLines += countMarker(board[curRow], 'S');
 
                 // 현재 줄부터 시작해서 한 줄씩 아래로 이동
                 for (int r = curRow; r > 0; r--) {
@@ -103,15 +100,17 @@ public class Board {
         return linesCleared;
     }
 
-    // 아이템 마커 확인 (P, S)
-    private boolean containsMarker(int[] row, char marker) {
+    // 아이템 마커 개수 확인 (P, S)
+    private int countMarker(int[] row, char marker) {
+        int count = 0;
         for (int value : row) {
-            if (value < 0 && (-(long) value & 0xFF000000L) == ITEM_MARKER_PREFIX
-                    && ((-(long) value >>> 8) & 0xFFFFL) == marker) {
-                return true;
+            if(value!=0){
+                if(ItemAppearanceResolver.fromBoardCell(value).symbol()==marker){
+                    count++;
+                }
             }
         }
-        return false;
+        return count;
     }
 
     // 지정한 줄 삭제 후 한칸 씩 아래로 이동시킴(clearLine 아이템용)
@@ -120,8 +119,8 @@ public class Board {
             return false;
         }
         // 삭제될 줄에 보너스 마커가 있는지 확인
-        lastClearedBonusLines = containsMarker(board[row], 'P') ? 1 : 0;
-        lastClearedSlowLines = containsMarker(board[row], 'S') ? 1 : 0;
+        lastClearedBonusLines = countMarker(board[row], 'P');
+        lastClearedSlowLines = countMarker(board[row], 'S');
 
         for (int currentRow = row; currentRow > 0; currentRow--) {
             for (int col = 0; col < COL; col++) {

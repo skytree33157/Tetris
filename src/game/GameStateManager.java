@@ -17,6 +17,7 @@ public class GameStateManager {
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
     private static final int LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값
+    private static final int MAX_LEVEL = 10;
 
     public int getDropSpeed() {
         return dropSpeed;
@@ -66,9 +67,27 @@ public class GameStateManager {
         return totalLinesCleared / LINES_FOR_ITEM > previousTotalLines / LINES_FOR_ITEM;
     }
 
+// --------------------------------------------------------
+// FR-26 구현 후 수정 예정
+    public enum Difficulty {
+        EASY, NORMAL, HARD
+    }
+
+    private Difficulty difficulty = Difficulty.NORMAL;
+
+    public Difficulty getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
+    }
+// ---------------------------------------------------------
+
     // 레벨 업(하강 속도 증가) 메서드
     private void levelUp() {
         boolean levelUp = false;
+        boolean isLevelUPByLine = false;
 
         // 블록이 임계값만큼 생성되었을 때
         if (countBlock >= BLOCKS_FOR_LEVEL_UP) {
@@ -79,13 +98,24 @@ public class GameStateManager {
         // 줄이 임계값만큼 삭제되었을 때
         if (countClearLine >= LINES_FOR_LEVEL_UP) {
             levelUp = true;
+            isLevelUPByLine = true;
             countClearLine = 0;
         }
 
         // 위 조건 중 한 개 이상의 조건을 만족하고, 제한 속도보다 느릴 때만 속도 증가
-        if (levelUp && dropSpeed-SPEED_DECREASE_AMOUNT > MIN_DROP_SPEED) {
-            dropSpeed -= SPEED_DECREASE_AMOUNT;
-            currentLevel++;
+        if (levelUp){
+            int currentDecreaseAmount = SPEED_DECREASE_AMOUNT;
+            if(isLevelUPByLine) {
+                if(difficulty == Difficulty.EASY) {
+                    currentDecreaseAmount *= 0.8;
+                } else if(difficulty == Difficulty.NORMAL) {
+                    currentDecreaseAmount *= 1.0;
+                } else if(difficulty == Difficulty.HARD) {
+                    currentDecreaseAmount *= 1.2;
+                }
+            }
+            dropSpeed = Math.max(MIN_DROP_SPEED, dropSpeed - currentDecreaseAmount);
+            currentLevel = Math.min(MAX_LEVEL, currentLevel + 1);
         }
     }
 }
