@@ -19,7 +19,7 @@ class GameLoopTest {
         manager = new GameStateManager();
         loop = new GameLoop(
                 new ActionController(new Board(), new OBlock(), manager, new ScoreManager(),
-                        Difficulty.NORMAL, GameMode.NORMAL),
+                        Difficulty.NORMAL, GameMode.NORMAL, 0),
                 manager, new ScoreManager());
     }
 
