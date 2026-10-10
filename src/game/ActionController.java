@@ -1,5 +1,9 @@
 package game;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
 import item.types.BombItem;
@@ -10,6 +14,7 @@ import item.types.BonusItem;
 import item.types.SlowItem;
 import board.Board;
 import score.ScoreManager;
+import difficulty.Difficulty;
 import ui.ItemAppearanceResolver;
 
 // 블록 이동 클래스
@@ -21,14 +26,29 @@ public class ActionController {
     private Block nextBlock;
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
+    private final Difficulty difficulty;
+    private final GameMode mode;
 
     private int startX = 3;
     private int startY = 0;
 
-    public ActionController(Board board, Block block, GameStateManager gameStateManager, ScoreManager scoreManager) {
+     // 줄 삭제 애니메이션
+    public static final int CLEAR_ANIMATION_MS = 300;
+    private final int animationMs;
+    private volatile List<Integer> clearingRows = List.of(); // 깜빡이는 중인 줄
+    private boolean clearing = false;
+    private final Timer clearTimer = new Timer("line-clear", true);
+    private TimerTask pendingClear;
+
+    public ActionController(Board board, Block block, GameStateManager gameStateManager, 
+                            ScoreManager scoreManager, Difficulty difficulty, GameMode mode,
+                            int animationMs) {
         this.board = board;
         this.block = block;
-        this.nextBlock = BlockFactory.createRandomBlock();
+        this.mode = mode;
+        this.difficulty = difficulty;
+        this.animationMs = animationMs;
+        this.nextBlock = BlockFactory.createRandomBlock(difficulty);
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.block.setX(startX);
@@ -46,6 +66,24 @@ public class ActionController {
     public synchronized Block getNextBlock() {
         return nextBlock;
     }
+
+    public GameMode getMode() {
+        return mode;
+    }
+
+    public synchronized boolean isClearing() {
+        return clearing;
+    }
+
+    public List<Integer> getClearingRows() {
+        return clearingRows;
+    }
+
+    // 게임 종료 시 예약된 줄 삭제 타이머 정리
+    public void shutdown() {
+        clearTimer.cancel();
+    }
+
 
     // 블록을 아래로 이동시키고 보드에 고정시키는 메서드
     private synchronized void moveDownBlock() {
@@ -124,65 +162,83 @@ public class ActionController {
             // 블록을 색상 정보와 함께 보드에 고정
             board.addBlock(x, y, colorShape);
             
-            // 아이템 효과를 먼저 적용한 뒤 일반적인 꽉 찬 줄을 삭제
-            int clearedLines = 0;
-            int bonusLinesCleared = 0;
-            int slowLinesCleared = 0;
-            if (lineClearItem != null) {
-                lineClearItem.activate(board);
-                clearedLines++;
-                bonusLinesCleared += board.getLastClearedBonusLines();
-                slowLinesCleared += board.getLastClearedSlowLines();
-            }
-
             // 무게추 - 바닥에 닿은 경우, 블록과 충돌 후 아랫줄 삭제 뒤 처리
-            if (block instanceof WeightItem weightItem) {
+            if(block instanceof WeightItem weightItem) {
                 weightItem.markLanded();
             }
 
-            // 꽉 찬 줄 제거 후 제거된 line 수 반환
-            clearedLines += board.clearLines();
-            bonusLinesCleared += board.getLastClearedBonusLines();
-            slowLinesCleared += board.getLastClearedSlowLines();
-            int previousTotalLines = gameStateManager.getTotalLinesCleared();
-            gameStateManager.updateLevelUp(clearedLines);
-            boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
+            // 삭제 대상 줄 = 꽉 찬 줄 + L 아이템이 있는 줄 (L 줄이 꽉 차 있어도 중복 집계 안 함)
+            List<Integer> rowsToClear = new ArrayList<>(board.findFullRows());
+            if (lineClearItem != null && !rowsToClear.contains(lineClearItem.getLRow())){
+                    rowsToClear.add(lineClearItem.getLRow());
+            }
 
-            // 점수 계산
-            int currentLevel = gameStateManager.getCurrentLevel();
-            boolean perfectClear = board.isPerfectClear();
-            scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
-            scoreManager.addBonusScore(bonusLinesCleared);
-            gameStateManager.applySlowItem(slowLinesCleared);
-
-            // 여유 공간에 블록이 고정되면 게임 오버
-            if (board.hasBlocksInHiddenRows()) {
-                gameStateManager.setGameOver(true);
+            if (rowsToClear.isEmpty()) {
+                finishLock(0);
+            } else if (animationMs <= 0) {
+                finishLock(board.clearRows(rowsToClear));
             } else {
-                // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
-                spawnNextBlock(shouldSpawnItem);
+                // 삭제 대상 줄을 먼저 보여주고 animationMs 뒤에 실제로 삭제
+                clearingRows = List.copyOf(rowsToClear);
+                clearing = true;
+                pendingClear = new TimerTask() {
+                    @Override
+                    public void run() {
+                        completeLineClear();
+                    }
+                };
+                clearTimer.schedule(pendingClear, animationMs);
             }
         }
     }
 
-    // 다음 블록 또는 아이템을 생성하는 메서드
-    private void spawnNextBlock(boolean shouldSpawnItem) {
-        block = nextBlock;
+    // 애니메이션이 끝난 뒤 실제 줄 삭제 + 후처리
+    synchronized void completeLineClear() {
+        if (!clearing) {
+            return;
+        }
+        if (pendingClear != null) {
+            pendingClear.cancel();
+            pendingClear = null;
+        }
+        int clearedLines = board.clearRows(clearingRows);
+        clearingRows = List.of();
+        clearing = false;
+        finishLock(clearedLines);
+    }
+    
+    // 줄 삭제 이후 레벨, 점수, 다음 블록 처리
+    private void finishLock(int clearedLines){
+        int previousTotalLines = gameStateManager.getTotalLinesCleared();
+        gameStateManager.updateLevelUp(clearedLines);
+        boolean shouldSpawnItem = mode == GameMode.ITEM
+                && gameStateManager.shouldSpawnItem(previousTotalLines);
+
+        // 점수 계산
+        int currentLevel = gameStateManager.getCurrentLevel();
+        boolean perfectClear = board.isPerfectClear();
+        scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
+
+        // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
         if (shouldSpawnItem) {
-            nextBlock = BlockFactory.createRandomItem();
+            block = BlockFactory.createRandomItem(difficulty);
+            nextBlock = BlockFactory.createRandomBlock(difficulty);
         } else {
-            nextBlock = BlockFactory.createRandomBlock();
+            block = nextBlock;
+            nextBlock = BlockFactory.createRandomBlock(difficulty);
         }
         block.setX(startX);
         block.setY(startY);
+
         // 새 블록을 시작 위치에 배치 못하면? -> gameover
         if (!board.isValidPosition(block.getShape(), startX, startY)) {
             gameStateManager.setGameOver(true);
         }
     }
 
+
     public synchronized void moveLeftAction() {
-        if(gameStateManager.isGameOver()) {
+        if(gameStateManager.isGameOver() || clearing) {
             return;
         }
 
@@ -193,7 +249,7 @@ public class ActionController {
     }
 
     public synchronized void moveRightAction() {
-        if(gameStateManager.isGameOver()) {
+        if(gameStateManager.isGameOver() || clearing) {
             return;
         }
         
@@ -204,7 +260,7 @@ public class ActionController {
     }
 
     public synchronized boolean moveDownAction() {
-        if(gameStateManager.isGameOver()) {
+        if(gameStateManager.isGameOver() || clearing) {
             return false;
         }
         int currentY= block.getY();

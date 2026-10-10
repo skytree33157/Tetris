@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.util.List;
 
 import javax.swing.JPanel;
 
@@ -17,6 +18,9 @@ import ui.BlockRenderer;
 public class GamePanel extends JPanel{
     
     private static final long serialVersionUID =1L;
+    private static final int FLASH_INTERVAL_MS = 75;
+    private static final Color FLASH_COLOR = new Color(255, 255, 255, 220);
+    private volatile List<Integer> clearingRows = List.of();
 
     private final Board board;
     private int cellSize;
@@ -33,6 +37,10 @@ public class GamePanel extends JPanel{
         this.currentBlock = currentBlock;
     }
 
+    public void setClearingRows(List<Integer> clearingRows) {
+        this.clearingRows = clearingRows;
+    }
+
     @Override 
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -41,6 +49,7 @@ public class GamePanel extends JPanel{
         
         drawFixedCells(g2, colormode);
         drawCurrentBlock(g2, colormode);
+        drawClearingRows(g2);
         drawGridLines(g2);
     }
     
@@ -78,6 +87,22 @@ public class GamePanel extends JPanel{
         for (int row = 0; row <= board.getHeight(); row++) {
             int y = top + row * cellSize;
             g2.drawLine(0, y, width, y);
+        }
+    }
+
+    // 삭제 예정인 줄을 흰색으로 깜빡이게 그림 (줄 삭제 애니메이션)
+    private void drawClearingRows(Graphics2D g2) {
+        List<Integer> rows = clearingRows;
+        if (rows.isEmpty()) {
+            return;
+        }
+        if ((System.currentTimeMillis() / FLASH_INTERVAL_MS) % 2 != 0) {
+            return;
+        }
+        g2.setColor(FLASH_COLOR);
+        int width = board.getWidth() * cellSize;
+        for (int row : rows) {
+            g2.fillRect(0, row * cellSize, width, cellSize);
         }
     }
 

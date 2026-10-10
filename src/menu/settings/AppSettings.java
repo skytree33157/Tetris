@@ -1,6 +1,7 @@
 package menu.settings;
 
 import blocks.style.ColorMode;
+import difficulty.Difficulty;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,6 +21,7 @@ public class AppSettings {
 
     private ScreenSize screenSize;
     private ColorMode colorMode;
+    private Difficulty difficulty;
     private final Map<KeyAction, Integer> keyBindings = new EnumMap<>(KeyAction.class);
 
     private AppSettings() {
@@ -56,11 +58,20 @@ public class AppSettings {
         keyBindings.put(action, keyCode);
     }
 
+    public Difficulty getDifficulty(){
+        return difficulty;
+    }
+
+    public void setDifficulty(Difficulty difficulty){
+        this.difficulty = difficulty;
+    }
+
     
     // 기본값으로 복원 
     public void resetToDefaults() {
         screenSize = ScreenSize.MEDIUM;
         colorMode = ColorMode.NORMAL;
+        difficulty = Difficulty.NORMAL;
         keyBindings.put(KeyAction.MOVE_LEFT, KeyEvent.VK_LEFT);
         keyBindings.put(KeyAction.MOVE_RIGHT, KeyEvent.VK_RIGHT);
         keyBindings.put(KeyAction.MOVE_DOWN, KeyEvent.VK_DOWN);
@@ -74,6 +85,7 @@ public class AppSettings {
         Properties props = new Properties();
         props.setProperty("screenSize", screenSize.name());
         props.setProperty("colorMode", colorMode.name());
+        props.setProperty("difficulty", difficulty.name());
         for (KeyAction action : KeyAction.values()) {
             props.setProperty("key." + action.name(), String.valueOf(keyBindings.get(action)));
         }
@@ -98,6 +110,7 @@ public class AppSettings {
         try {
             screenSize = ScreenSize.valueOf(props.getProperty("screenSize", screenSize.name()));
             colorMode = ColorMode.valueOf(props.getProperty("colorMode", colorMode.name()));
+            difficulty = Difficulty.valueOf(props.getProperty("difficulty", difficulty.name()));
             for (KeyAction action : KeyAction.values()) {
                 String value = props.getProperty("key." + action.name());
                 if (value != null) {

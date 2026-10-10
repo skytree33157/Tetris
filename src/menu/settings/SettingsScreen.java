@@ -19,6 +19,7 @@ import javax.swing.text.StyledDocument;
 
 import blocks.style.ColorMode;
 import storage.ScoreStorage;
+import difficulty.Difficulty;
 
 public class SettingsScreen extends JDialog {
 
@@ -27,6 +28,7 @@ public class SettingsScreen extends JDialog {
     private static final String[] MENU_ITEMS = {
         "화면 크기",
         "색맹 모드",
+        "난이도",
         "조작 키 설정",
         "스코어보드 초기화",
         "기본값 복원",
@@ -36,11 +38,12 @@ public class SettingsScreen extends JDialog {
 
     private static final int SCREEN_SIZE_INDEX = 0;
     private static final int COLOR_MODE_INDEX = 1;
-    private static final int KEY_CONFIG_INDEX = 2;
-    private static final int RESET_SCOREBOARD_INDEX = 3;
-    private static final int RESTORE_DEFAULTS_INDEX = 4;
-    private static final int QUIT_GAME_INDEX = 5;
-    private static final int SAVE_AND_BACK_INDEX = 6;
+    private static final int DIFFICULTY_INDEX = 2;
+    private static final int KEY_CONFIG_INDEX = 3;
+    private static final int RESET_SCOREBOARD_INDEX = 4;
+    private static final int RESTORE_DEFAULTS_INDEX = 5;
+    private static final int QUIT_GAME_INDEX = 6;
+    private static final int SAVE_AND_BACK_INDEX = 7;
 
     private final AppSettings settings = AppSettings.getInstance();
     private final KeyAction[] REBIND_ORDER = KeyAction.values();
@@ -60,7 +63,7 @@ public class SettingsScreen extends JDialog {
         this.onClose = onClose;
         this.onQuit = onQuit;
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        setSize(420, 420);
+        setSize(420, 460);
         setLocationRelativeTo(owner); // owner 중앙에 위치
 
         pane = new JTextPane();
@@ -127,6 +130,7 @@ public class SettingsScreen extends JDialog {
         return switch (index) {
             case SCREEN_SIZE_INDEX -> ": " + screenSizeLabel(settings.getScreenSize());
             case COLOR_MODE_INDEX -> ": " + colorModeLabel(settings.getColorMode());
+            case DIFFICULTY_INDEX -> ": " + difficultyLabel(settings.getDifficulty());
             default -> "";
         };
     }
@@ -147,6 +151,14 @@ public class SettingsScreen extends JDialog {
             case TRITANOPIA -> "청황색맹";
         };
     }
+
+    private String difficultyLabel(Difficulty difficulty) {
+        return switch (difficulty) {
+            case EASY -> "쉬움";
+            case NORMAL -> "보통";
+            case HARD -> "어려움";
+        };
+    }   
 
     private void applyStyles() {
         StyledDocument doc = pane.getStyledDocument();
@@ -187,13 +199,19 @@ public class SettingsScreen extends JDialog {
                 settings.setColorMode(values[next]);
                 drawMenu();
             }
+            case DIFFICULTY_INDEX -> {
+                Difficulty[] values = Difficulty.values();
+                int next = (settings.getDifficulty().ordinal() + direction + values.length) % values.length;
+                settings.setDifficulty(values[next]);
+                drawMenu();
+            }
             default -> { }
         }
     }
 
     private void select() {
         switch (selectedIndex) {
-            case SCREEN_SIZE_INDEX, COLOR_MODE_INDEX -> changeValue(1);
+            case SCREEN_SIZE_INDEX, COLOR_MODE_INDEX, DIFFICULTY_INDEX -> changeValue(1);
             case KEY_CONFIG_INDEX -> startKeyRebind();
             case RESET_SCOREBOARD_INDEX -> resetScoreboard();
             case RESTORE_DEFAULTS_INDEX -> restoreDefaults();
