@@ -68,6 +68,7 @@ public class GameScreen extends JFrame {
         Board board = new Board();
         difficulty = AppSettings.getInstance().getDifficulty();
         gameStateManager = new GameStateManager();
+        gameStateManager.setDifficulty(difficulty);
         appStateManager = new AppStateManager(AppState.PLAYING);
         Block firstBlock = BlockFactory.createRandomBlock(difficulty);
         scoreManager = new ScoreManager(difficulty);
@@ -149,7 +150,8 @@ public class GameScreen extends JFrame {
             gameOverHandled = true;
             stopGame();
             dispose();
-            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore(), "NORMAL", "NORMAL");
+            GameOverScreen gameOverScreen = new GameOverScreen(
+                scoreManager.getScore(), difficulty.name(), mode.name());
             gameOverScreen.setVisible(true);
         }
     }
@@ -184,7 +186,7 @@ public class GameScreen extends JFrame {
         side.add(Box.createVerticalStrut(8));
         side.add(scoreLabel);
 
-        return side;
+        return side;    
     }
 
     // 사이드 패널 정보 라벨 공통 생성
@@ -211,6 +213,10 @@ public class GameScreen extends JFrame {
     // 일시정지 화면 표시
     private void showPauseScreen() {
         if (pauseScreen != null && pauseScreen.isVisible()) {
+            //FR-37
+            if(!gameLoop.isPaused()) {
+                goToGame();
+            }
             return;
         }
 

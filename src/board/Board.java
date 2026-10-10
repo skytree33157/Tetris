@@ -191,6 +191,8 @@ public class Board {
     
     // 지정한 줄들을 한 번에 삭제하고 남은 줄을 아래로 내린 뒤 삭제한 줄 수 반환
     public int clearRows(Collection<Integer> rows) {
+        lastClearedBonusLines = 0;
+        lastClearedSlowLines = 0;
         int[][] newBoard = new int[ROW][COL];
         int writeRow = ROW - 1;
         int cleared = 0;
@@ -200,6 +202,8 @@ public class Board {
         // 아래 줄부터 남길 줄만 새 보드의 아래쪽부터 채움 -> 행 번호가 밀리는 문제 없음
         for (int row = ROW - 1; row >= 0; row--) {
             if (rows.contains(row)) {
+                lastClearedBonusLines += countMarker(board[row], 'P');
+                lastClearedSlowLines += countMarker(board[row], 'S');
                 cleared++;
                 // 삭제될 줄에 보너스/슬로우 마커가 있는지 확인
                 lastClearedBonusLines += countMarker(board[row], 'P');

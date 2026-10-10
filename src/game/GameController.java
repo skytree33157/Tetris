@@ -161,9 +161,11 @@ public class GameController extends KeyAdapter {
                 rightPressed = false;
                 downPressed = false;
                 keyTimer.stop();
-                pauseHandler.run();
-            return;
+                
             }
+            //FR-37
+            pauseHandler.run();
+            return;
         }
 
         if (keyCode == KeyEvent.VK_ESCAPE) {
