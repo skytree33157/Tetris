@@ -8,6 +8,13 @@ if (Test-Path out) {
     Remove-Item -Recurse -Force out
 }
 
-javac -d out (Get-ChildItem -Recurse -Filter *.java).FullName
+# test 폴더의 JUnit 테스트도 함께 컴파일하도록 lib의 JUnit jar를 classpath에 추가
+$junitJar = "lib\junit-platform-console-standalone-6.1.3.jar"
+
+javac -encoding UTF-8 -cp $junitJar -d out (Get-ChildItem -Path src,test -Recurse -Filter *.java).FullName
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "BUILD FAILED"
+    exit 1
+}
 
 Write-Host "PATH: out\"
