@@ -155,8 +155,13 @@ public class ActionController {
             scoreManager.addBonusScore(bonusLinesCleared);
             gameStateManager.applySlowItem(slowLinesCleared);
 
-            // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
-            spawnNextBlock(shouldSpawnItem);
+            // 여유 공간에 블록이 고정되면 게임 오버
+            if (board.hasBlocksInHiddenRows()) {
+                gameStateManager.setGameOver(true);
+            } else {
+                // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
+                spawnNextBlock(shouldSpawnItem);
+            }
         }
     }
 

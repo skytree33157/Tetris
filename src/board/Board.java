@@ -3,7 +3,9 @@ package board;
 import ui.ItemAppearanceResolver;
 
 public class Board {
-    private static final int ROW = 20;
+    private static final int VISIBLE_ROW = 20;
+    private static final int HIDDEN_ROWS = 3;
+    private static final int ROW = VISIBLE_ROW + HIDDEN_ROWS;
     private static final int COL = 10;
 
     private int[][] board;
@@ -47,7 +49,23 @@ public class Board {
     }
 
     public int getHeight() {
-        return ROW;
+        return VISIBLE_ROW;
+    }
+
+    public int getHiddenRows() {
+        return HIDDEN_ROWS;
+    }
+
+    // 여유 공간에 블록이 고정됐는지 확인
+    public boolean hasBlocksInHiddenRows() {
+        for (int row = 0; row < HIDDEN_ROWS; row++) {
+            for (int col = 0; col < COL; col++) {
+                if (board[row][col] != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public int getLastClearedBonusLines() {
