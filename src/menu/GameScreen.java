@@ -77,7 +77,8 @@ public class GameScreen extends JFrame {
             gameStateManager, 
             scoreManager, 
             difficulty,
-            mode
+            mode,
+            ActionController.CLEAR_ANIMATION_MS
             );
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
@@ -136,6 +137,7 @@ public class GameScreen extends JFrame {
     // 주기적으로 상태를 화면에 반영하고, 게임오서 시 결과 화면으로 전환
     private void onTick(){
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
+        gamePanel.setClearingRows(actionController.getClearingRows());
         blockPreviewPanel.setBlock(actionController.getNextBlock());
         levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
         linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());
@@ -196,6 +198,7 @@ public class GameScreen extends JFrame {
     private void stopGame() {
         renderTimer.stop();
         gameController.shutdown();
+        actionController.shutdown();
         gameThread.interrupt();
     }
 

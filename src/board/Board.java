@@ -1,5 +1,10 @@
 package board;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+
 public class Board {
     private static final int ROW = 20;
     private static final int COL = 10;
@@ -113,6 +118,43 @@ public class Board {
         for (int col = firstColumn; col < lastColumn; col++) {
             board[row][col] = 0;
         }
+    }
+    
+    // 꽉 찬 줄의 행 번호 목록 변환 (줄 삭제 애니매이션 용)
+    public List<Integer> findFullRows() {
+        List<Integer> fullRows = new ArrayList<>();
+        for (int row = 0; row < ROW; row++) {
+            boolean isFull = true;
+            for (int col = 0; col < COL; col++) {
+                if (board[row][col] == 0){
+                    isFull = false;
+                    break;
+                }
+            }
+            if (isFull) {
+                fullRows.add(row);
+            }
+        }
+        return fullRows;
+    }
+    
+    // 지정한 줄들을 한 번에 삭제하고 남은 줄을 아래로 내린 뒤 삭제한 줄 수 반환
+    public int clearRows(Collection<Integer> rows) {
+        int[][] newBoard = new int[ROW][COL];
+        int writeRow = ROW - 1;
+        int cleared = 0;
+
+        // 아래 줄부터 남길 줄만 새 보드의 아래쪽부터 채움 -> 행 번호가 밀리는 문제 없음
+        for (int row = ROW - 1; row >= 0; row--) {
+            if (rows.contains(row)) {
+                cleared++;
+                continue;
+            }
+            newBoard[writeRow] = board[row].clone();
+            writeRow--;
+        }
+        board = newBoard;
+        return cleared;
     }
 
     // 충돌 확인 메서드(무게추 아이템용)
