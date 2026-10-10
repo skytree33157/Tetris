@@ -4,12 +4,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import ui.ItemAppearanceResolver;
 
 public class Board {
-    private static final int ROW = 20;
+    private static final int VISIBLE_ROW = 20;
+    private static final int HIDDEN_ROWS = 3;
+    private static final int ROW = VISIBLE_ROW + HIDDEN_ROWS;
     private static final int COL = 10;
 
     private int[][] board;
+    private int lastClearedBonusLines;
+    private int lastClearedSlowLines;
 
     public Board() {
         board = new int[ROW][COL];
@@ -48,12 +53,38 @@ public class Board {
     }
 
     public int getHeight() {
-        return ROW;
+        return VISIBLE_ROW;
+    }
+
+    public int getHiddenRows() {
+        return HIDDEN_ROWS;
+    }
+
+    // 여유 공간에 블록이 고정됐는지 확인
+    public boolean hasBlocksInHiddenRows() {
+        for (int row = 0; row < HIDDEN_ROWS; row++) {
+            for (int col = 0; col < COL; col++) {
+                if (board[row][col] != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public int getLastClearedBonusLines() {
+        return lastClearedBonusLines;
+    }
+
+    public int getLastClearedSlowLines() {
+        return lastClearedSlowLines;
     }
 
     // 보드의 꽉 찬 줄 제거 후 제거된 line 수 반환
     public int clearLines(){
         int linesCleared=0;
+        lastClearedBonusLines = 0;
+        lastClearedSlowLines = 0;
 
         // 맨 아래줄부터 검사해서 꽉 찬 줄이 있으면 isFull=true
         for(int curRow=ROW-1;curRow>=0;curRow--){
@@ -66,6 +97,10 @@ public class Board {
             }
             if(isFull){
                 linesCleared++;
+                
+                // 삭제될 줄에 보너스, 슬로우 마커가 있는지 확인
+                lastClearedBonusLines += countMarker(board[curRow], 'P');
+                lastClearedSlowLines += countMarker(board[curRow], 'S');
 
                 // 현재 줄부터 시작해서 한 줄씩 아래로 이동
                 for (int r = curRow; r > 0; r--) {
@@ -87,11 +122,27 @@ public class Board {
         return linesCleared;
     }
 
+    // 아이템 마커 개수 확인 (P, S)
+    private int countMarker(int[] row, char marker) {
+        int count = 0;
+        for (int value : row) {
+            if(value!=0){
+                if(ItemAppearanceResolver.fromBoardCell(value).symbol()==marker){
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     // 지정한 줄 삭제 후 한칸 씩 아래로 이동시킴(clearLine 아이템용)
     public boolean eraseLine(int row) {
         if (row < 0 || row >= ROW) {
             return false;
         }
+        // 삭제될 줄에 보너스 마커가 있는지 확인
+        lastClearedBonusLines = countMarker(board[row], 'P');
+        lastClearedSlowLines = countMarker(board[row], 'S');
 
         for (int currentRow = row; currentRow > 0; currentRow--) {
             for (int col = 0; col < COL; col++) {
@@ -155,6 +206,20 @@ public class Board {
         }
         board = newBoard;
         return cleared;
+    }
+
+    // 폭탄 아이템 3*3 영역 삭제
+    public void clearArea(int centerX, int centerY, int width, int height) {
+        int columnRadius = width / 2;
+        int rowRadius = height / 2;
+
+        for (int row = centerY - rowRadius; row <= centerY + rowRadius; row++) {
+            for (int col = centerX - columnRadius; col <= centerX + columnRadius; col++) {
+                if (row >= 0 && row < ROW && col >= 0 && col < COL) {
+                    board[row][col] = 0;
+                }
+            }
+        }
     }
 
     // 충돌 확인 메서드(무게추 아이템용)

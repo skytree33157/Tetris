@@ -96,6 +96,7 @@ public class GameScreen extends JFrame {
                         startMenu.setVisible(true);
                     });
                     settingsScreen.setVisible(true);
+                    refreshInputBindings();
                     gamePanel.refreshCellSize();
                     pack();
                 },
@@ -110,7 +111,7 @@ public class GameScreen extends JFrame {
         setLocationRelativeTo(null);
 
         setFocusable(true);
-        addKeyListener(gameController);
+        gameController.installKeyBindings(getRootPane());
 
         addWindowListener(new WindowAdapter() {
           @Override
@@ -148,7 +149,7 @@ public class GameScreen extends JFrame {
             gameOverHandled = true;
             stopGame();
             dispose();
-            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore());
+            GameOverScreen gameOverScreen = new GameOverScreen(scoreManager.getScore(), "NORMAL", "NORMAL");
             gameOverScreen.setVisible(true);
         }
     }
@@ -200,6 +201,11 @@ public class GameScreen extends JFrame {
         gameController.shutdown();
         actionController.shutdown();
         gameThread.interrupt();
+    }
+
+    private void refreshInputBindings() {
+        gameController.installKeyBindings(getRootPane());
+        requestFocusInWindow();
     }
 
     // 일시정지 화면 표시

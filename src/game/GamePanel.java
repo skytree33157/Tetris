@@ -30,7 +30,7 @@ public class GamePanel extends JPanel{
         this.board = board;
         this.cellSize = AppSettings.getInstance().getScreenSize().getCellSize();
         setBackground(Color.BLACK);
-        setPreferredSize(new Dimension(board.getWidth() * cellSize, board.getHeight() * cellSize));
+        setPreferredSize(new Dimension(board.getWidth() * cellSize, (board.getHeight() + board.getHiddenRows()) * cellSize));
     }
 
     public void setCurrentBlock(Block currentBlock) {
@@ -78,13 +78,15 @@ public class GamePanel extends JPanel{
     private void drawGridLines(Graphics2D g2) {
         g2.setColor(Color.DARK_GRAY);
         int width = board.getWidth() * cellSize;
-        int height = board.getHeight() * cellSize;
+        int top = board.getHiddenRows() * cellSize;
+        int bottom = (board.getHiddenRows() + board.getHeight()) * cellSize;
 
         for (int col = 0; col <= board.getWidth(); col++) {
-            g2.drawLine(col * cellSize, 0, col * cellSize, height);
+            g2.drawLine(col * cellSize, top, col * cellSize, bottom);
         }
         for (int row = 0; row <= board.getHeight(); row++) {
-            g2.drawLine(0, row * cellSize, width, row * cellSize);
+            int y = top + row * cellSize;
+            g2.drawLine(0, y, width, y);
         }
     }
 
@@ -106,7 +108,7 @@ public class GamePanel extends JPanel{
 
     public void refreshCellSize() {
     this.cellSize = AppSettings.getInstance().getScreenSize().getCellSize();
-    setPreferredSize(new Dimension(board.getWidth() * cellSize, board.getHeight() * cellSize));
+        setPreferredSize(new Dimension(board.getWidth() * cellSize, (board.getHeight() + board.getHiddenRows()) * cellSize));
     revalidate();
     repaint();
     }

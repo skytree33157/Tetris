@@ -6,11 +6,16 @@ import java.util.Timer;
 import java.util.TimerTask;
 import blocks.core.Block;
 import blocks.core.BlockFactory;
+import item.types.BombItem;
 import item.types.LineClearItem;
 import item.types.WeightItem;
+import item.types.BombItem;
+import item.types.BonusItem;
+import item.types.SlowItem;
 import board.Board;
 import score.ScoreManager;
 import difficulty.Difficulty;
+import ui.ItemAppearanceResolver;
 
 // 블록 이동 클래스
 
@@ -89,6 +94,29 @@ public class ActionController {
         // 블록이 아래로 이동 가능한지 확인
         boolean canMoveDown = board.isValidPosition(block.getShape(), x, nextY);
 
+        // 폭탄 아이템 처리
+        // 블록이 BombItem이고, 더 이상 아래로 이동 불가 시
+        if (block instanceof BombItem bombItem && !canMoveDown) {
+
+            // 폭탄 발동
+            bombItem.explode(board);
+            // 폭탄 발동 후 line clear
+            int clearedLines = board.clearLines();
+            int bonusLinesCleared = board.getLastClearedBonusLines();
+            int slowLinesCleared = board.getLastClearedSlowLines();
+            int previousTotalLines = gameStateManager.getTotalLinesCleared();
+            gameStateManager.updateLevelUp(clearedLines);
+            // 10줄 단위로 아이템 생성
+            boolean shouldSpawnItem = gameStateManager.shouldSpawnItem(previousTotalLines);
+            // 점수 계산
+            int currentLevel = gameStateManager.getCurrentLevel();
+            scoreManager.addLineClearScore(clearedLines, currentLevel, board.isPerfectClear());
+            scoreManager.addBonusScore(bonusLinesCleared);
+            gameStateManager.applySlowItem(slowLinesCleared);
+            spawnNextBlock(shouldSpawnItem);
+            return;
+        }
+
         // 무게추 아이템 처리
         // 블록이 WeightItem이고, 더 이상 아래로 이동 불가, 기존 블록과 충돌
         if (block instanceof WeightItem weightItem
@@ -110,13 +138,17 @@ public class ActionController {
             int blockValue = block.getType().getValue();
             // 블록이 LineClearItem인지 확인
             LineClearItem lineClearItem = block instanceof LineClearItem item ? item : null;
+            BonusItem bonusItem = block instanceof BonusItem item ? item : null;
+            SlowItem slowItem = block instanceof SlowItem item ? item : null;
             
             // 블록 모양대로 색상 주입
             for (int i = 0; i < rawShape.length; i++) {
                 for (int j = 0; j < rawShape[i].length; j++) {
                     if(rawShape[i][j] != 0) {
                         // LineClearItem이면 L 셀인지 확인 후 색상 주입
-                        if (lineClearItem == null) {
+                        if (bonusItem != null || slowItem != null) {
+                            colorShape[i][j] = ItemAppearanceResolver.toBoardCell(block, i, j);
+                        } else if (lineClearItem == null) {
                             colorShape[i][j] = blockValue;
                         } else if (lineClearItem.isMarkerCell(i, j)) { // L 셀엔 임의 숫자 입력
                             colorShape[i][j] = LineClearItem.L_CELL_VALUE;
