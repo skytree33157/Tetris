@@ -12,8 +12,8 @@ class BombItemTest {
         assertEquals(1, bomb.getWidth()); assertEquals(1, bomb.getHeight());
         assertArrayEquals(new int[]{1}, bomb.getShape()[0]);
         bomb.setX(6); bomb.setY(-1);
-        assertEquals(6, bomb.getTargetCol()); assertEquals(-1, bomb.getTargetRow());
+        assertEquals(6, bomb.getX()); assertEquals(-1, bomb.getY());
         bomb.moveDown(); bomb.moveLeft();
-        assertEquals(5, bomb.getTargetCol()); assertEquals(0, bomb.getTargetRow());
+        assertEquals(5, bomb.getX()); assertEquals(0, bomb.getY());
     }
 }
