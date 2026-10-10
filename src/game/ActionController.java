@@ -219,8 +219,14 @@ public class ActionController {
         }
 
         int[][] rotatedShape = block.getRotate();
-        if (board.isValidPosition(rotatedShape, block.getX(), block.getY())) {
-            block.rotate();
+        int[] horizontalKicks = {0, -1, 1, -2, 2};
+        for (int kick : horizontalKicks) {
+            int targetX = block.getX() + kick;
+            if (board.isValidPosition(rotatedShape, targetX, block.getY())) {
+                block.rotate();
+                block.setX(targetX);
+                return;
+            }
         }
     }
 
