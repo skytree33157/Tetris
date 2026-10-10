@@ -19,7 +19,6 @@ public class LineClearItem extends Block {
 			shape[row] = sourceShape[row].clone();
 		}
 		shape[markerRow][markerCol] = L_CELL_VALUE;
-//-----Todo : 임시 타입
 		type = BlockType.LINE_CLEAR;
 		sourceType = sourceBlock.getType();
 	}

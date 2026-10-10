@@ -8,13 +8,11 @@ public class WeightItem extends Block {
     // 보드의 블록과 충돌 시 좌우 이동 고정
     private boolean landed;
 
-// Todo : 임시 무게추 모양
     public WeightItem() {
         shape = new int[][]{
                 {0, 1, 1, 0},
                 {1, 1, 1, 1}
         };
-//------ 임시 타입
         type = BlockType.WEIGHT;
     }
 

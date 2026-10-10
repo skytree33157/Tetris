@@ -8,6 +8,7 @@ import item.types.BombItem;
 import item.types.BonusItem;
 import item.types.LineClearItem;
 import item.types.WeightItem;
+import item.types.SlowItem;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,6 +34,8 @@ public final class ItemRegistry {
                 item -> new ItemAppearance(BlockType.BOMB, 'B', (row, col) -> true));
         register("bonus", BonusItem.class, BlockFactory::createRandomBonusItem,
                 item -> new ItemAppearance(item.getSourceType(), 'P', item::isMarkerCell));
+        register("slow", SlowItem.class, BlockFactory::createRandomSlowItem,
+                item -> new ItemAppearance(item.getSourceType(), 'S', item::isMarkerCell));
     }
 
     private ItemRegistry() {}

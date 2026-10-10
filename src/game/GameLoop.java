@@ -17,8 +17,11 @@ public class GameLoop implements Runnable {
         this.scoreManager = scoreManager;
     }
 
-    public void togglePause() {
+    public synchronized void togglePause() {
         isPaused = !isPaused;
+
+        //FR-37
+        actionController.setPaused(isPaused);
     }
 
     public boolean isPaused() {
