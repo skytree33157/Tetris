@@ -194,11 +194,16 @@ public class Board {
         int[][] newBoard = new int[ROW][COL];
         int writeRow = ROW - 1;
         int cleared = 0;
+        lastClearedBonusLines = 0;
+        lastClearedSlowLines = 0;
 
         // 아래 줄부터 남길 줄만 새 보드의 아래쪽부터 채움 -> 행 번호가 밀리는 문제 없음
         for (int row = ROW - 1; row >= 0; row--) {
             if (rows.contains(row)) {
                 cleared++;
+                // 삭제될 줄에 보너스/슬로우 마커가 있는지 확인
+                lastClearedBonusLines += countMarker(board[row], 'P');
+                lastClearedSlowLines += countMarker(board[row], 'S');
                 continue;
             }
             newBoard[writeRow] = board[row].clone();
