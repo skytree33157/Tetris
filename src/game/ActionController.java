@@ -248,6 +248,10 @@ public class ActionController {
 
     // 줄 삭제 이후 레벨, 점수, 다음 블록 처리
     private void finishLock(int clearedLines){
+        // 줄 삭제가 없으면 보너스/슬로우 마커가 지워진 줄도 없음
+        int bonusLinesCleared = clearedLines > 0 ? board.getLastClearedBonusLines() : 0;
+        int slowLinesCleared = clearedLines > 0 ? board.getLastClearedSlowLines() : 0;
+
         int previousTotalLines = gameStateManager.getTotalLinesCleared();
         gameStateManager.updateLevelUp(clearedLines);
         boolean shouldSpawnItem = mode == GameMode.ITEM
@@ -257,31 +261,27 @@ public class ActionController {
         int currentLevel = gameStateManager.getCurrentLevel();
         boolean perfectClear = board.isPerfectClear();
         scoreManager.addLineClearScore(clearedLines, currentLevel, perfectClear);
+        scoreManager.addBonusScore(bonusLinesCleared);
+        gameStateManager.applySlowItem(slowLinesCleared);
 
-        if (clearedLines > 0) {
-            scoreManager.addBonusScore(board.getLastClearedBonusLines());
-            gameStateManager.applySlowItem(board.getLastClearedSlowLines());
-        }
+        // 여유 공간에 블록이 고정되면 게임 오버
         if (board.hasBlocksInHiddenRows()) {
             gameStateManager.setGameOver(true);
         } else {
+            // 누적 줄 수가 10줄 단위를 넘으면 다음 블록으로 아이템을 생성
             spawnNextBlock(shouldSpawnItem);
         }
     }
-
+    // 다음 블록 또는 아이템을 생성하는 메서드 (아이템은 미리보기에 먼저 표시됨)
     private void spawnNextBlock(boolean shouldSpawnItem) {
-
-        // 누적 줄 수가 10줄 단위를 넘으면 다음 블록 대신 아이템을 생성
+        block = nextBlock;
         if (mode == GameMode.ITEM && shouldSpawnItem) {
-            block = BlockFactory.createRandomItem(difficulty);
-            nextBlock = BlockFactory.createRandomBlock(difficulty);
+            nextBlock = BlockFactory.createRandomItem(difficulty);
         } else {
-            block = nextBlock;
             nextBlock = BlockFactory.createRandomBlock(difficulty);
         }
         block.setX(startX);
         block.setY(startY);
-
         // 새 블록을 시작 위치에 배치 못하면? -> gameover
         if (!board.isValidPosition(block.getShape(), startX, startY)) {
             gameStateManager.setGameOver(true);
