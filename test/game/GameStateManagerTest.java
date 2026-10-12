@@ -61,13 +61,59 @@ class GameStateManagerTest {
     void dropSpeedDoesNotGoBelowMinimum() {
         int linesForLevelUp = manager.getLevelSettings()[3];
         int minDropSpeed = manager.getLevelSettings()[1];
-        
-        // 매우 큰 수만큼 레벨업 시도 후 드롭 속도 확인
-        for (int i = 0; i < 100000; i++) {
+
+        // 최대 레벨에 도달한 뒤에도 드롭 속도는 최솟값을 유지한다.
+        for (int i = 0; i < 10; i++) {
             manager.updateLevelUp(linesForLevelUp);
         }
 
         assertEquals(minDropSpeed, manager.getDropSpeed());
+        assertEquals(10, manager.getCurrentLevel());
+    }
+
+    @Test // 난이도별 속도 감소 테스트
+    void lineLevelUpUsesDifficultySpecificSpeedDecrease() {
+        int linesForLevelUp = manager.getLevelSettings()[3];
+        int initialDropSpeed = manager.getDropSpeed();
+        int[] expectedDecreases = {80, 100, 120};
+        difficulty.Difficulty[] difficulties = difficulty.Difficulty.values();
+
+        for (int i = 0; i < difficulties.length; i++) {
+            GameStateManager difficultyManager = new GameStateManager();
+            difficultyManager.setDifficulty(difficulties[i]);
+            difficultyManager.updateLevelUp(linesForLevelUp);
+
+            assertEquals(initialDropSpeed - expectedDecreases[i], difficultyManager.getDropSpeed());
+            assertEquals(2, difficultyManager.getCurrentLevel());
+        }
+    }
+
+    @Test // 슬로우 아이템 적용 테스트
+    void slowItemRestoresDropDelayButNeverExceedsMaximum() {
+        for (int i = 0; i < 50; i++) {
+            manager.updateLevelUp(0);
+        }
+        assertEquals(500, manager.getDropSpeed());
+
+        manager.applySlowItem(1);
+        assertEquals(1000, manager.getDropSpeed());
+        manager.applySlowItem(2);
+        assertEquals(1000, manager.getDropSpeed());
+    }
+
+    @Test // 아이템 스폰 조건 테스트
+    void itemSpawnRequiresCrossingATenLineBoundary() {
+        assertFalse(manager.shouldSpawnItem(0));
+
+        manager.updateLevelUp(9);
+        assertFalse(manager.shouldSpawnItem(0));
+        manager.updateLevelUp(1);
+        assertTrue(manager.shouldSpawnItem(9));
+        assertFalse(manager.shouldSpawnItem(10));
+
+        manager.updateLevelUp(10);
+        assertTrue(manager.shouldSpawnItem(10));
+        assertFalse(manager.shouldSpawnItem(20));
     }
 
     @Test // 게임 오버 설정 테스트
