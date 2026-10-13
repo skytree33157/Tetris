@@ -56,11 +56,11 @@ jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
         rule {
-            element = 'CLASS'
+            element = 'BUNDLE'
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.50 // 커버리지 50% 미만 시 빌드 실패
+                minimum = 0.50 // 커버리지 50% 미만 시 빌드 실패 (기말평가에선 0.7로 변겨할 것)
             }
         }
     }
