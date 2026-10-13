@@ -57,8 +57,8 @@ class GamePanelTest {
 
         BufferedImage image = paint(panel);
 
-        assertTrue(hasNonBlackPixel(image, 60, 90, 30, 30));
-        assertTrue(hasNonBlackPixel(image, 150, 210, 60, 60));
+        assertTrue(hasNonBlackPixel(image, 61, 91, 28, 28));
+        assertTrue(hasNonBlackPixel(image, 151, 211, 28, 28));
         assertEquals(Color.DARK_GRAY.getRGB(), image.getRGB(30, 105));
         assertEquals(Color.DARK_GRAY.getRGB(), image.getRGB(15, 90));
         assertEquals(Color.BLACK.getRGB(), image.getRGB(5, 5));
