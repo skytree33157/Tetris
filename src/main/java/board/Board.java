@@ -284,4 +284,7 @@ public class Board {
         }
         return true;
     }
+    public void testCI(){
+        System.out.println("Hello World");
+    }
 }
