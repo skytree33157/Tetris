@@ -291,4 +291,8 @@ public class Board {
     public void testCI2() {
         System.out.println("Hello");
     }
+
+    public void testCI3() {
+        System.out.println("Hello");
+    }
 }
