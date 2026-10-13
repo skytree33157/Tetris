@@ -27,7 +27,7 @@ class GameControllerTest {
     private GameController controller;
 
     private int settingsOpened;
-    private int pauseShown;
+    private int pauseHandlerCalls;
     private boolean pausedWhileSettingsOpen;
     private AppState stateWhileSettingsOpen;
 
@@ -45,7 +45,7 @@ class GameControllerTest {
                     pausedWhileSettingsOpen = loop.isPaused();
                     stateWhileSettingsOpen = appState.getCurrentState();
                 },
-                () -> pauseShown++);
+                () -> pauseHandlerCalls++);
     }
 
     @AfterEach
@@ -88,12 +88,13 @@ class GameControllerTest {
         press(KeyEvent.VK_P);
         assertTrue(loop.isPaused());
         assertEquals(AppState.PAUSED, appState.getCurrentState());
-        assertEquals(1, pauseShown);
+        assertEquals(1, pauseHandlerCalls);
 
         press(KeyEvent.VK_P);
         assertFalse(loop.isPaused());
         assertEquals(AppState.PLAYING, appState.getCurrentState());
-        assertEquals(1, pauseShown);
+        // 2번 호출되는지
+        assertEquals(2, pauseHandlerCalls);
     }
 
     @Test // 일시정지 중에는 이동 키 무시
@@ -114,7 +115,7 @@ class GameControllerTest {
         press(KeyEvent.VK_P);
 
         assertEquals(0, settingsOpened);
-        assertEquals(0, pauseShown);
+        assertEquals(0, pauseHandlerCalls);
         assertFalse(loop.isPaused());
     }
 }

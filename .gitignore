@@ -1,4 +1,12 @@
+/.gradle/
+/build/
+/bin/
+/out/
 *.class
-*.properties
-*.txt
-/lib
+
+/.vscode/
+
+/src/menu/settings/settings.properties
+/src/storage/scores.txt
+
+/lib/

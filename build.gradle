@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'jacoco' // 테스트 코드 커버리지 측정을 위한 플러그인
+}
+
+group = 'team4' // 프로젝트에 맞게 변경 가능
+version = '1.0-SNAPSHOT'
+
+java {
+    // 요구사항에 명시된 Java 21 버전
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 단위 테스트를 위한 JUnit 5 라이브러리 추가
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.10.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // 테스트 실행 후 자동으로 커버리지 리포트 생성
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test // 리포트 생성 전 반드시 테스트를 먼저 실행
+    reports {
+        html.required = true
+        xml.required = true // 추후 GitHub Actions 연동 시 활용하기 위해 xml도 켜둡니다.
+    }
+    
+    // 점수 계산, 로직 등과 무관한 UI 화면이나 메인 실행 클래스 등은 커버리지 측정에서 제외할 수 있습니다.
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                "**/Main.class",
+                "**/ui/**"
+            ])
+        }))
+    }
+}
+
+// 라인 커버리지 50% 이상 요구사항 충족을 검증하는 규칙
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.50 // 커버리지 50% 미만 시 빌드 실패
+            }
+        }
+    }
+}
