@@ -36,6 +36,9 @@ public class GameOverScreen extends JFrame {
 
     private String mode;
 
+    private String viewDifficulty;
+    private String viewMode;
+
     private ArrayList<ScoreRecord> records;
     private ArrayList<ScoreRecord> categoryRecords;
 
@@ -43,8 +46,10 @@ public class GameOverScreen extends JFrame {
 
     private ScoreStorage storage;
 
+    private int highlightStart;
+    private int highlightLength;
+
     private static final String[] MENU_ITEMS = {
-        "스코어보드",
         "시작 메뉴",
         "프로그램 종료"
     };
@@ -59,9 +64,12 @@ public class GameOverScreen extends JFrame {
         this.difficulty = difficulty;
         this.mode = mode;
 
+        this.viewDifficulty = difficulty;
+        this.viewMode = mode;
+
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(600, 700);
-        setMinimumSize(new Dimension(600, 700));
+        setMinimumSize(new Dimension(600, 850));
         setLocationRelativeTo(null);
 
         pane = new JTextPane();
@@ -105,10 +113,13 @@ public class GameOverScreen extends JFrame {
 
         checkNewRecord();
 
+        updateCategoryRecords();
+
         drawScreen();
 
         addKeyListener(new MenuKeyListener());
         setFocusable(true);
+        setFocusTraversalKeysEnabled(false);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -175,14 +186,59 @@ public class GameOverScreen extends JFrame {
         }
     }
 
+    private void updateCategoryRecords() {
+        categoryRecords = new ArrayList<>();
+
+        for (ScoreRecord record : records) {
+            if (record.getDifficulty().equals(viewDifficulty)
+                    && record.getMode().equals(viewMode)) {
+                categoryRecords.add(record);
+            }
+        }
+
+        categoryRecords.sort(
+                Comparator.comparingInt(ScoreRecord::getScore).reversed()
+        );
+    }
+
     private void drawScreen() {
 
         StringBuilder sb = new StringBuilder();
+  
+        highlightStart = -1;
+        highlightLength = 0;
 
         sb.append("GAME OVER\n\n");
         sb.append("SCORE : ").append(score).append("\n");
         sb.append("DIFFICULTY: ").append(difficulty).append("\n");
         sb.append("MODE: ").append(mode).append("\n\n");
+
+        sb.append("SCOREBOARD - TOP 10\n");
+        sb.append("조회: ").append(viewDifficulty).append(" / ").append(viewMode).append("\n");
+
+         int count = Math.min(categoryRecords.size(), 10);
+
+        if (count == 0) {
+            sb.append("저장된 기록이 없습니다.\n");
+        }
+
+        for (int i = 0; i < count; i++) {
+            ScoreRecord record = categoryRecords.get(i);
+
+            String row = (i + 1) + ". "
+                    + record.getName() + "  "
+                    + record.getScore();
+
+            if (record == newRecord) {
+                row += "  [NEW]";
+                highlightStart = sb.length();
+                highlightLength = row.length();
+            }
+
+            sb.append(row).append("\n");
+        }
+
+        sb.append("\n");
 
         for (int i = 0; i < MENU_ITEMS.length; i++) {
 
@@ -197,18 +253,12 @@ public class GameOverScreen extends JFrame {
             }
         }
 
-        sb.append("\n[Up/Down] 이동   [Enter] 선택");
+        sb.append("\n[← →] 난이도 변경   [Tab] 모드 변경");
+        sb.append("\n[↑ ↓] 이동   [Enter] 선택");
 
         pane.setText(sb.toString());
 
         applyStyles();
-    }
-
-    private void openScoreboard() {
-        dispose();
-
-        ScoreboardScreen scoreboard = new ScoreboardScreen(difficulty, mode);
-        scoreboard.setVisible(true);
     }
 
     private void applyStyles() {
@@ -237,6 +287,19 @@ public class GameOverScreen extends JFrame {
                 gameOverStyle,
                 false
         );
+
+        if (highlightStart >= 0 && highlightLength > 0) {
+        SimpleAttributeSet highlightStyle = new SimpleAttributeSet();
+        StyleConstants.setForeground(highlightStyle, Color.YELLOW);
+        StyleConstants.setBold(highlightStyle, true);
+
+            doc.setCharacterAttributes(
+                    highlightStart,
+                    highlightLength,
+                    highlightStyle,
+                    false
+            );
+        }
     }
 
     private void moveUp() {
@@ -260,12 +323,8 @@ public class GameOverScreen extends JFrame {
     private void select() {
 
         switch (selectedIndex) {
-            
-            case 0:
-                openScoreboard(); //ScoreboardScreen 열기
-                break;
 
-            case 1:
+            case 0:
                 dispose(); //GameOverScreen 종료(프로그램 자체 x)
 
                 StartMenu menu = new StartMenu(); //StartMenu 객체 생성
@@ -273,7 +332,7 @@ public class GameOverScreen extends JFrame {
 
                 break;
 
-            case 2:
+            case 1:
                 System.exit(0); //아예 프로그램 종료
                 break;
         }
@@ -285,17 +344,46 @@ public class GameOverScreen extends JFrame {
         public void keyTyped(KeyEvent e) {
         }
 
-        @Override
+       @Override
         public void keyPressed(KeyEvent e) {
-
             if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                 select();
             } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                 moveUp();
             } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                 moveDown();
-            }
+            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                if (viewDifficulty.equals("EASY")) {
+                    viewDifficulty = "NORMAL";
+                } else if (viewDifficulty.equals("NORMAL")) {
+                    viewDifficulty = "HARD";
+                } else {
+                    viewDifficulty = "EASY";
+                }
 
+                updateCategoryRecords();
+                drawScreen();
+            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                if (viewDifficulty.equals("HARD")) {
+                    viewDifficulty = "NORMAL";
+                } else if (viewDifficulty.equals("NORMAL")) {
+                    viewDifficulty = "EASY";
+                } else {
+                    viewDifficulty = "HARD";
+                }
+
+                updateCategoryRecords();
+                drawScreen();
+            } else if (e.getKeyCode() == KeyEvent.VK_TAB) {
+                if (viewMode.equals("NORMAL")) {
+                    viewMode = "ITEM";
+                } else {
+                    viewMode = "NORMAL";
+                }
+
+                updateCategoryRecords();
+                drawScreen();
+            }
         }
 
         @Override
