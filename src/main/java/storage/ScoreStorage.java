@@ -13,11 +13,19 @@ import java.nio.charset.StandardCharsets;
 
 public class ScoreStorage {
 
-    private static final String SCORE_FILE = "src/storage/scores.txt";
+    private final String scoreFile;
+
+    public ScoreStorage() {
+        this("src/storage/scores.txt");
+    }
+
+    public ScoreStorage(String scoreFile) {
+        this.scoreFile = scoreFile;
+    }
 
     public void save(ArrayList<ScoreRecord> records){
         
-        try(FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8);) {
+        try(FileWriter writer = new FileWriter(scoreFile, StandardCharsets.UTF_8);) {
             
             for (ScoreRecord record : records) {
                 writer.write(record.getName() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
@@ -36,7 +44,7 @@ public class ScoreStorage {
         
         ArrayList<ScoreRecord> records = new ArrayList<>();
 
-        File file = new File(SCORE_FILE);
+        File file = new File(scoreFile);
 
         if (!file.exists()) {
             try {
@@ -46,7 +54,7 @@ public class ScoreStorage {
             }
         }
         
-        try (FileReader reader = new FileReader(SCORE_FILE, StandardCharsets.UTF_8);
+        try (FileReader reader = new FileReader(scoreFile, StandardCharsets.UTF_8);
             BufferedReader buffer = new BufferedReader(reader)) {
             String line = buffer.readLine();
 
@@ -85,7 +93,7 @@ public class ScoreStorage {
     }
 
     public boolean clear() {
-        try (FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8)) {
+        try (FileWriter writer = new FileWriter(scoreFile, StandardCharsets.UTF_8)) {
             return true;
         } catch (IOException e) {
             System.out.println(e);
