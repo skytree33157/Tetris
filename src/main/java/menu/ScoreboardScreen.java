@@ -233,7 +233,7 @@ public class ScoreboardScreen extends JFrame {
             // Enter를 누르면 시작 메뉴로 돌아감
             if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                 backToMenu();
-            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { //오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
+            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { // 오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
                 if (difficulty.equals("EASY")) {
                     difficulty = "NORMAL";
                 } else if (difficulty.equals("NORMAL")) {
@@ -244,7 +244,7 @@ public class ScoreboardScreen extends JFrame {
                 
                 updateCategoryRecords();
                 drawScreen();
-            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { //왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
+            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { // 왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
                 if (difficulty.equals("HARD")) {
                     difficulty = "NORMAL";
                 } else if (difficulty.equals("NORMAL")) {
@@ -255,7 +255,7 @@ public class ScoreboardScreen extends JFrame {
                 
                 updateCategoryRecords();
                 drawScreen();
-            } else if (e.getKeyCode() == KeyEvent.VK_TAB) { //위 방향키를 눌러 NORMAL -> ITEM으로 이동
+            } else if (e.getKeyCode() == KeyEvent.VK_TAB) { // 탭 키를 눌러 NORMAL -> ITEM으로 이동
                 if (mode.equals("NORMAL")) {
                     mode = "ITEM";
                 } else {

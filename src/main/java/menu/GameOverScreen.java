@@ -68,7 +68,7 @@ public class GameOverScreen extends JFrame {
         this.viewMode = mode;
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(600, 700);
+        setSize(600, 850);
         setMinimumSize(new Dimension(600, 850));
         setLocationRelativeTo(null);
 
