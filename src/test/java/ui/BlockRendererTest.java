@@ -1,15 +1,38 @@
 package ui;
-import blocks.core.*;
-import blocks.style.*;
-import blocks.tetromino.*;
-import item.types.*;
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Composite;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.Paint;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import org.junit.jupiter.api.Test;
+
+import blocks.core.Block;
+import blocks.core.BlockType;
+import blocks.style.ColorMode;
+import blocks.tetromino.IBlock;
+import blocks.tetromino.JBlock;
+import blocks.tetromino.LBlock;
+import blocks.tetromino.OBlock;
+import blocks.tetromino.SBlock;
+import blocks.tetromino.TBlock;
+import blocks.tetromino.ZBlock;
+import item.types.BombItem;
+import item.types.BonusItem;
+import item.types.LineClearItem;
+import item.types.SlowItem;
+import item.types.WeightItem;
 // FR-06·16·33·36: 화면 없는 이미지로 렌더러 검증. NEXT 패널 자체 검증 X.
 class BlockRendererTest {
     private BufferedImage image() { return new BufferedImage(90,90,BufferedImage.TYPE_INT_ARGB); }
@@ -37,7 +60,10 @@ class BlockRendererTest {
             OBlock source=new OBlock();
             for (Block item : new Block[]{new BonusItem(source,0,0),new LineClearItem(source,0,0),new SlowItem(source,0,0)}) {
                 assertArrayEquals(pixels(cell(source,0,1,mode,40)),pixels(cell(item,0,1,mode,40)));
-                assertFalse(Arrays.equals(pixels(cell(source,0,0,mode,40)),pixels(cell(item,0,0,mode,40))));
+                BufferedImage markedCell = cell(item,0,0,mode,40);
+                assertFalse(Arrays.equals(pixels(cell(source,0,0,mode,40)),pixels(markedCell)));
+                assertEquals(Color.BLACK.getRGB(), markedCell.getRGB(17,17));
+                assertEquals(Color.WHITE.getRGB(), markedCell.getRGB(19,19));
             }
         }
     }

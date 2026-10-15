@@ -1,16 +1,5 @@
 package menu;
 
-import app.AppState;
-import app.AppStateManager;
-import blocks.core.Block;
-import blocks.core.BlockFactory;
-import board.Board;
-import game.ActionController;
-import game.BlockPreviewPanel;
-import game.GameController;
-import game.GameLoop;
-import game.GamePanel;
-import game.GameStateManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -18,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -25,11 +15,23 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
-import menu.settings.SettingsScreen;
-import menu.settings.AppSettings;
-import score.ScoreManager;
+
+import app.AppState;
+import app.AppStateManager;
+import blocks.core.Block;
+import blocks.core.BlockFactory;
+import board.Board;
 import difficulty.Difficulty;
+import game.ActionController;
+import game.BlockPreviewPanel;
+import game.GameController;
+import game.GameLoop;
 import game.GameMode;
+import game.GamePanel;
+import game.GameStateManager;
+import menu.settings.AppSettings;
+import menu.settings.SettingsScreen;
+import score.ScoreManager;
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
 public class GameScreen extends JFrame {
@@ -140,6 +142,7 @@ public class GameScreen extends JFrame {
     private void onTick(){
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
         gamePanel.setClearingRows(actionController.getClearingRows());
+        gamePanel.setClearingCells(actionController.getClearingCells());
         blockPreviewPanel.setBlock(actionController.getNextBlock());
         levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
         linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());

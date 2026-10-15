@@ -4,21 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
 import blocks.core.Block;
 import blocks.core.BlockFactory;
-import item.types.BombItem;
-import item.types.LineClearItem;
-import item.types.WeightItem;
-import item.types.BonusItem;
-import item.types.SlowItem;
 import board.Board;
-import score.ScoreManager;
 import difficulty.Difficulty;
+import item.types.BombItem;
+import item.types.BonusItem;
+import item.types.LineClearItem;
+import item.types.SlowItem;
+import item.types.WeightItem;
+import score.ScoreManager;
 import ui.ItemAppearanceResolver;
 
 // 블록 이동 클래스
 
 public class ActionController {
+
+    public record ClearingCell(int row, int column) {}
 
     private Board board;
     private Block block;
@@ -35,6 +38,8 @@ public class ActionController {
     public static final int CLEAR_ANIMATION_MS = 300;
     private final int animationMs;
     private volatile List<Integer> clearingRows = List.of(); // 깜빡이는 중인 줄
+    private volatile List<ClearingCell> clearingCells = List.of();
+    private BombItem clearingBomb;
     private boolean clearing = false;
     private final Timer clearTimer = new Timer("line-clear", true);
     private TimerTask pendingClear;
@@ -86,6 +91,10 @@ public class ActionController {
 
     public List<Integer> getClearingRows() {
         return clearingRows;
+    }
+
+    public List<ClearingCell> getClearingCells() {
+        return clearingCells;
     }
 
     // 게임 종료 시 예약된 줄 삭제 타이머 정리 + //FR-37
@@ -153,12 +162,14 @@ public class ActionController {
         // 폭탄 아이템 처리
         // 블록이 BombItem이고, 더 이상 아래로 이동 불가 시
         if (block instanceof BombItem bombItem && !canMoveDown) {
-
-            // 폭탄 발동
-            bombItem.explode(board);
-            // 폭탄 발동 후 line clear
-            int clearedLines = board.clearLines();
-            finishLock(clearedLines);
+            if (animationMs <= 0) {
+                explodeBomb(bombItem);
+            } else {
+                clearingBomb = bombItem;
+                clearingCells = findBombClearingCells(bombItem);
+                clearing = true;
+                scheduleLineClear(animationMs);
+            }
             return;
         }
 
@@ -240,7 +251,41 @@ public class ActionController {
             pendingClear.cancel();
             pendingClear = null;
         }
+        if (clearingBomb != null) {
+            BombItem bombItem = clearingBomb;
+            clearingBomb = null;
+            explodeBomb(bombItem);
+            return;
+        }
         int clearedLines = board.clearRows(clearingRows);
+        clearingRows = List.of();
+        clearing = false;
+        finishLock(clearedLines);
+    }
+
+    private List<ClearingCell> findBombClearingCells(BombItem bombItem) {
+        int[][] cells = board.getBoard();
+        int firstRow = Math.max(0, bombItem.getY() - 1);
+        int lastRow = Math.min(cells.length - 1, bombItem.getY() + 1);
+        int firstColumn = Math.max(0, bombItem.getX() - 1);
+        int lastColumn = Math.min(board.getWidth() - 1, bombItem.getX() + 1);
+        List<ClearingCell> targets = new ArrayList<>();
+
+        for (int row = firstRow; row <= lastRow; row++) {
+            for (int column = firstColumn; column <= lastColumn; column++) {
+                if (cells[row][column] != 0
+                        || (row == bombItem.getY() && column == bombItem.getX())) {
+                    targets.add(new ClearingCell(row, column));
+                }
+            }
+        }
+        return List.copyOf(targets);
+    }
+
+    private void explodeBomb(BombItem bombItem) {
+        bombItem.explode(board);
+        int clearedLines = board.clearLines();
+        clearingCells = List.of();
         clearingRows = List.of();
         clearing = false;
         finishLock(clearedLines);

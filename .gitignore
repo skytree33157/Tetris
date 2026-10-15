@@ -6,7 +6,7 @@
 
 /.vscode/
 
-/src/menu/settings/settings.properties
-/src/storage/scores.txt
+/src/main/java/menu/settings/settings.properties
+/src/main/java/storage/scores.txt
 
 /lib/

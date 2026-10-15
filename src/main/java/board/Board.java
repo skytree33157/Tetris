@@ -221,14 +221,44 @@ public class Board {
     public void clearArea(int centerX, int centerY, int width, int height) {
         int columnRadius = width / 2;
         int rowRadius = height / 2;
+        boolean[] affectedRows = new boolean[ROW];
 
         for (int row = centerY - rowRadius; row <= centerY + rowRadius; row++) {
             for (int col = centerX - columnRadius; col <= centerX + columnRadius; col++) {
                 if (row >= 0 && row < ROW && col >= 0 && col < COL) {
+                    affectedRows[row] |= board[row][col] != 0;
                     board[row][col] = 0;
                 }
             }
         }
+
+        List<Integer> emptiedRows = new ArrayList<>();
+        for (int row = 0; row < ROW; row++) {
+            if (affectedRows[row] && isEmptyRow(row)) {
+                emptiedRows.add(row);
+            }
+        }
+
+        if (!emptiedRows.isEmpty()) {
+            int[][] compactedBoard = new int[ROW][COL];
+            int writeRow = ROW - 1;
+            for (int row = ROW - 1; row >= 0; row--) {
+                if (emptiedRows.contains(row)) {
+                    continue;
+                }
+                compactedBoard[writeRow--] = board[row].clone();
+            }
+            board = compactedBoard;
+        }
+    }
+
+    private boolean isEmptyRow(int row) {
+        for (int value : board[row]) {
+            if (value != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // 충돌 확인 메서드(무게추 아이템용)
