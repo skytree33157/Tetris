@@ -27,6 +27,11 @@ dependencies {
 test {
     useJUnitPlatform()
     finalizedBy jacocoTestReport // 테스트 실행 후 자동으로 커버리지 리포트 생성
+    afterSuite { desc, result ->
+        if (desc.parent == null) {
+            println "Tests: ${result.testCount}, Passed: ${result.successfulTestCount}, Failed: ${result.failedTestCount}, Skipped: ${result.skippedTestCount}"
+        }
+    }
 }
 
 jacoco {
@@ -64,4 +69,8 @@ jacocoTestCoverageVerification {
             }
         }
     }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }

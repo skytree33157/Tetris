@@ -129,29 +129,45 @@ public class GameOverScreen extends JFrame {
         });
     }
 
+    // 해당 난이도·모드의 기록을 점수 내림차순으로 전달받음
+    static boolean canRegisterRecord(
+            ArrayList<ScoreRecord> sortedRecords, int score) {
 
-    private void checkNewRecord() {
+        if (sortedRecords.size() < 10) {
+            return true;
+        }
 
-        categoryRecords = new ArrayList<>();
+        int tenthScore = sortedRecords.get(9).getScore();
+        return score > tenthScore;
+    }
+
+    static ArrayList<ScoreRecord> selectCategoryRecords(
+        ArrayList<ScoreRecord> records,
+        String difficulty,
+        String mode) {
+
+        ArrayList<ScoreRecord> selected = new ArrayList<>();
 
         for (ScoreRecord record : records) {
-            if (record.getDifficulty().equals(difficulty) && record.getMode().equals(mode)) {
-                categoryRecords.add(record);
+            if (record.getDifficulty().equals(difficulty)
+                    && record.getMode().equals(mode)) {
+                selected.add(record);
             }
         }
 
-        categoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
+        selected.sort(
+                Comparator.comparingInt(ScoreRecord::getScore).reversed()
+        );
 
-        boolean canRecord;
+        return selected;
+    }
 
-        if (categoryRecords.size() < 10) {
-            canRecord = true;
-        } else {
 
-            int tenthScore = categoryRecords.get(9).getScore();
+    private void checkNewRecord() {
 
-            canRecord = score > tenthScore;
-        }
+        categoryRecords = selectCategoryRecords(records, difficulty, mode);
+
+        boolean canRecord = canRegisterRecord(categoryRecords, score);
 
         if (canRecord) {
 
@@ -187,18 +203,8 @@ public class GameOverScreen extends JFrame {
     }
 
     private void updateCategoryRecords() {
-        categoryRecords = new ArrayList<>();
-
-        for (ScoreRecord record : records) {
-            if (record.getDifficulty().equals(viewDifficulty)
-                    && record.getMode().equals(viewMode)) {
-                categoryRecords.add(record);
-            }
-        }
-
-        categoryRecords.sort(
-                Comparator.comparingInt(ScoreRecord::getScore).reversed()
-        );
+        categoryRecords =
+                selectCategoryRecords(records, viewDifficulty, viewMode);
     }
 
     private void drawScreen() {
