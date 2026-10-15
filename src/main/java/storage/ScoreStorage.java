@@ -20,7 +20,7 @@ public class ScoreStorage {
         try(FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8);) {
             
             for (ScoreRecord record : records) {
-                writer.write(record.getNam e() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
+                writer.write(record.getName() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
             }
 
         } catch (FileNotFoundException e) {
