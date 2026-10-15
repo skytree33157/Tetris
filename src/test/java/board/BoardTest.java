@@ -1,8 +1,9 @@
 package board;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +62,22 @@ class BoardTest {
 
         board.clearRows(List.of(bottomRow));
 
+        assertEquals(0, board.getLastClearedBonusLines());
+        assertEquals(0, board.getLastClearedSlowLines());
+    }
+
+    @Test // 폭탄으로 새로 빈 행을 제거하고 그 위의 블록만 아래로 당김
+    void bombAreaClearCollapsesRowsEmptiedByTheBlast() {
+        int emptyingRow = bottomRow - 1;
+        board.addBlock(0, emptyingRow - 1, new int[][] {{2}});
+        board.addBlock(3, emptyingRow, new int[][] {{1, 1, 1}});
+        board.addBlock(0, emptyingRow + 1, new int[][] {{3}});
+
+        board.clearArea(4, emptyingRow, 3, 3);
+
+        assertEquals(2, board.getBoard()[emptyingRow][0]);
+        assertEquals(0, board.getBoard()[emptyingRow][3]);
+        assertEquals(3, board.getBoard()[emptyingRow + 1][0]);
         assertEquals(0, board.getLastClearedBonusLines());
         assertEquals(0, board.getLastClearedSlowLines());
     }

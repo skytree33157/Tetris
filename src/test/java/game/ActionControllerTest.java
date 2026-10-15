@@ -1,16 +1,24 @@
 package game;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import blocks.core.Block;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
 import item.core.ItemRegistry;
-import java.util.List;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import score.ScoreManager;
 
 // FR-15 다음 블록, FR-30 줄 삭제 애니메이션, FR-31 모드별 아이템 생성
@@ -122,6 +130,27 @@ class ActionControllerTest {
         assertEquals(2, manager.getTotalLinesCleared());
         assertTrue(board.findFullRows().isEmpty());
         assertEquals(0, controller.getCurrentBlock().getY());
+    }
+
+    @Test // 폭탄 제거 대상은 애니메이션이 끝날 때까지 보드에 남아 있다
+    void animatesBombClearedCellsBeforeRemovingThem() {
+        controller = new ActionController(board, new item.types.BombItem(), manager, scoreManager,
+                Difficulty.NORMAL, GameMode.NORMAL, LONG_ANIMATION_MS);
+        int targetRow = bottomRow - 1;
+        int targetColumn = 3;
+
+        controller.hardDropAction();
+
+        assertTrue(controller.isClearing());
+        assertTrue(controller.getClearingCells().contains(
+                new ActionController.ClearingCell(targetRow, targetColumn)));
+        assertNotEquals(0, board.getBoard()[targetRow][targetColumn]);
+
+        controller.completeLineClear();
+
+        assertFalse(controller.isClearing());
+        assertTrue(controller.getClearingCells().isEmpty());
+        assertEquals(0, board.getBoard()[targetRow][targetColumn]);
     }
 
     // ---------- FR-31 모드별 아이템 생성 ----------

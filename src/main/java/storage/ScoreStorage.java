@@ -1,14 +1,15 @@
 package storage;
 
-import menu.ScoreRecord;
-import java.util.ArrayList;
-import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.FileReader;
-import java.io.BufferedReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+
+import menu.ScoreRecord;
 
 
 public class ScoreStorage {
@@ -16,7 +17,7 @@ public class ScoreStorage {
     private final String scoreFile;
 
     public ScoreStorage() {
-        this("src/storage/scores.txt");
+        this("src/main/java/storage/scores.txt");
     }
 
     public ScoreStorage(String scoreFile) {
