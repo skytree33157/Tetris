@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.FileReader;
 import java.io.BufferedReader;
+import java.nio.charset.StandardCharsets;
 
 
 public class ScoreStorage {
@@ -16,7 +17,7 @@ public class ScoreStorage {
 
     public void save(ArrayList<ScoreRecord> records){
         
-        try(FileWriter writer = new FileWriter(SCORE_FILE);) {
+        try(FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8);) {
             
             for (ScoreRecord record : records) {
                 writer.write(record.getName() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
@@ -45,7 +46,7 @@ public class ScoreStorage {
             }
         }
         
-        try (FileReader reader = new FileReader(SCORE_FILE);
+        try (FileReader reader = new FileReader(SCORE_FILE, StandardCharsets.UTF_8);
             BufferedReader buffer = new BufferedReader(reader)) {
             String line = buffer.readLine();
 
@@ -84,7 +85,7 @@ public class ScoreStorage {
     }
 
     public boolean clear() {
-        try (FileWriter writer = new FileWriter(SCORE_FILE)) {
+        try (FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8)) {
             return true;
         } catch (IOException e) {
             System.out.println(e);

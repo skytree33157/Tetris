@@ -106,6 +106,7 @@ public class ScoreboardScreen extends JFrame {
         // Enter 키 입력을 받기 위한 KeyListener 등록
         addKeyListener(new ScoreboardKeyListener());
         setFocusable(true);
+        setFocusTraversalKeysEnabled(false); // tab의 기본 포커스 이동 기능 끔(keyPressed()에서 tab 키를 쓰기 위해)
 
 
         // 창이 실제로 열린 다음 키보드 포커스를 요청
@@ -170,7 +171,7 @@ public class ScoreboardScreen extends JFrame {
         }
 
         sb.append("\n[← →] 난이도 변경");
-        sb.append("\n[↑ ↓] 모드 변경");
+        sb.append("\n[Tab] 모드 변경");
         sb.append("\n> 시작 메뉴 <");
         sb.append("\n\n[Enter] 선택");
 
@@ -232,7 +233,7 @@ public class ScoreboardScreen extends JFrame {
             // Enter를 누르면 시작 메뉴로 돌아감
             if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                 backToMenu();
-            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { //오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
+            } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { // 오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
                 if (difficulty.equals("EASY")) {
                     difficulty = "NORMAL";
                 } else if (difficulty.equals("NORMAL")) {
@@ -243,7 +244,7 @@ public class ScoreboardScreen extends JFrame {
                 
                 updateCategoryRecords();
                 drawScreen();
-            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { //왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
+            } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { // 왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
                 if (difficulty.equals("HARD")) {
                     difficulty = "NORMAL";
                 } else if (difficulty.equals("NORMAL")) {
@@ -254,7 +255,7 @@ public class ScoreboardScreen extends JFrame {
                 
                 updateCategoryRecords();
                 drawScreen();
-            } else if (e.getKeyCode() == KeyEvent.VK_UP) { //위 방향키를 눌러 NORMAL -> ITEM으로 이동
+            } else if (e.getKeyCode() == KeyEvent.VK_TAB) { // 탭 키를 눌러 NORMAL -> ITEM으로 이동
                 if (mode.equals("NORMAL")) {
                     mode = "ITEM";
                 } else {
@@ -263,16 +264,7 @@ public class ScoreboardScreen extends JFrame {
                 
                 updateCategoryRecords();
                 drawScreen();
-            } else if (e.getKeyCode() == KeyEvent.VK_DOWN) { //아래 방향키를 눌러 위 방향키와 똑같이 시전되도록 설정
-                if (mode.equals("NORMAL")) {
-                    mode = "ITEM";
-                } else {
-                    mode = "NORMAL";
-                }
-                
-                updateCategoryRecords();
-                drawScreen();
-            }
+            } 
         }
 
         @Override
