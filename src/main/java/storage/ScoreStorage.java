@@ -17,7 +17,7 @@ public class ScoreStorage {
 
     public void save(ArrayList<ScoreRecord> records){
         
-        try(FileWriter writer = new FileWriter(SCORE_FILE);) {
+        try(FileWriter writer = new FileWriter(SCORE_FILE, StandardCharsets.UTF_8);) {
             
             for (ScoreRecord record : records) {
                 writer.write(record.getName() + "," + record.getScore() + "," + record.getDifficulty() + "," + record.getMode() + "\n");
