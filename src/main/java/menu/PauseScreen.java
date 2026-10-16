@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.GridBagLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
@@ -18,17 +19,20 @@ public class PauseScreen extends JPanel {
 
     private static final String[] MENU_ITEMS = {
         "계속하기",
-        "시작 화면"
+        "시작 화면",
+        "게임 종료"
     };
 
     private final JTextPane menuLabel;
     private final Runnable onResume;
     private final Runnable onQuit;
+    private final Runnable onExit;
     private int selectedIndex;
 
-    public PauseScreen(Runnable onResume, Runnable onQuit) {
+    public PauseScreen(Runnable onResume, Runnable onQuit, Runnable onExit) {
         this.onResume = onResume;
         this.onQuit = onQuit;
+        this.onExit = onExit;
 
         setBackground(Color.BLACK);
         setLayout(new BorderLayout());
@@ -71,10 +75,11 @@ public class PauseScreen extends JPanel {
     }
 
     private void selectMenuItem() {
-        if (selectedIndex == 0) {
-            onResume.run();
-        } else {
-            onQuit.run();
+        switch (selectedIndex) {
+            case 0 -> onResume.run();
+            case 1 -> onQuit.run();
+            case 2 -> onExit.run();
+            default -> throw new IllegalStateException("Invalid menu selection");
         }
     }
 

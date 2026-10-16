@@ -97,7 +97,7 @@ public class GameScreen extends JFrame {
                         dispose();
                         StartMenu startMenu = new StartMenu();
                         startMenu.setVisible(true);
-                    });
+                    }, true);
                     settingsScreen.setVisible(true);
                     refreshInputBindings();
                     gamePanel.refreshCellSize();
@@ -223,7 +223,7 @@ public class GameScreen extends JFrame {
             return;
         }
 
-        pauseScreen = new PauseScreen(this::goToGame, this::goToStartMenu);
+        pauseScreen = new PauseScreen(this::goToGame, this::goToStartMenu, this::exitApplication);
         remove(gamePanel);
         add(pauseScreen, BorderLayout.CENTER);
         revalidate();
@@ -253,5 +253,12 @@ public class GameScreen extends JFrame {
         dispose();
         StartMenu startMenu = new StartMenu();
         startMenu.setVisible(true);
+    }
+
+    // 게임을 정리한 뒤 프로그램 종료
+    private void exitApplication() {
+        stopGame();
+        dispose();
+        System.exit(0);
     }
 }
