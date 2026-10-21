@@ -352,14 +352,14 @@ public class SettingsScreen extends JDialog {
 
         @Override
         public void keyPressed(KeyEvent e) {
-            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                onEscapeClose.run();
-                saveAndGoBack();
+            if (rebindStep >= 0) {
+                handleRebindKey(e);
                 return;
             }
 
-            if (rebindStep >= 0) {
-                handleRebindKey(e);
+            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                onEscapeClose.run();
+                saveAndGoBack();
                 return;
             }
 
