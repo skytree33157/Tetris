@@ -22,6 +22,8 @@ import score.ScoreManager;
 // 키 조작 클래스
 
 public class GameController extends KeyAdapter {
+    static final int ESCAPE_HOLD_THRESHOLD_MS = 1000;
+
     private final GameLoop gameLoop;
     private final ActionController actionController;
     private final GameStateManager gameStateManager;
@@ -29,6 +31,7 @@ public class GameController extends KeyAdapter {
     private final AppStateManager appStateManager;
     private final Runnable pauseHandler;
     private final Runnable openSettingAction;
+    private final Runnable exitHandler;
 
     private boolean leftPressed = false;
     private boolean rightPressed = false;
@@ -41,9 +44,13 @@ public class GameController extends KeyAdapter {
     private final Set<Integer> boundKeyCodes = new HashSet<>();
 
     private final Timer keyTimer;
+    private final Timer escapeHoldTimer;
+    private boolean escapePressed;
+    private boolean escapeHoldTriggered;
+    private boolean ignoreEscapeUntilReleased;
 
     public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager,
-        Runnable openSettingAction, Runnable pauseHandler) {
+        Runnable openSettingAction, Runnable pauseHandler, Runnable exitHandler) {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
@@ -51,14 +58,23 @@ public class GameController extends KeyAdapter {
         this.appStateManager = appStateManager;
         this.pauseHandler = pauseHandler;
         this.openSettingAction = openSettingAction;
+        this.exitHandler = exitHandler;
 
         // 최초 입력은 즉시 처리하고, 누르고 있을 때만 지연 후 반복
         keyTimer = new Timer(60, e -> responseInput());
         keyTimer.setInitialDelay(250);
+        escapeHoldTimer = new Timer(ESCAPE_HOLD_THRESHOLD_MS, e -> {
+            if (escapePressed && !ignoreEscapeUntilReleased) {
+                escapeHoldTriggered = true;
+                exitHandler.run();
+            }
+        });
+        escapeHoldTimer.setRepeats(false);
     }
 
     public void shutdown() {
         keyTimer.stop();
+        escapeHoldTimer.stop();
         pressedKeys.clear();
     }
 
@@ -139,6 +155,10 @@ public class GameController extends KeyAdapter {
     }
 
     private void handleKeyPressed(int keyCode) {
+        if (keyCode == KeyEvent.VK_ESCAPE && ignoreEscapeUntilReleased) {
+            return;
+        }
+
         // 누르고 있는 동안 전달되는 중복 keyPressed는 새 입력으로 처리하지 않음
         if (!pressedKeys.add(keyCode)) {
             return;
@@ -172,30 +192,9 @@ public class GameController extends KeyAdapter {
             if (gameStateManager.isGameOver()) {
                 return;
             }
-            boolean wasPaused = gameLoop.isPaused();
-            if (!wasPaused) {
-                gameLoop.togglePause();
-            }
-            appStateManager.transitionTo(AppState.SETTINGS);
-
-            // modal 창이 포커스 가져가면 keyReleased를 못 받으므로,
-            // 누르고 있던 이동 키 초기화
-            leftPressed = false;
-            rightPressed = false;
-            downPressed = false;
-            keyTimer.stop();
-            pressedKeys.clear();
-
-            openSettingAction.run(); // modal 블록
-
-            // P로 이미 일시정지된 상태에서 ESC로 설정을 열었다가 닫으면 
-            // PLAYING으로 돌아가지 않고 PAUSED를 유지
-            if (!wasPaused) {
-                gameLoop.togglePause();
-                appStateManager.transitionTo(AppState.PLAYING);
-            } else {
-                appStateManager.transitionTo(AppState.PAUSED);
-            }
+            escapePressed = true;
+            escapeHoldTriggered = false;
+            escapeHoldTimer.restart();
             return;
         }
 
@@ -251,6 +250,24 @@ public class GameController extends KeyAdapter {
 
     private void handleKeyReleased(int keyCode) {
         pressedKeys.remove(keyCode);
+        if (keyCode == KeyEvent.VK_ESCAPE) {
+            if (ignoreEscapeUntilReleased) {
+                ignoreEscapeUntilReleased = false;
+                return;
+            }
+            if (!escapePressed) {
+                return;
+            }
+
+            escapePressed = false;
+            escapeHoldTimer.stop();
+            if (!escapeHoldTriggered && !gameStateManager.isGameOver()) {
+                openSettings();
+            }
+            escapeHoldTriggered = false;
+            return;
+        }
+
         if (keyCode == KeyEvent.VK_P) {
             return;
         }
@@ -268,6 +285,33 @@ public class GameController extends KeyAdapter {
             keyTimer.stop();
         } else {
             keyTimer.restart();
+        }
+    }
+
+    public void suppressEscapeUntilReleased() {
+        ignoreEscapeUntilReleased = true;
+    }
+
+    private void openSettings() {
+        boolean wasPaused = gameLoop.isPaused();
+        if (!wasPaused) {
+            gameLoop.togglePause();
+        }
+        appStateManager.transitionTo(AppState.SETTINGS);
+
+        leftPressed = false;
+        rightPressed = false;
+        downPressed = false;
+        keyTimer.stop();
+        pressedKeys.clear();
+
+        openSettingAction.run();
+
+        if (!wasPaused) {
+            gameLoop.togglePause();
+            appStateManager.transitionTo(AppState.PLAYING);
+        } else {
+            appStateManager.transitionTo(AppState.PAUSED);
         }
     }
 
