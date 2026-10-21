@@ -57,6 +57,7 @@ public class SettingsScreen extends JDialog {
     private int rebindStep = -1;
     private final Runnable onClose;
     private final Runnable onQuit;
+    private final Runnable onEscapeClose;
     private final boolean inGame;
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit) {
@@ -64,9 +65,15 @@ public class SettingsScreen extends JDialog {
     }
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame) {
+        this(owner, onClose, onQuit, inGame, () -> {});
+    }
+
+    public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame,
+            Runnable onEscapeClose) {
         super(owner, "SeoulTech SE Tetris - 설정", true); // modal
         this.onClose = onClose;
         this.onQuit = onQuit;
+        this.onEscapeClose = onEscapeClose;
         this.inGame = inGame;
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setSize(420, 460);
@@ -345,6 +352,12 @@ public class SettingsScreen extends JDialog {
 
         @Override
         public void keyPressed(KeyEvent e) {
+            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                onEscapeClose.run();
+                saveAndGoBack();
+                return;
+            }
+
             if (rebindStep >= 0) {
                 handleRebindKey(e);
                 return;
@@ -356,7 +369,6 @@ public class SettingsScreen extends JDialog {
                 case KeyEvent.VK_LEFT -> changeValue(-1);
                 case KeyEvent.VK_RIGHT -> changeValue(1);
                 case KeyEvent.VK_ENTER -> select();
-                case KeyEvent.VK_ESCAPE -> saveAndGoBack();
             }
         }
 

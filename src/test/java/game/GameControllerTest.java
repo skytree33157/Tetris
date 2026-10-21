@@ -8,6 +8,8 @@ import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
 import java.awt.event.KeyEvent;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
@@ -28,11 +30,14 @@ class GameControllerTest {
 
     private int settingsOpened;
     private int pauseHandlerCalls;
+    private int exitHandlerCalls;
+    private CountDownLatch exitCalled;
     private boolean pausedWhileSettingsOpen;
     private AppState stateWhileSettingsOpen;
 
     @BeforeEach
     void setUp() {
+        exitCalled = new CountDownLatch(1);
         manager = new GameStateManager();
         ScoreManager scoreManager = new ScoreManager();
         action = new ActionController(new Board(), new OBlock(), manager, scoreManager,
@@ -45,7 +50,11 @@ class GameControllerTest {
                     pausedWhileSettingsOpen = loop.isPaused();
                     stateWhileSettingsOpen = appState.getCurrentState();
                 },
-                () -> pauseHandlerCalls++);
+                () -> pauseHandlerCalls++,
+                () -> {
+                    exitHandlerCalls++;
+                    exitCalled.countDown();
+                });
     }
 
     @AfterEach
@@ -117,5 +126,18 @@ class GameControllerTest {
         assertEquals(0, settingsOpened);
         assertEquals(0, pauseHandlerCalls);
         assertFalse(loop.isPaused());
+    }
+
+    @Test
+    void holdingEscapeExitsInsteadOfOpeningSettings() throws InterruptedException {
+        controller.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+        assertTrue(exitCalled.await(GameController.ESCAPE_HOLD_THRESHOLD_MS + 1000L,
+                TimeUnit.MILLISECONDS));
+        controller.keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+
+        assertEquals(1, exitHandlerCalls);
+        assertEquals(0, settingsOpened);
     }
 }
