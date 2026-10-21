@@ -118,6 +118,9 @@ public class SettingsScreen extends JDialog {
         sb.append("SETTINGS\n\n");
 
         for (int i = 0; i < MENU_ITEMS.length; i++) {
+            if (!isMenuItemAvailable(i)) {
+                continue;
+            }
             String label = inGame && i == QUIT_GAME_INDEX ? "시작 메뉴" : MENU_ITEMS[i];
             String line = label + valueSuffix(i);
             if (i == selectedIndex) {
@@ -182,13 +185,22 @@ public class SettingsScreen extends JDialog {
     }
 
     private void moveUp() {
-        selectedIndex = (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
-        drawMenu();
+        moveSelection(-1);
     }
 
     private void moveDown() {
-        selectedIndex = (selectedIndex + 1) % MENU_ITEMS.length;
+        moveSelection(1);
+    }
+
+    private void moveSelection(int direction) {
+        do {
+            selectedIndex = (selectedIndex + direction + MENU_ITEMS.length) % MENU_ITEMS.length;
+        } while (!isMenuItemAvailable(selectedIndex));
         drawMenu();
+    }
+
+    private boolean isMenuItemAvailable(int index) {
+        return !inGame || index != RESTORE_DEFAULTS_INDEX;
     }
 
     // 화면 크기 / 색맹 모드처럼 값을 순환시키는 항목 처리
@@ -221,6 +233,10 @@ public class SettingsScreen extends JDialog {
     }
 
     private void select() {
+        if (!isMenuItemAvailable(selectedIndex)) {
+            return;
+        }
+
         switch (selectedIndex) {
             case SCREEN_SIZE_INDEX, COLOR_MODE_INDEX, DIFFICULTY_INDEX -> changeValue(1);
             case KEY_CONFIG_INDEX -> startKeyRebind();
