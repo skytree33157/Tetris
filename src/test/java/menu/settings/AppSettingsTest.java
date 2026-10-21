@@ -1,21 +1,23 @@
 package menu.settings;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import blocks.style.ColorMode;
-import difficulty.Difficulty;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import blocks.style.ColorMode;
+import difficulty.Difficulty;
+
 // 설정 저장/불러오기, FR-26 난이도 설정
 class AppSettingsTest {
-    private static final Path SETTINGS_PATH = Paths.get("src/menu/settings/settings.properties");
+    private static final Path SETTINGS_PATH = Paths.get("src/main/java/menu/settings/settings.properties");
 
     private final AppSettings settings = AppSettings.getInstance();
     private byte[] backup;

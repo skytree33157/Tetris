@@ -2,11 +2,11 @@ package menu.settings;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Frame;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.Frame;
 
 import javax.swing.BorderFactory;
 import javax.swing.JDialog;
@@ -18,8 +18,8 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
 import blocks.style.ColorMode;
-import storage.ScoreStorage;
 import difficulty.Difficulty;
+import storage.ScoreStorage;
 
 public class SettingsScreen extends JDialog {
 
@@ -57,11 +57,17 @@ public class SettingsScreen extends JDialog {
     private int rebindStep = -1;
     private final Runnable onClose;
     private final Runnable onQuit;
+    private final boolean inGame;
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit) {
+        this(owner, onClose, onQuit, false);
+    }
+
+    public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame) {
         super(owner, "SeoulTech SE Tetris - 설정", true); // modal
         this.onClose = onClose;
         this.onQuit = onQuit;
+        this.inGame = inGame;
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setSize(420, 460);
         setLocationRelativeTo(owner); // owner 중앙에 위치
@@ -112,7 +118,11 @@ public class SettingsScreen extends JDialog {
         sb.append("SETTINGS\n\n");
 
         for (int i = 0; i < MENU_ITEMS.length; i++) {
-            String line = MENU_ITEMS[i] + valueSuffix(i);
+            if (!isMenuItemAvailable(i)) {
+                continue;
+            }
+            String label = inGame && i == QUIT_GAME_INDEX ? "시작 메뉴" : MENU_ITEMS[i];
+            String line = label + valueSuffix(i);
             if (i == selectedIndex) {
                 sb.append("> ").append(line).append(" <\n");
             } else {
@@ -175,17 +185,30 @@ public class SettingsScreen extends JDialog {
     }
 
     private void moveUp() {
-        selectedIndex = (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
-        drawMenu();
+        moveSelection(-1);
     }
 
     private void moveDown() {
-        selectedIndex = (selectedIndex + 1) % MENU_ITEMS.length;
+        moveSelection(1);
+    }
+
+    private void moveSelection(int direction) {
+        do {
+            selectedIndex = (selectedIndex + direction + MENU_ITEMS.length) % MENU_ITEMS.length;
+        } while (!isMenuItemAvailable(selectedIndex));
         drawMenu();
+    }
+
+    private boolean isMenuItemAvailable(int index) {
+        return !inGame || index != RESTORE_DEFAULTS_INDEX;
     }
 
     // 화면 크기 / 색맹 모드처럼 값을 순환시키는 항목 처리
     private void changeValue(int direction) {
+        if (inGame && selectedIndex == DIFFICULTY_INDEX) {
+            return;
+        }
+
         switch (selectedIndex) {
             case SCREEN_SIZE_INDEX -> {
                 ScreenSize[] values = ScreenSize.values();
@@ -210,6 +233,10 @@ public class SettingsScreen extends JDialog {
     }
 
     private void select() {
+        if (!isMenuItemAvailable(selectedIndex)) {
+            return;
+        }
+
         switch (selectedIndex) {
             case SCREEN_SIZE_INDEX, COLOR_MODE_INDEX, DIFFICULTY_INDEX -> changeValue(1);
             case KEY_CONFIG_INDEX -> startKeyRebind();
@@ -274,8 +301,10 @@ public class SettingsScreen extends JDialog {
     }
 
     private void quitGame() {
+        String prompt = inGame ? "시작 화면으로 이동할까요?" : "게임을 종료할까요?";
+        String title = inGame ? "시작 화면으로 이동" : "게임 종료";
         int result = JOptionPane.showConfirmDialog(
-                this, "게임을 종료할까요?", "게임 종료", JOptionPane.YES_NO_OPTION);
+            this, prompt, title, JOptionPane.YES_NO_OPTION);
 
         if (result == JOptionPane.YES_OPTION) {
             dispose();

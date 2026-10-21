@@ -1,17 +1,17 @@
 package ui;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+
 import blocks.core.Block;
 import blocks.core.BlockType;
 import blocks.style.BlockPattern;
 import blocks.style.BlockStyle;
 import blocks.style.ColorMode;
-
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.RenderingHints;
 
 public final class BlockRenderer {
 
@@ -39,7 +39,11 @@ public final class BlockRenderer {
         if (g == null || type == null || mode == null || size <= 0) return;
 
         BlockStyle style = BlockStyle.of(type, mode);
-        Color fillColor = style.getColor();
+        drawCell(g, x, y, size, style, style.getColor());
+    }
+
+    private static void drawCell(Graphics2D g, int x, int y, int size,
+                                 BlockStyle style, Color fillColor) {
 
         Graphics2D g2d = (Graphics2D) g.create();
 
@@ -160,6 +164,10 @@ public final class BlockRenderer {
     // 원본 배경·패턴을 먼저 그린 뒤 필요한 칸에만 아이템 문자를 덧그린다.
     private static void drawAppearance(Graphics2D g, int x, int y, int size,
                                         ItemAppearanceResolver.CellAppearance cell, ColorMode mode) {
+        if (cell.symbol() == 'L' || cell.symbol() == 'P' || cell.symbol() == 'S') {
+            drawAttachedItemCell(g, x, y, size, cell.type(), cell.symbol(), mode);
+            return;
+        }
         drawCell(g, x, y, size, cell.type(), mode);
         if (cell.type() == BlockType.BOMB) {
             drawBomb(g, x, y, size);
@@ -168,6 +176,12 @@ public final class BlockRenderer {
         if (cell.symbol() != '\0') {
             drawItemSymbol(g, x, y, size, cell.symbol(), BlockStyle.of(cell.type(), mode).getColor());
         }
+    }
+
+    private static void drawAttachedItemCell(Graphics2D g, int x, int y, int size,
+                                             BlockType type, char symbol, ColorMode mode) {
+        drawCell(g, x, y, size, BlockStyle.of(type, mode), Color.WHITE);
+        drawItemSymbol(g, x, y, size, symbol, Color.WHITE);
     }
 
     // 한 칸 안에 폭탄 몸체·심지·B 표시. NEXT도 같은 메서드 사용.
