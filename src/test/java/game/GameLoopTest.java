@@ -3,6 +3,7 @@ package game;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import score.ScoreManager;
 
@@ -13,14 +14,15 @@ import org.junit.jupiter.api.BeforeEach;
 class GameLoopTest {
     private GameStateManager manager;
     private GameLoop loop;
+    private ActionController action;
 
     @BeforeEach 
     void setUp() {
         manager = new GameStateManager();
-        loop = new GameLoop(
-                new ActionController(new Board(), new OBlock(), manager, new ScoreManager(),
-                        Difficulty.NORMAL, GameMode.NORMAL, 0),
-                manager, new ScoreManager());
+        ScoreManager score = new ScoreManager();
+        action = new ActionController(new Board(), new OBlock(), manager, score,
+                Difficulty.NORMAL, GameMode.NORMAL, 0);
+        loop = new GameLoop(action, manager, score);
     }
 
     @Test // 일시정지 테스트
@@ -46,5 +48,47 @@ class GameLoopTest {
         thread.join(1000);
 
         assertFalse(thread.isAlive());
+    }
+
+    @Test
+    void automaticallyDropsAtTheConfiguredOneSecondInterval() throws InterruptedException {
+        Thread thread = new Thread(loop);
+        thread.start();
+        try {
+            Thread.sleep(600);
+            assertEquals(0, action.getCurrentBlock().getY());
+
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(1600);
+            while (action.getCurrentBlock().getY() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, action.getCurrentBlock().getY());
+        } finally {
+            thread.interrupt();
+            thread.join(1000);
+            action.shutdown();
+        }
+    }
+
+    @Test
+    void pauseStopsAutomaticDropAndResumeRestartsIt() throws InterruptedException {
+        Thread thread = new Thread(loop);
+        loop.togglePause();
+        thread.start();
+        try {
+            Thread.sleep(1200);
+            assertEquals(0, action.getCurrentBlock().getY());
+
+            loop.togglePause();
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(1800);
+            while (action.getCurrentBlock().getY() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, action.getCurrentBlock().getY());
+        } finally {
+            thread.interrupt();
+            thread.join(1000);
+            action.shutdown();
+        }
     }
 }

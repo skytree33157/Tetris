@@ -27,10 +27,28 @@ class TetrominoTest {
     }
 
     @Test
+    void everyTetrominoReturnsToItsOriginalShapeAfterFourRotations() {
+        Block[] blocks = {new IBlock(), new OBlock(), new TBlock(), new SBlock(),
+                new ZBlock(), new JBlock(), new LBlock()};
+
+        for (Block block : blocks) {
+            int[][] original = copy(block.getShape());
+            for (int turn = 0; turn < 4; turn++) {
+                block.rotate();
+            }
+            assertArrayEquals(original, block.getShape(), block.getType().name());
+        }
+    }
+
+    @Test
     void typeValuesKeepBoardCompatibilityAndRejectUnknownValues() {
         for (BlockType type : BlockType.values()) assertSame(type, BlockType.fromValue(type.getValue()));
         for (int value : new int[]{0, -1, 11, Integer.MAX_VALUE}) {
             assertThrows(IllegalArgumentException.class, () -> BlockType.fromValue(value));
         }
+    }
+
+    private int[][] copy(int[][] shape) {
+        return Arrays.stream(shape).map(int[]::clone).toArray(int[][]::new);
     }
 }

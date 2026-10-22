@@ -3,16 +3,22 @@ package menu;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import org.junit.jupiter.params.ParameterizedTest;
 
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import storage.ScoreStorage;
 
 class GameOverScreenTest {
+    @TempDir
+    Path tempDir;
 
     @Test
     void acceptsRecordWhenFewerThanTenRecordsExist() {
@@ -71,5 +77,32 @@ class GameOverScreenTest {
         assertEquals(2, selected.size());
         assertEquals(higher, selected.get(0));
         assertEquals(lower, selected.get(1));
+    }
+
+    @Test
+    void keepsOnlyTopTenInTheSelectedCategoryAndPreservesOtherCategories() {
+        ArrayList<ScoreRecord> allRecords = new ArrayList<>();
+        for (int score = 1; score <= 12; score++) {
+            allRecords.add(new ScoreRecord("ITEM-" + score, score, "NORMAL", "ITEM"));
+        }
+        ScoreRecord otherMode = new ScoreRecord("NORMAL", 50_000, "NORMAL", "NORMAL");
+        allRecords.add(otherMode);
+
+        ArrayList<ScoreRecord> itemRecords =
+                GameOverScreen.selectCategoryRecords(allRecords, "NORMAL", "ITEM");
+        itemRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
+        GameOverScreen.retainTopTen(allRecords, itemRecords);
+
+        assertEquals(10, itemRecords.size());
+        assertEquals(10, GameOverScreen.selectCategoryRecords(allRecords, "NORMAL", "ITEM").size());
+        assertEquals(11, allRecords.size());
+        assertTrue(allRecords.contains(otherMode));
+        assertEquals(12, itemRecords.get(0).getScore());
+        assertEquals(3, itemRecords.get(9).getScore());
+
+        ScoreStorage storage = new ScoreStorage(tempDir.resolve("scores.txt").toString());
+        storage.save(allRecords);
+        assertEquals(10, GameOverScreen.selectCategoryRecords(
+                storage.load(), "NORMAL", "ITEM").size());
     }
 }

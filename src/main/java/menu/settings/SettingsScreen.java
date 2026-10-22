@@ -230,13 +230,17 @@ public class SettingsScreen extends JDialog {
                 drawMenu();
             }
             case DIFFICULTY_INDEX -> {
-                Difficulty[] values = Difficulty.values();
-                int next = (settings.getDifficulty().ordinal() + direction + values.length) % values.length;
-                settings.setDifficulty(values[next]);
+                settings.setDifficulty(cycleDifficulty(settings.getDifficulty(), direction));
                 drawMenu();
             }
             default -> { }
         }
+    }
+
+    static Difficulty cycleDifficulty(Difficulty current, int direction) {
+        Difficulty[] values = Difficulty.values();
+        int next = (current.ordinal() + direction % values.length + values.length) % values.length;
+        return values[next];
     }
 
     private void select() {
