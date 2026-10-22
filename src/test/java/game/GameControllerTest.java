@@ -95,6 +95,20 @@ class GameControllerTest {
         assertEquals(AppState.PLAYING, appState.getCurrentState());
     }
 
+    @Test // 설정 중 shutdown되면 게임을 재개하지 않음
+    void doesNotResumeWhenShutdownDuringSettings() {
+        GameController[] holder = new GameController[1];
+        holder[0] = new GameController(loop, action, manager, scoreManager, appState,
+                () -> holder[0].shutdown(), () -> { }, () -> { });
+        holder[0].keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+        holder[0].keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+
+        assertTrue(loop.isPaused());
+        assertEquals(AppState.SETTINGS, appState.getCurrentState());
+    }
+
     @Test // FR-19: P로 멈춘 상태에서 설정을 열고 닫으면 일시정지 유지
     void escWhilePausedKeepsPausedAfterSettings() {
         press(KeyEvent.VK_P);
