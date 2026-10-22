@@ -97,13 +97,14 @@ public class GameScreen extends JFrame {
                         dispose();
                         StartMenu startMenu = new StartMenu();
                         startMenu.setVisible(true);
-                    }, true);
+                    }, true, this::suppressEscapeUntilReleased);
                     settingsScreen.setVisible(true);
                     refreshInputBindings();
                     gamePanel.refreshCellSize();
                     pack();
                 },
-                this::showPauseScreen
+                this::showPauseScreen,
+                this::exitApplication
         );
 
         setLayout(new BorderLayout());
@@ -211,6 +212,10 @@ public class GameScreen extends JFrame {
     private void refreshInputBindings() {
         gameController.installKeyBindings(getRootPane());
         requestFocusInWindow();
+    }
+
+    private void suppressEscapeUntilReleased() {
+        gameController.suppressEscapeUntilReleased();
     }
 
     // 일시정지 화면 표시

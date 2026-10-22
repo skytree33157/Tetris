@@ -1,5 +1,6 @@
 package game;
 
+import difficulty.Difficulty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -55,6 +56,35 @@ class GameStateManagerTest {
         assertEquals(initialDropSpeed - speedDecreaseAmount, manager.getDropSpeed());
         assertEquals(0, manager.getCountClearLine());
         assertEquals(linesForLevelUp, manager.getTotalLinesCleared());
+    }
+
+    @Test
+    void lineBasedSpeedIncreaseUsesTheSelectedDifficulty() {
+        int[] expectedDecrease = {80, 100, 120};
+        Difficulty[] difficulties = Difficulty.values();
+
+        for (int i = 0; i < difficulties.length; i++) {
+            GameStateManager state = new GameStateManager();
+            state.setDifficulty(difficulties[i]);
+
+            state.updateLevelUp(10);
+
+            assertEquals(1000 - expectedDecrease[i], state.getDropSpeed(), difficulties[i].name());
+            assertEquals(10, state.getTotalLinesCleared());
+        }
+    }
+
+    @Test
+    void slowItemRestoresDropSpeedButNeverAboveTheInitialSpeed() {
+        manager.setDifficulty(Difficulty.HARD);
+        manager.updateLevelUp(10);
+        assertEquals(880, manager.getDropSpeed());
+
+        manager.applySlowItem(1);
+        assertEquals(1000, manager.getDropSpeed());
+
+        manager.applySlowItem(1);
+        assertEquals(1000, manager.getDropSpeed());
     }
 
     @Test // 최소 드롭 속도 테스트

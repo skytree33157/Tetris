@@ -1,19 +1,29 @@
 package game;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.awt.event.KeyEvent;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import javax.swing.JPanel;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import app.AppState;
 import app.AppStateManager;
+import blocks.core.Block;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
-import java.awt.event.KeyEvent;
-import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import score.ScoreManager;
 
 // FR-13 게임 중 종료(ESC로 설정 진입), FR-19 게임 중 설정 변경
@@ -24,17 +34,21 @@ class GameControllerTest {
     private ActionController action;
     private GameLoop loop;
     private AppStateManager appState;
+    private ScoreManager scoreManager;
     private GameController controller;
 
     private int settingsOpened;
     private int pauseHandlerCalls;
+    private int exitHandlerCalls;
+    private CountDownLatch exitCalled;
     private boolean pausedWhileSettingsOpen;
     private AppState stateWhileSettingsOpen;
 
     @BeforeEach
     void setUp() {
+        exitCalled = new CountDownLatch(1);
         manager = new GameStateManager();
-        ScoreManager scoreManager = new ScoreManager();
+        scoreManager = new ScoreManager();
         action = new ActionController(new Board(), new OBlock(), manager, scoreManager,
                 Difficulty.NORMAL, GameMode.NORMAL, 0);
         loop = new GameLoop(action, manager, scoreManager);
@@ -45,7 +59,11 @@ class GameControllerTest {
                     pausedWhileSettingsOpen = loop.isPaused();
                     stateWhileSettingsOpen = appState.getCurrentState();
                 },
-                () -> pauseHandlerCalls++);
+                () -> pauseHandlerCalls++,
+                () -> {
+                    exitHandlerCalls++;
+                    exitCalled.countDown();
+                });
     }
 
     @AfterEach
@@ -107,6 +125,27 @@ class GameControllerTest {
         assertEquals(startX, action.getCurrentBlock().getX());
     }
 
+    @Test
+    void movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget() {
+        int initialX = action.getCurrentBlock().getX();
+
+        assertTimeoutPreemptively(Duration.ofMillis(250), () -> controller.keyPressed(
+                new KeyEvent(source, KeyEvent.KEY_PRESSED, System.currentTimeMillis(),
+                        0, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED)));
+
+        assertEquals(initialX - 1, action.getCurrentBlock().getX());
+    }
+
+    @Test
+    void hardDropKeyAddsPointsForTheActualDropDistance() {
+        Block falling = action.getCurrentBlock();
+        controller.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_SPACE, KeyEvent.CHAR_UNDEFINED));
+
+        assertNotSame(falling, action.getCurrentBlock());
+        assertTrue(scoreManager.getScore() > 0);
+    }
+
     @Test // FR-13: 게임 오버 후에는 ESC, P 무시
     void escAndPIgnoredAfterGameOver() {
         manager.setGameOver(true);
@@ -117,5 +156,18 @@ class GameControllerTest {
         assertEquals(0, settingsOpened);
         assertEquals(0, pauseHandlerCalls);
         assertFalse(loop.isPaused());
+    }
+
+    @Test
+    void holdingEscapeExitsInsteadOfOpeningSettings() throws InterruptedException {
+        controller.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+        assertTrue(exitCalled.await(GameController.ESCAPE_HOLD_THRESHOLD_MS + 1000L,
+                TimeUnit.MILLISECONDS));
+        controller.keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+
+        assertEquals(1, exitHandlerCalls);
+        assertEquals(0, settingsOpened);
     }
 }

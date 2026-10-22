@@ -205,9 +205,6 @@ public class Board {
                 lastClearedBonusLines += countMarker(board[row], 'P');
                 lastClearedSlowLines += countMarker(board[row], 'S');
                 cleared++;
-                // 삭제될 줄에 보너스/슬로우 마커가 있는지 확인
-                lastClearedBonusLines += countMarker(board[row], 'P');
-                lastClearedSlowLines += countMarker(board[row], 'S');
                 continue;
             }
             newBoard[writeRow] = board[row].clone();

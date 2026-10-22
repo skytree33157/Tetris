@@ -57,6 +57,7 @@ public class SettingsScreen extends JDialog {
     private int rebindStep = -1;
     private final Runnable onClose;
     private final Runnable onQuit;
+    private final Runnable onEscapeClose;
     private final boolean inGame;
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit) {
@@ -64,9 +65,15 @@ public class SettingsScreen extends JDialog {
     }
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame) {
+        this(owner, onClose, onQuit, inGame, () -> {});
+    }
+
+    public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame,
+            Runnable onEscapeClose) {
         super(owner, "SeoulTech SE Tetris - 설정", true); // modal
         this.onClose = onClose;
         this.onQuit = onQuit;
+        this.onEscapeClose = onEscapeClose;
         this.inGame = inGame;
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setSize(420, 460);
@@ -223,13 +230,17 @@ public class SettingsScreen extends JDialog {
                 drawMenu();
             }
             case DIFFICULTY_INDEX -> {
-                Difficulty[] values = Difficulty.values();
-                int next = (settings.getDifficulty().ordinal() + direction + values.length) % values.length;
-                settings.setDifficulty(values[next]);
+                settings.setDifficulty(cycleDifficulty(settings.getDifficulty(), direction));
                 drawMenu();
             }
             default -> { }
         }
+    }
+
+    static Difficulty cycleDifficulty(Difficulty current, int direction) {
+        Difficulty[] values = Difficulty.values();
+        int next = (current.ordinal() + direction % values.length + values.length) % values.length;
+        return values[next];
     }
 
     private void select() {
@@ -350,13 +361,18 @@ public class SettingsScreen extends JDialog {
                 return;
             }
 
+            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                onEscapeClose.run();
+                saveAndGoBack();
+                return;
+            }
+
             switch (e.getKeyCode()) {
                 case KeyEvent.VK_UP -> moveUp();
                 case KeyEvent.VK_DOWN -> moveDown();
                 case KeyEvent.VK_LEFT -> changeValue(-1);
                 case KeyEvent.VK_RIGHT -> changeValue(1);
                 case KeyEvent.VK_ENTER -> select();
-                case KeyEvent.VK_ESCAPE -> saveAndGoBack();
             }
         }
 

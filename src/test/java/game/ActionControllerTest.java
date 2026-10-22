@@ -15,10 +15,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import blocks.core.Block;
+import blocks.core.BlockType;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
 import item.core.ItemRegistry;
+import item.types.BonusItem;
+import item.types.LineClearItem;
+import item.types.SlowItem;
+import item.types.WeightItem;
 import score.ScoreManager;
 
 // FR-15 다음 블록, FR-30 줄 삭제 애니메이션, FR-31 모드별 아이템 생성
@@ -177,5 +182,212 @@ class ActionControllerTest {
 
         assertSame(next, controller.getCurrentBlock());
         assertNull(ItemRegistry.appearanceOf(controller.getNextBlock()));
+    }
+
+    @Test
+    void itemModeSpawnsAnItemWhenLineCountReachesTenExactly() {
+        Board thresholdBoard = new Board();
+        int bottom = thresholdBoard.getHiddenRows() + thresholdBoard.getHeight() - 1;
+        int[] partialRow = new int[thresholdBoard.getWidth()];
+        java.util.Arrays.fill(partialRow, BlockType.I.getValue());
+        partialRow[3] = 0;
+        partialRow[4] = 0;
+        thresholdBoard.addBlock(0, bottom, new int[][] {partialRow});
+        manager = new GameStateManager();
+        controller = new ActionController(thresholdBoard, new OBlock(), manager, scoreManager,
+                Difficulty.NORMAL, GameMode.ITEM, 0);
+        manager.updateLevelUp(9);
+        controller.hardDropAction();
+
+        assertEquals(10, manager.getTotalLinesCleared());
+        assertNotNull(ItemRegistry.appearanceOf(controller.getNextBlock()));
+    }
+
+    @Test
+    void movementStopsAtBothBoardEdgesAndAtFixedBlocks() {
+        ActionController controller = create(GameMode.NORMAL, 0);
+        Block current = controller.getCurrentBlock();
+
+        for (int i = 0; i < 10; i++) {
+            controller.moveLeftAction();
+        }
+        assertEquals(0, current.getX());
+        controller.moveLeftAction();
+        assertEquals(0, current.getX());
+
+        for (int i = 0; i < 10; i++) {
+            controller.moveRightAction();
+        }
+        assertEquals(board.getWidth() - current.getWidth(), current.getX());
+        controller.moveRightAction();
+        assertEquals(board.getWidth() - current.getWidth(), current.getX());
+
+        Block collisionBlock = new OBlock();
+        ActionController collisionController = new ActionController(
+                new BoardWithObstacle(5, 0), collisionBlock, new GameStateManager(),
+                new ScoreManager(), Difficulty.NORMAL, GameMode.NORMAL, 0);
+        try {
+            collisionBlock.setX(3);
+            collisionBlock.setY(0);
+            collisionController.moveRightAction();
+            assertEquals(3, collisionBlock.getX());
+        } finally {
+            collisionController.shutdown();
+        }
+    }
+
+    @Test
+    void downwardCollisionLocksTheBlockOnTopOfTheObstacle() {
+        Board collisionBoard = new Board();
+        int obstacleRow = 10;
+        collisionBoard.addBlock(3, obstacleRow, new int[][] {{BlockType.I.getValue()}});
+        GameStateManager collisionState = new GameStateManager();
+        ActionController collisionController = new ActionController(collisionBoard, new OBlock(),
+                collisionState, new ScoreManager(), Difficulty.NORMAL, GameMode.NORMAL, 0);
+        try {
+            Block falling = collisionController.getCurrentBlock();
+            while (falling.getY() < obstacleRow - falling.getHeight()) {
+                assertTrue(collisionController.moveDownAction());
+            }
+
+            assertFalse(collisionController.moveDownAction());
+
+            assertNotSame(falling, collisionController.getCurrentBlock());
+            assertEquals(BlockType.I.getValue(), collisionBoard.getBoard()[obstacleRow][3]);
+            assertEquals(BlockType.O.getValue(), collisionBoard.getBoard()[obstacleRow - 2][3]);
+            assertEquals(BlockType.O.getValue(), collisionBoard.getBoard()[obstacleRow - 1][4]);
+        } finally {
+            collisionController.shutdown();
+        }
+    }
+
+    @Test
+    void hardDropLocksAtTheLowestValidPositionAndReturnsDistance() {
+        Board emptyBoard = new Board();
+        ActionController controller = new ActionController(emptyBoard, new OBlock(),
+                new GameStateManager(), new ScoreManager(), Difficulty.NORMAL, GameMode.NORMAL, 0);
+        try {
+            Block falling = controller.getCurrentBlock();
+
+            int distance = controller.hardDropAction();
+
+            assertEquals(emptyBoard.getHiddenRows() + emptyBoard.getHeight() - falling.getHeight(),
+                    falling.getY());
+            assertEquals(falling.getY(), distance);
+            assertEquals(BlockType.O.getValue(), emptyBoard.getBoard()[falling.getY()][falling.getX()]);
+            assertNotSame(falling, controller.getCurrentBlock());
+        } finally {
+            controller.shutdown();
+        }
+    }
+
+    @Test
+    void lockingIntoHiddenRowsCausesGameOver() {
+        Board stackedBoard = new Board();
+        int[][] cells = new int[1][stackedBoard.getWidth()];
+        java.util.Arrays.fill(cells[0], BlockType.I.getValue());
+        stackedBoard.addBlock(0, 2, cells);
+        GameStateManager gameState = new GameStateManager();
+        ActionController controller = new ActionController(stackedBoard, new OBlock(), gameState,
+                new ScoreManager(), Difficulty.NORMAL, GameMode.NORMAL, 0);
+        try {
+            controller.hardDropAction();
+            assertTrue(gameState.isGameOver());
+        } finally {
+            controller.shutdown();
+        }
+    }
+
+    @Test
+    void lineClearItemClearsItsMarkedRowAndAwardsLinePoints() {
+        Board itemBoard = new Board();
+        int itemBottomRow = itemBoard.getHiddenRows() + itemBoard.getHeight() - 1;
+        int[] partialRow = new int[itemBoard.getWidth()];
+        java.util.Arrays.fill(partialRow, BlockType.I.getValue());
+        partialRow[3] = 0;
+        partialRow[4] = 0;
+        itemBoard.addBlock(0, itemBottomRow, new int[][] {partialRow});
+        LineClearItem item = new LineClearItem(new OBlock(), 1, 0);
+        GameStateManager itemState = new GameStateManager();
+        ScoreManager itemScore = new ScoreManager();
+        ActionController itemController = new ActionController(itemBoard, item, itemState,
+                itemScore, Difficulty.NORMAL, GameMode.ITEM, 0);
+        try {
+            itemController.hardDropAction();
+
+            assertEquals(1, itemState.getTotalLinesCleared());
+            assertEquals(100, itemScore.getScore());
+            assertTrue(itemBoard.findFullRows().isEmpty());
+        } finally {
+            itemController.shutdown();
+        }
+    }
+
+    @Test
+    void bonusAndSlowMarkersApplyTheirEffectsOnceWhenTheirLineClears() {
+        for (boolean bonus : new boolean[] {true, false}) {
+            Board itemBoard = new Board();
+            int itemBottomRow = itemBoard.getHiddenRows() + itemBoard.getHeight() - 1;
+            int[] partialRow = new int[itemBoard.getWidth()];
+            java.util.Arrays.fill(partialRow, BlockType.I.getValue());
+            partialRow[3] = 0;
+            partialRow[4] = 0;
+            itemBoard.addBlock(0, itemBottomRow, new int[][] {partialRow});
+            Block item = bonus
+                    ? new BonusItem(new OBlock(), 1, 0)
+                    : new SlowItem(new OBlock(), 1, 0);
+            GameStateManager itemState = new GameStateManager();
+            if (!bonus) {
+                itemState.updateLevelUp(10);
+            }
+            ScoreManager itemScore = new ScoreManager();
+            ActionController itemController = new ActionController(itemBoard, item, itemState,
+                    itemScore, Difficulty.NORMAL, GameMode.ITEM, 0);
+            try {
+                itemController.hardDropAction();
+                assertEquals(bonus ? 1 : 11, itemState.getTotalLinesCleared());
+                assertEquals(bonus ? 1100 : 100, itemScore.getScore());
+                assertEquals(bonus ? 0 : 1, itemBoard.getLastClearedSlowLines());
+                assertEquals(1000, itemState.getDropSpeed());
+            } finally {
+                itemController.shutdown();
+            }
+        }
+    }
+
+    @Test
+    void weightItemClearsTheRowBelowWhenItLandsAndCannotSlideAfterLock() {
+        Board weightBoard = new Board();
+        int rowBelowLanding = weightBoard.getHiddenRows() + weightBoard.getHeight() - 1;
+        weightBoard.addBlock(4, rowBelowLanding, new int[][] {{BlockType.I.getValue()}});
+        WeightItem weight = new WeightItem();
+        ActionController weightController = new ActionController(weightBoard, weight,
+                new GameStateManager(), new ScoreManager(), Difficulty.NORMAL, GameMode.ITEM, 0);
+        try {
+            while (weight.getY() < rowBelowLanding - weight.getHeight()) {
+                assertTrue(weightController.moveDownAction());
+            }
+
+            assertTrue(weightController.moveDownAction());
+            assertEquals(rowBelowLanding - weight.getHeight() + 1, weight.getY());
+            assertEquals(0, weightBoard.getBoard()[rowBelowLanding][4]);
+
+            while (weightController.getCurrentBlock() == weight) {
+                weightController.moveDownAction();
+            }
+            assertTrue(weight.isLanded());
+            int landedX = weight.getX();
+            weight.moveLeft();
+            weight.moveRight();
+            assertEquals(landedX, weight.getX());
+        } finally {
+            weightController.shutdown();
+        }
+    }
+
+    private static final class BoardWithObstacle extends Board {
+        private BoardWithObstacle(int x, int y) {
+            addBlock(x, y, new int[][] {{BlockType.I.getValue()}});
+        }
     }
 }
