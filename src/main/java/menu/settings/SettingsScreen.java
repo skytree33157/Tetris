@@ -55,6 +55,9 @@ public class SettingsScreen extends JDialog {
 
     // 조작 키 재설정 중일 때 진행 단계 (-1이면 재설정 중이 아님)
     private int rebindStep = -1;
+    // 모든 키 입력이 끝나야 설정에 반영 (중간 취소 시 기존 키 유지)
+    private final java.util.Map<KeyAction, Integer> pendingKeys = new java.util.EnumMap<>(KeyAction.class);
+    private String rebindWarning = "";
     private final Runnable onClose;
     private final Runnable onQuit;
     private final Runnable onEscapeClose;
@@ -260,13 +263,16 @@ public class SettingsScreen extends JDialog {
 
     private void startKeyRebind() {
         rebindStep = 0;
+        pendingKeys.clear();
+        rebindWarning = "";
         drawRebindPrompt();
     }
 
     private void drawRebindPrompt() {
         KeyAction action = REBIND_ORDER[rebindStep];
+        String warning = rebindWarning.isEmpty() ? "" : "\n\n" + rebindWarning;
         pane.setText("KEY CONFIG\n\n" + actionLabel(action)
-                + " 키를 누르세요\n\n(P: 일시정지 전용, ESC: 취소)");
+                + " 키를 누르세요\n\n(P/SPACE: 사용 불가, ESC: 취소)" + warning);
         applyStyles();
     }
 
@@ -326,22 +332,34 @@ public class SettingsScreen extends JDialog {
     }
 
     private void handleRebindKey(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.VK_ESCAPE) {
+            // 취소 시 아무것도 적용하지 않아 기존 키가 유지됨
             rebindStep = -1;
+            pendingKeys.clear();
             drawMenu();
             return;
         }
 
-        if (e.getKeyCode() == KeyEvent.VK_P) {
+        if (keyCode == KeyEvent.VK_P || keyCode == KeyEvent.VK_SPACE) {
+            rebindWarning = "사용할 수 없는 키입니다";
             drawRebindPrompt();
             return;
         }
 
-        KeyAction action = REBIND_ORDER[rebindStep];
-        settings.setKey(action, e.getKeyCode());
+        if (pendingKeys.containsValue(keyCode)) {
+            rebindWarning = "이미 지정한 키입니다";
+            drawRebindPrompt();
+            return;
+        }
+
+        rebindWarning = "";
+        pendingKeys.put(REBIND_ORDER[rebindStep], keyCode);
 
         rebindStep++;
         if (rebindStep >= REBIND_ORDER.length) {
+            pendingKeys.forEach(settings::setKey);
+            pendingKeys.clear();
             rebindStep = -1;
             drawMenu();
         } else {
