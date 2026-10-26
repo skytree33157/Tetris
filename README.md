@@ -223,7 +223,7 @@ java -cp build/classes/java/main app.Main
 
 ## 프로젝트 기록
 
-- [노션 — 요구사항·역할·일정·테스트 기록](https://app.notion.com/p/405d53a1640e807d8e0dc63deb2c5b1e)
+- [노션 — 요구사항·역할·일정·테스트 기록](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7)
 - [Issues — 오류·개선 사항](https://github.com/skytree33157/Tetris/issues)
 - [Pull Requests — 변경과 리뷰](https://github.com/skytree33157/Tetris/pulls)
 - [개발 규칙](docs/rule.md)
