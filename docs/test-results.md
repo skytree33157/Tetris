@@ -83,7 +83,6 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 
 [테스트 코드](../src/test/java/score/ScoreManagerTest.java) · [점수 규칙](scoring.md) · [PR #37](https://github.com/skytree33157/Tetris/pull/37)
 
-점수 계산기의 통과와 보드의 발동 조건 판정은 별개입니다. [퍼펙트 클리어 판정의 확인 사항](scoring.md#현재-구현-확인-사항)은 별도로 확인해야 합니다.
 
 ## 색상 모드와 아이템 표시
 
