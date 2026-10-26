@@ -70,7 +70,7 @@ public class SettingsScreen extends JDialog {
 
     public SettingsScreen(Frame owner, Runnable onClose, Runnable onQuit, boolean inGame,
             Runnable onEscapeClose) {
-        super(owner, "SeoulTech SE Tetris - 설정", true); // modal
+        super(owner, "TFSE - 설정", true); // modal
         this.onClose = onClose;
         this.onQuit = onQuit;
         this.onEscapeClose = onEscapeClose;

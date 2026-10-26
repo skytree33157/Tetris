@@ -15,9 +15,7 @@ import difficulty.Difficulty;
 // 설정값 보관 + 파일 저장/불러오기
 public class AppSettings {
     
-    private static final File SETTINGS_FILE =
-        new File("src/main/java/menu/settings/settings.properties");
-
+    private static final File SETTINGS_FILE = storage.DataPaths.settingsFile();
     private static final AppSettings INSTANCE = new AppSettings();
 
     private ScreenSize screenSize;

@@ -41,7 +41,8 @@ public class ScoreboardScreen extends JFrame {
 
     public ScoreboardScreen() {
 
-        super("SeoulTech SE Tetris");
+        super("TFSE");
+        ui.AppIcon.apply(this);
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(600, 700);

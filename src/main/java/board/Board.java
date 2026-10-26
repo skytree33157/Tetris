@@ -203,11 +203,9 @@ public class Board {
         for (int row = ROW - 1; row >= 0; row--) {
             if (rows.contains(row)) {
                 lastClearedBonusLines += countMarker(board[row], 'P');
-                lastClearedSlowLines += countMarker(board[row], 'S');
                 cleared++;
                 // 삭제될 줄에 보너스/슬로우 마커가 있는지 확인
                 lastClearedBonusLines += countMarker(board[row], 'P');
-                lastClearedSlowLines += countMarker(board[row], 'S');
                 continue;
             }
             newBoard[writeRow] = board[row].clone();

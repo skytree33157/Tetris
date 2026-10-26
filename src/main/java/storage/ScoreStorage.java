@@ -17,7 +17,7 @@ public class ScoreStorage {
     private final String scoreFile;
 
     public ScoreStorage() {
-        this("src/main/java/storage/scores.txt");
+        this(DataPaths.scoresFile().getPath());
     }
 
     public ScoreStorage(String scoreFile) {
@@ -25,7 +25,10 @@ public class ScoreStorage {
     }
 
     public void save(ArrayList<ScoreRecord> records){
-        
+        File parent = new File(scoreFile).getParentFile();
+        if (parent != null) {
+            parent.mkdirs();
+        }
         try(FileWriter writer = new FileWriter(scoreFile, StandardCharsets.UTF_8);) {
             
             for (ScoreRecord record : records) {
