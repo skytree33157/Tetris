@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'team4' // 프로젝트에 맞게 변경 가능
-version = '1.0-SNAPSHOT'
+version = '0.2.2'
 
 java {
     // 요구사항에 명시된 Java 21 버전
@@ -32,6 +32,8 @@ test {
             println "Tests: ${result.testCount}, Passed: ${result.successfulTestCount}, Failed: ${result.failedTestCount}, Skipped: ${result.skippedTestCount}"
         }
     }
+    // 테스트가 실제 사용자 데이터를 건드리지 않게 하는 설정
+    systemProperty 'tetris.dataDir', layout.buildDirectory.dir('test-data').get().asFile.path
 }
 
 jacoco {

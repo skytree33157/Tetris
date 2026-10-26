@@ -40,7 +40,8 @@ public class StartMenu extends JFrame {
     private final AppStateManager stateManager = new AppStateManager(AppState.START_MENU);
 
     public StartMenu() {
-        super("SeoulTech SE Tetris");
+        super("TFSE");
+        ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setSize(400, 400);
         setLocationRelativeTo(null);

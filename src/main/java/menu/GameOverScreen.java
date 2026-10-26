@@ -58,7 +58,8 @@ public class GameOverScreen extends JFrame {
 
     public GameOverScreen(int score, String difficulty, String mode) {
 
-        super("SeoulTech SE Tetris");
+        super("TFSE");
+        ui.AppIcon.apply(this);
 
         this.score = score;
         this.difficulty = difficulty;

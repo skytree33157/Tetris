@@ -64,7 +64,8 @@ public class GameScreen extends JFrame {
 
     public GameScreen(GameMode mode) {
         
-        super("SeoulTech SE Tetris");
+        super("TFSE");
+        ui.AppIcon.apply(this);
         this.mode = mode;
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 

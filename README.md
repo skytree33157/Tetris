@@ -20,7 +20,7 @@
 
 ### 실행
 
-1. [Releases](https://github.com/skytree33157/Tetris/releases/latest)에서 `TFSE-1.0.0.zip`을 다운로드하고 **완전히 압축 해제**합니다.
+1. [Releases](https://github.com/skytree33157/Tetris/releases/latest)에서 `TFSE-0.2.2.zip`을 다운로드하고 **완전히 압축 해제**합니다.
 2. 압축을 푼 폴더에서 `TFSE.exe`를 실행합니다.
 3. “Windows의 PC 보호” 창이 뜨면 “추가 정보” → “실행”을 선택합니다.
 
@@ -219,7 +219,7 @@ java -cp build/classes/java/main app.Main
 .\packaging\buildexe.ps1
 ```
 
-예정 산출물은 `build/exe/TFSE-1.0.0.zip`입니다. JRE·아이콘·삭제 스크립트를 함께 묶으며 별도 설치 과정 없이 압축을 풀어 실행하는 방식입니다. 스크립트를 다시 실행하면 기존 `build/exe` 산출물을 새로 만듭니다.
+예정 산출물은 `build/exe/TFSE-0.2.2.zip`입니다. JRE·아이콘·삭제 스크립트를 함께 묶으며 별도 설치 과정 없이 압축을 풀어 실행하는 방식입니다. 스크립트를 다시 실행하면 기존 `build/exe` 산출물을 새로 만듭니다.
 
 </details>
 
