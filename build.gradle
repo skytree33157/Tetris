@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'team4' // 프로젝트에 맞게 변경 가능
-version = '1.0-SNAPSHOT'
+version = '0.2.2'
 
 java {
     // 요구사항에 명시된 Java 21 버전
