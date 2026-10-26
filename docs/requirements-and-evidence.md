@@ -31,7 +31,7 @@
 
 ### 1차 기능 요구사항
 
-| ID·요구사항 | 구현·규칙 | 테스트·결과 | 개발 기록 |
+| ID·요구사항 | 구현·규칙 | 테스트·결과 | 개발 기록(Pull Request List) |
 |---|---|---|---|
 | FR-01 · 시작 메뉴 | 게임 이름과 시작·설정·스코어보드·종료 항목, 방향키·Enter 조작. [StartMenu](../src/main/java/menu/StartMenu.java) |  | [#5](https://github.com/skytree33157/Tetris/pull/5) |
 | FR-02 · 메뉴 확장 구조 | 메뉴 목록을 관리하고 화면 상태를 AppStateManager로 분리. [상태 관리](../src/main/java/app/AppStateManager.java) | [상태 테스트](../src/test/java/app/AppStateManagerTest.java) | [#5](https://github.com/skytree33157/Tetris/pull/5) |
