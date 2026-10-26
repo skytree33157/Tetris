@@ -11,8 +11,7 @@ public class EnvironmentTest {
 
     @Test // Java 21 이상 환경인지 검증
     public void testJavaVersion() {
-        String version = System.getProperty("java.version");
-        int majorVersion = getMajorVersion(version);
+int majorVersion = Runtime.version().feature();
         
         assertTrue(majorVersion >= 21);
     }
