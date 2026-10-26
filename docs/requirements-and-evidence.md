@@ -1,6 +1,6 @@
 # 요구사항과 검증 자료
 
-[README](../README.md) · [테스트 기록](test-results.md) · [화면 촬영 안내](screenshots.md) · [팀 노션](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7)
+[README](../README.md) · [테스트 기록](test-results.md) · [팀 노션](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7)
 
 교수 자료에서 명시한 조건과 평가자가 확인할 자료의 위치를 정리합니다. 요구사항을 설명하는 문서와 실제 검증 결과는 구분합니다.
 
@@ -35,27 +35,9 @@
 
 ±5%의 해석은 재현 가능한 기준으로 명시해야 합니다. 현재 팀 테스트는 기대 확률 대비 **상대오차 5% 이내**를 검사합니다. 퍼센트포인트 ±5와 혼용하지 않습니다.
 
-## README에서 접근할 수 있게 둘 자료
-
-아래 연결 방식은 평가자가 자료를 찾기 쉽게 하기 위한 문서 구성입니다. 각각을 독립된 공식 제출 문서로 만들라는 PDF의 요구는 아닙니다.
-
-| 찾는 사람의 질문 | 진입점 |
-|---|---|
-| 어떻게 실행하고 조작하나요? | [README](../README.md#다운로드와-실행) |
-| 자체 아이템은 어떤 모습이고 언제 무엇을 하나요? | [아이템 설명](items.md) |
-| 추가 점수·난이도·P 개수는 어떻게 계산하나요? | [점수 규칙](scoring.md) |
-| 이 요구사항의 구현과 테스트는 어디 있나요? | 아래 연결표 |
-| 어느 버전을 어떤 환경에서 검사했나요? | [테스트 기록](test-results.md#확인된-실행-결과) |
-| 확률·커버리지 결과는 무엇인가요? | [확률 검증](test-results.md#블록-생성-확률-검증), [커버리지](test-results.md#커버리지-기록) |
-| 사람이 확인한 화면과 동작은 어디 있나요? | [촬영 안내와 이미지 자리](screenshots.md), [수동 확인 기록](test-results.md#수동-확인-기록) |
-| 누가 무엇을 했고, 문제는 어떻게 해결했나요? | [노션](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7), [Issues](https://github.com/skytree33157/Tetris/issues), 해당 PR |
-| 내려받은 실행 파일이 어느 소스 버전인가요? | [배포 확인 기록](test-results.md#배포-확인-기록), 확정 Release |
-
-README에는 위 문서의 링크만 두고, 전체 커밋·PR·이슈 로그를 복사하지 않습니다. 검증 결과는 해당 실행 버전과 필요한 근거만 남깁니다.
-
 ## 요구사항·코드·테스트·PR 연결
 
-아래는 주요 경로를 묶은 연결표입니다. 기존 코드·테스트의 존재와 관련 PR 상태를 2026-10-26에 확인했습니다. 실제 결과의 적용 버전과 한계는 [테스트 기록](test-results.md)에 적습니다.
+아래는 주요 경로를 묶은 연결표입니다. 기존 코드·테스트의 존재와 관련 PR 상태를 2026-10-26에 확인했습니다. 2026-10-26 로컬 실행 결과는 [테스트 결과](test-results.md)에 정리했습니다.
 
 | 팀 요구사항 / 확인 범위 | 구현 | 기존 테스트 | 관련 PR |
 |---|---|---|---|
@@ -70,7 +52,7 @@ README에는 위 문서의 링크만 두고, 전체 커밋·PR·이슈 로그를
 | FR-22~25·29: 기록·표시 | [GameOverScreen](../src/main/java/menu/GameOverScreen.java), [ScoreStorage](../src/main/java/storage/ScoreStorage.java) | [GameOverScreenTest](../src/test/java/menu/GameOverScreenTest.java), [ScoreStorageTest](../src/test/java/storage/ScoreStorageTest.java) | [#42](https://github.com/skytree33157/Tetris/pull/42), [#64](https://github.com/skytree33157/Tetris/pull/64), [#65](https://github.com/skytree33157/Tetris/pull/65) |
 | NFR-01·02·07: 환경 확인 | 현재 main에 환경 전용 테스트 미반영 | [EnvironmentTest 추가 PR #76](https://github.com/skytree33157/Tetris/pull/76/files) | [#76](https://github.com/skytree33157/Tetris/pull/76) 확인 시점 미병합 |
 | NFR-06·08: 테스트·커버리지 | [build.gradle](../build.gradle), [CI](../.github/workflows/ci.yml) | [전체 테스트](../src/test/java), [확인된 CI 결과](test-results.md#확인된-실행-결과) | [테스트 추가 #71](https://github.com/skytree33157/Tetris/pull/71) |
-| NFR-09: 배포 | main 반영·공개 Release 대기 | [배포 확인 기록](test-results.md#배포-확인-기록) | [#77](https://github.com/skytree33157/Tetris/pull/77) 확인 시점 미병합 |
+| NFR-09: 배포 | main 반영·공개 Release 대기 | [남은 배포 검증](test-results.md#남은-검증) | [#77](https://github.com/skytree33157/Tetris/pull/77) 확인 시점 미병합 |
 
 FR-38의 난이도 배율, P당 고정 보너스, S당 500ms 증가는 팀이 정한 세부 규칙입니다. PDF에서 해당 수치를 직접 지정한 것은 아닙니다.
 
