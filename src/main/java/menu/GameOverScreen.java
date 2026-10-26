@@ -163,6 +163,14 @@ public class GameOverScreen extends JFrame {
         return selected;
     }
 
+    static void retainTopTen(
+            ArrayList<ScoreRecord> records,
+            ArrayList<ScoreRecord> sortedCategoryRecords) {
+        while (sortedCategoryRecords.size() > 10) {
+            records.remove(sortedCategoryRecords.remove(sortedCategoryRecords.size() - 1));
+        }
+    }
+
 
     private void checkNewRecord() {
 
@@ -194,10 +202,7 @@ public class GameOverScreen extends JFrame {
                               .reversed()
             );
 
-            if (categoryRecords.size() > 10) {
-                ScoreRecord lowestRecord = categoryRecords.get(categoryRecords.size()-1);
-                records.remove(lowestRecord);
-            }
+            retainTopTen(records, categoryRecords);
 
             storage.save(records);
         }

@@ -48,6 +48,7 @@ public class GameController extends KeyAdapter {
     private boolean escapePressed;
     private boolean escapeHoldTriggered;
     private boolean ignoreEscapeUntilReleased;
+    private boolean stopped;
 
     public GameController(GameLoop gameLoop, ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager, AppStateManager appStateManager,
         Runnable openSettingAction, Runnable pauseHandler, Runnable exitHandler) {
@@ -73,6 +74,7 @@ public class GameController extends KeyAdapter {
     }
 
     public void shutdown() {
+        stopped = true;
         keyTimer.stop();
         escapeHoldTimer.stop();
         pressedKeys.clear();
@@ -306,6 +308,10 @@ public class GameController extends KeyAdapter {
         pressedKeys.clear();
 
         openSettingAction.run();
+
+        if (stopped) {
+            return;
+        }
 
         if (!wasPaused) {
             gameLoop.togglePause();

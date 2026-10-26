@@ -59,6 +59,7 @@ public class GameScreen extends JFrame {
     private  JLabel difficultyLabel;
     private  JLabel modeLabel;
     private boolean gameOverHandled = false;
+    private boolean closed = false;
 
 
     public GameScreen(GameMode mode) {
@@ -100,6 +101,9 @@ public class GameScreen extends JFrame {
                         startMenu.setVisible(true);
                     }, true, this::suppressEscapeUntilReleased);
                     settingsScreen.setVisible(true);
+                    if (closed) {
+                        return;
+                    }
                     refreshInputBindings();
                     gamePanel.refreshCellSize();
                     pack();
@@ -204,6 +208,7 @@ public class GameScreen extends JFrame {
     }
 
     private void stopGame() {
+        closed = true;
         renderTimer.stop();
         gameController.shutdown();
         actionController.shutdown();

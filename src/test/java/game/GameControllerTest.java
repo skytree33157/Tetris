@@ -1,9 +1,24 @@
 package game;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.awt.event.KeyEvent;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import javax.swing.JPanel;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import app.AppState;
 import app.AppStateManager;
+import blocks.core.Block;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
@@ -13,9 +28,6 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import score.ScoreManager;
 
 // FR-13 게임 중 종료(ESC로 설정 진입), FR-19 게임 중 설정 변경
@@ -26,6 +38,7 @@ class GameControllerTest {
     private ActionController action;
     private GameLoop loop;
     private AppStateManager appState;
+    private ScoreManager scoreManager;
     private GameController controller;
 
     private int settingsOpened;
@@ -39,7 +52,7 @@ class GameControllerTest {
     void setUp() {
         exitCalled = new CountDownLatch(1);
         manager = new GameStateManager();
-        ScoreManager scoreManager = new ScoreManager();
+        scoreManager = new ScoreManager();
         action = new ActionController(new Board(), new OBlock(), manager, scoreManager,
                 Difficulty.NORMAL, GameMode.NORMAL, 0);
         loop = new GameLoop(action, manager, scoreManager);
@@ -82,6 +95,20 @@ class GameControllerTest {
         assertEquals(AppState.PLAYING, appState.getCurrentState());
     }
 
+    @Test // 설정 중 shutdown되면 게임을 재개하지 않음
+    void doesNotResumeWhenShutdownDuringSettings() {
+        GameController[] holder = new GameController[1];
+        holder[0] = new GameController(loop, action, manager, scoreManager, appState,
+                () -> holder[0].shutdown(), () -> { }, () -> { });
+        holder[0].keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+        holder[0].keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+
+        assertTrue(loop.isPaused());
+        assertEquals(AppState.SETTINGS, appState.getCurrentState());
+    }
+
     @Test // FR-19: P로 멈춘 상태에서 설정을 열고 닫으면 일시정지 유지
     void escWhilePausedKeepsPausedAfterSettings() {
         press(KeyEvent.VK_P);
@@ -114,6 +141,27 @@ class GameControllerTest {
         press(AppSettings.getInstance().getKey(KeyAction.MOVE_LEFT));
 
         assertEquals(startX, action.getCurrentBlock().getX());
+    }
+
+    @Test
+    void movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget() {
+        int initialX = action.getCurrentBlock().getX();
+
+        assertTimeoutPreemptively(Duration.ofMillis(250), () -> controller.keyPressed(
+                new KeyEvent(source, KeyEvent.KEY_PRESSED, System.currentTimeMillis(),
+                        0, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED)));
+
+        assertEquals(initialX - 1, action.getCurrentBlock().getX());
+    }
+
+    @Test
+    void hardDropKeyAddsPointsForTheActualDropDistance() {
+        Block falling = action.getCurrentBlock();
+        controller.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, KeyEvent.VK_SPACE, KeyEvent.CHAR_UNDEFINED));
+
+        assertNotSame(falling, action.getCurrentBlock());
+        assertTrue(scoreManager.getScore() > 0);
     }
 
     @Test // FR-13: 게임 오버 후에는 ESC, P 무시

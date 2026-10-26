@@ -18,6 +18,35 @@ class BoardTest {
         bottomRow = board.getHiddenRows() + board.getHeight() - 1;
     }
 
+    @Test
+    void createsAnEmptyTwentyByTenBoard() {
+        assertEquals(10, board.getWidth());
+        assertEquals(20, board.getHeight());
+        assertEquals(3, board.getHiddenRows());
+        assertEquals(23, board.getBoard().length);
+        for (int[] row : board.getBoard()) {
+            assertEquals(10, row.length);
+            for (int cell : row) {
+                assertEquals(0, cell);
+            }
+        }
+    }
+
+    @Test
+    void validatesWallsFloorAndOccupiedCells() {
+        int[][] cell = {{1}};
+        board.addBlock(5, bottomRow, cell);
+
+        assertTrue(board.isValidPosition(cell, 0, 0));
+        assertTrue(board.isValidPosition(cell, board.getWidth() - 1, bottomRow));
+        org.junit.jupiter.api.Assertions.assertFalse(board.isValidPosition(cell, -1, 0));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                board.isValidPosition(cell, board.getWidth(), 0));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                board.isValidPosition(cell, 0, bottomRow + 1));
+        org.junit.jupiter.api.Assertions.assertFalse(board.isValidPosition(cell, 5, bottomRow));
+    }
+
     private void fillRow(int row) {
         int[][] line = new int[1][board.getWidth()];
         for (int col = 0; col < board.getWidth(); col++) {
@@ -53,6 +82,17 @@ class BoardTest {
         assertEquals(2, board.getBoard()[bottomRow][0]);
         assertEquals(3, board.getBoard()[bottomRow - 1][0]);
         assertEquals(0, board.getBoard()[bottomRow - 2][0]);
+        assertTrue(board.findFullRows().isEmpty());
+    }
+
+    @Test
+    void clearsOneFullLineAndShiftsRowsAboveItDown() {
+        fillRow(bottomRow);
+        board.addBlock(2, bottomRow - 1, new int[][] {{3}});
+
+        assertEquals(1, board.clearRows(List.of(bottomRow)));
+
+        assertEquals(3, board.getBoard()[bottomRow][2]);
         assertTrue(board.findFullRows().isEmpty());
     }
 
