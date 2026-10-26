@@ -16,8 +16,6 @@
 
 ## 다운로드와 실행
 
-> 현재 릴리즈 공개 전입니다. 담당자가 릴리즈 배포 후 해당 문구 제거 예정입니다.
-
 ### 실행
 
 1. [Releases](https://github.com/skytree33157/Tetris/releases/latest)에서 `TFSE-0.2.2.zip`을 다운로드하고 **완전히 압축 해제**합니다.
