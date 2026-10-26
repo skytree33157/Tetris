@@ -247,6 +247,18 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 | 지정한 초기 화면 상태 유지 | [AppStateManagerTest.startsWithGivenState()](../src/test/java/app/AppStateManagerTest.java#L11) |
 | 메뉴 상태 간 전환 | [AppStateManagerTest.transitionsBetweenMenuStates()](../src/test/java/app/AppStateManagerTest.java#L17) |
 
+# 비기능 테스트
+
+| 확인할 내용 | 테스트 클래스 / 메서드 |
+| --- | --- |
+| 실행 환경의 Java 버전 확인 | [EnvironmentTest.testJavaVersion()](../src/test/java/app/EnvironmentTest.java#L13) |
+| 실행 환경의 시스템 메모리 확인 | [EnvironmentTest.testSystemMemory()](../src/test/java/app/EnvironmentTest.java#L20) |
+| 실행 환경의 여유 디스크 공간 확인 | [EnvironmentTest.testFreeDiskSpace()](../src/test/java/app/EnvironmentTest.java#L36) |
+| 난이도별 블록 생성 확률 검증 | [BlockFactoryTest.generatedBlocksFollowDifficultyProbabilities()](../src/test/java/blocks/core/BlockFactoryTest.java#L28), [BlockFactoryTest.publicFactoryUsesRequestedDifficulty()](../src/test/java/blocks/core/BlockFactoryTest.java#L41), [BlockFactoryTest.noArgumentFactoryPreservesNormalDistribution()](../src/test/java/blocks/core/BlockFactoryTest.java#L51) |
+| 색상 모드마다 색상·패턴 구분 | [BlockStyleTest.sevenBlocksHaveDistinctColorsAndPatternsInEveryMode()](../src/test/java/blocks/style/BlockStyleTest.java#L11) |
+| 블록의 1초 자동 하강 확인 | [GameLoopTest.automaticallyDropsAtTheConfiguredOneSecondInterval()](../src/test/java/game/GameLoopTest.java#L54) |
+| 일시정지 시 하강이 멈추고 재개 시 다시 하강 | [GameLoopTest.pauseStopsAutomaticDropAndResumeRestartsIt()](../src/test/java/game/GameLoopTest.java#L74) |
+
 ## 직접 실행하는 방법
 
 JDK 21을 준비하고 프로젝트 루트의 PowerShell에서 실행합니다.
@@ -260,4 +272,3 @@ JDK 21을 준비하고 프로젝트 루트의 PowerShell에서 실행합니다.
 - 원본 XML·확률 표준 출력: `build/test-results/test/TEST-*.xml`
 
 전체 보고서는 위 로컬 경로에 생성되며, 코드·테스트를 바꾼 뒤에는 다시 실행한 버전과 결과로 갱신합니다.
-
