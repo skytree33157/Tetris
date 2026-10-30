@@ -399,16 +399,10 @@ public class ActionController {
     }
 
     private void explodeBomb(BombItem bombItem) {
-        // 실제로 비어 압축되는 행만 공격한다. 3개 행의 일부 칸 파괴는 3줄 삭제가 아니다.
-        List<Integer> removedRows = new ArrayList<>(
-                board.findRowsEmptiedByArea(bombItem.getX(), bombItem.getY(), 3, 3));
-        // 폭발 범위 밖의 완성 행은 폭발 직후 clearLines()에서 함께 사라진다.
-        // 압축 전에 원래 행 번호로 합쳐야 실제 삭제한 모든 행과 순서를 보존한다.
-        for (int row : board.findFullRows()) {
-            if (row < bombItem.getY() - 1 || row > bombItem.getY() + 1) removedRows.add(row);
-        }
-        prepareAttackRows(removedRows);
+        // 폭탄은 블록 파괴 효과로만 취급한다. 이 처리에서 삭제되는 행은 공격으로 보내지 않는다.
+        preparedAttackRows = List.of();
         bombItem.explode(board);
+        // 기존 완성 행 삭제에 따른 점수·레벨·NEXT 처리는 유지한다.
         int clearedLines = board.clearLines();
         clearingCells = List.of();
         clearingRows = List.of();

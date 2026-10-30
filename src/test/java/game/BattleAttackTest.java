@@ -108,7 +108,7 @@ class BattleAttackTest {
     }
 
     @Test
-    void bombSendsActuallyRemovedRowsButNotPartialDamage() {
+    void bombDestructionDoesNotGenerateAttackRows() {
         BattleController battle = battle();
         Board board = new Board();
         board.addBlock(3,21,new int[][]{{1},{1}});
@@ -116,6 +116,8 @@ class BattleAttackTest {
         battle.start();
         action.hardDropAction(); // rests at row 20; explosion empties row 21 only
         assertTrue(battle.drainOutgoingAttacks().isEmpty());
+        assertEquals(0,board.getBoard()[21][3]);
+        assertEquals(1,board.getBoard()[22][3]); // 폭발 범위 밖의 칸은 유지한다.
 
         BattleController second=battle();
         Board twoRows=new Board();
@@ -125,20 +127,61 @@ class BattleAttackTest {
         twoRows.addBlock(3,22,new int[][]{{1}});
         second.start();
         bomb.hardDropAction();
-        assertEquals(3,second.drainOutgoingAttacks().get(0).rows().size());
+        assertTrue(second.drainOutgoingAttacks().isEmpty());
+        assertTrue(twoRows.isPerfectClear()); // 세 행의 실제 파괴·정리는 유지한다.
+        assertEquals(0,bomb.getScore()); // 파괴로 비워진 미완성 행은 줄 삭제 점수도 없다.
+        assertFalse(bomb.isGameOver());
+        assertFalse(bomb.getCurrentBlock() instanceof BombItem);
     }
 
     @Test
-    void bombIncludesFullRowsRemovedAfterExplosionInOriginalOrder() {
+    void bombDoesNotAttackEvenWhenAnExistingFullRowAlsoClears() {
         BattleController battle=battle(); Board board=new Board();
         board.addBlock(3,21,new int[][]{{1}});
         fillExcept(board,22);
-        ActionController action=player(battle,BattleController.Player.ONE,board,new BombItem(),0);
+        GameStateManager state=new GameStateManager();
+        ActionController action=new ActionController(board,new BombItem(),state,new ScoreManager(),
+                Difficulty.NORMAL,GameMode.ITEM,0);
+        battle.registerPlayer(BattleController.Player.ONE,action);
+        Block next=action.getNextBlock();
         battle.start(); action.hardDropAction();
-        List<int[]> rows=battle.drainOutgoingAttacks().get(0).rows();
+        assertTrue(battle.drainOutgoingAttacks().isEmpty());
+        assertTrue(board.isPerfectClear());
+        assertEquals(1,state.getTotalLinesCleared()); // 기존 완성 행 삭제만 줄 수에 반영한다.
+        assertTrue(action.getScore()>0);
+        assertSame(next,action.getCurrentBlock());
+    }
+
+    @Test
+    void emptyLAttackRowIsSentQueuedAndPushesTheReceiverUp() {
+        BattleController senderBattle=battle();
+        Board senderBoard=new Board();
+        fillExcept(senderBoard,21,3,4);
+        // 맨 아래 행은 L 블록 자신만 차지하므로, 공격 생성 시 완전히 빈 행이 된다.
+        ActionController sender=player(senderBattle,BattleController.Player.ONE,senderBoard,
+                new LineClearItem(new OBlock(),1,0),0);
+        senderBattle.start(); sender.hardDropAction();
+        List<int[]> rows=senderBattle.drainOutgoingAttacks().get(0).rows();
         assertEquals(2,rows.size());
-        assertArrayEquals(new int[]{0,0,0,11,0,0,0,0,0,0},rows.get(0));
-        assertArrayEquals(attackRow(),rows.get(1));
+        assertArrayEquals(attackRow(3,4),rows.get(0));
+        assertArrayEquals(new int[10],rows.get(1));
+
+        BattleController receiverBattle=battle();
+        Board receiverBoard=new Board();
+        receiverBoard.addBlock(0,10,new int[][]{{1}});
+        ActionController receiver=player(receiverBattle,BattleController.Player.TWO,
+                receiverBoard,new OBlock(),0);
+        receiverBattle.start();
+        assertEquals(2,receiverBattle.receiveAttack(BattleController.Player.TWO,rows));
+        assertEquals(2,receiver.getPendingAttackCount());
+        assertArrayEquals(new int[10],receiver.getPendingAttackRows().get(1));
+        assertEquals(1,receiverBoard.getBoard()[10][0]); // 수신 시에는 아직 밀리지 않는다.
+        receiver.hardDropAction();
+        assertEquals(0,receiver.getPendingAttackCount());
+        assertEquals(1,receiverBoard.getBoard()[8][0]); // 빈 공격 행도 포함하여 두 칸 상승한다.
+        assertEquals(2,receiverBoard.getBoard()[19][3]); // 방금 고정한 O 블록도 함께 상승한다.
+        assertArrayEquals(attackRow(3,4),receiverBoard.getBoard()[21]);
+        assertArrayEquals(new int[10],receiverBoard.getBoard()[22]);
     }
 
     @Test
