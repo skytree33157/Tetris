@@ -34,6 +34,7 @@ public class Board {
             throw new IllegalArgumentException("Too many attack rows");
         }
         List<int[]> copies = new ArrayList<>();
+        // 전체 입력을 먼저 검증한다. 중간 행이 잘못됐을 때 보드 일부만 이동하는 것을 막는다.
         for (int[] row : rows) {
             if (row == null || row.length != COL) {
                 throw new IllegalArgumentException("Attack row must have 10 cells");
@@ -47,10 +48,13 @@ public class Board {
         }
         int count = copies.size();
         if (count == 0) return false;
+        // 이동 후에는 맨 위의 원래 데이터가 사라지므로, 밀려나는 블록을 먼저 확인한다.
         boolean overflow = false;
         for (int r = 0; r < count; r++) {
             for (int cell : board[r]) overflow |= cell != 0;
         }
+        // ROW는 보이는 20행뿐 아니라 숨은 3행까지 포함한다.
+        // 고정된 모든 칸을 위로 옮기고, 받은 행들은 원래 순서대로 맨 아래에 넣는다.
         int[][] shifted = new int[ROW][COL];
         for (int r = 0; r < ROW - count; r++) shifted[r] = board[r + count].clone();
         for (int r = 0; r < count; r++) shifted[ROW - count + r] = copies.get(r);
@@ -286,6 +290,7 @@ public class Board {
                 if (c >= centerX - width / 2 && c <= centerX + width / 2) affected = true;
                 else remaining = true;
             }
+            // 원래 빈 행이나 일부 칸만 부서진 행은 '이번 폭발로 삭제된 행'에 포함하지 않는다.
             if (affected && !remaining) rows.add(r);
         }
         return rows;
@@ -320,6 +325,7 @@ public class Board {
     }
 
     public boolean isPerfectClear() {
+        // 아이템으로 아래쪽만 비고 위에 칸이 남을 수도 있으므로 마지막 행만 보면 안 된다.
         for (int[] row : board) {
             for (int cell : row) if (cell != 0) return false;
         }

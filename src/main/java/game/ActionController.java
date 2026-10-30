@@ -29,7 +29,9 @@ public class ActionController {
     private BattleController battle;
     private BattleController.Player player;
     public static final int MAX_PENDING_ATTACK_ROWS = 10;
+    // 상대에게 받은 행. 현재 블록의 처리가 끝날 때까지 보드는 바꾸지 않는다.
     private final List<int[]> pendingAttackRows = new ArrayList<>();
+    // 이번 블록으로 보낼 행의 삭제 전 모습. 애니메이션 완료 전에는 전달하지 않는다.
     private List<int[]> preparedAttackRows = List.of();
 
     public record ClearingCell(int row, int column) {}
@@ -159,6 +161,7 @@ public class ActionController {
 
     public int[][] getBoardSnapshot() {
         synchronized (stateLock) {
+            // 외부에서 조회한 배열을 수정해도 실제 보드가 바뀌지 않도록 행까지 복사한다.
             return java.util.Arrays.stream(board.getBoard()).map(int[]::clone).toArray(int[][]::new);
         }
     }
@@ -175,10 +178,12 @@ public class ActionController {
         }
     }
 
+    /** 공격을 대기열에만 저장하고 실제 수락한 행 수를 반환한다. */
     public int receiveAttackRows(List<int[]> rows) {
         synchronized (stateLock) {
             if (battle == null || !battle.isRunning() || stopped || gameStateManager.isGameOver()) return 0;
             List<int[]> copies = BattleController.copyAttackRows(rows);
+            // 기존 대기 행을 먼저 유지한다. 8행 + 새 4행이면 새 행의 위쪽 2행만 받는다.
             int accepted = Math.min(MAX_PENDING_ATTACK_ROWS - pendingAttackRows.size(), copies.size());
             pendingAttackRows.addAll(copies.subList(0, accepted));
             return accepted;
@@ -188,15 +193,19 @@ public class ActionController {
     // 삭제 전 행을 복사하고 마지막 블록이 실제로 차지한 칸만 비운다.
     private void prepareAttackRows(List<Integer> rows) {
         preparedAttackRows = List.of();
+        // 같은 블록에서 2행 이상 지운 경우만 공격한다. 이전 블록의 1행 삭제는 합산하지 않는다.
         if (battle == null || rows.size() < 2) return;
         List<int[]> attack = new ArrayList<>();
         int[][] shape = block.getShape();
+        // L의 강제 삭제 행과 완성 행이 겹쳐도 한 번만 세고, 원래 위→아래 순서를 보존한다.
         for (int row : rows.stream().distinct().sorted().toList()) {
             int[] cells = new int[board.getWidth()];
             for (int col = 0; col < cells.length; col++) {
                 int localRow = row - block.getY(), localCol = col - block.getX();
+                // T/S/Z 등의 모양 배열에는 빈칸도 있다. 사각형 전체가 아닌 점유 칸만 비운다.
                 boolean lastBlockCell = localRow >= 0 && localRow < shape.length
                         && localCol >= 0 && localCol < shape[localRow].length && shape[localRow][localCol] != 0;
+                // 색상·P/S 문자 대신 공격 칸으로 저장해 상대에게 아이템 효과가 복제되지 않게 한다.
                 if (board.getBoard()[row][col] != 0 && !lastBlockCell) cells[col] = BlockType.ATTACK.getValue();
             }
             attack.add(cells);
@@ -206,6 +215,7 @@ public class ActionController {
 
     private void markGameOver() {
         gameStateManager.setGameOver(true);
+        // 개인의 게임 오버를 보고하면 경기 관리자가 상대 승리와 양쪽 정지를 처리한다.
         if (battle != null) battle.reportGameOver(player);
     }
 
@@ -330,6 +340,7 @@ public class ActionController {
                 if (lineClearItem != null && !rowsToClear.contains(lineClearItem.getLRow())){
                         rowsToClear.add(lineClearItem.getLRow());
                 }
+                // clearRows() 후에는 행이 내려오므로 공격 모양은 반드시 삭제 전에 확보한다.
                 prepareAttackRows(rowsToClear);
                 if (rowsToClear.isEmpty()) {
                     finishLock(0);
@@ -405,7 +416,7 @@ public class ActionController {
         finishLock(clearedLines);
     }
 
-    // 줄 삭제 이후 레벨, 점수, 다음 블록 처리
+    // 블록 한 개의 처리 경계: 삭제·점수·아이템 → 공격 전달/수신 반영 → NEXT 배치.
     private void finishLock(int clearedLines){
         // 줄 삭제가 없으면 보너스/슬로우 마커가 지워진 줄도 없음
         int bonusLinesCleared = clearedLines > 0 ? board.getLastClearedBonusLines() : 0;
@@ -431,10 +442,14 @@ public class ActionController {
             return;
         }
         if (battle != null) {
+            // 실제 삭제가 끝났으므로 이번 공격을 확정한다. 취소된 삭제는 여기까지 오지 않는다.
             battle.publishAttack(player, preparedAttackRows);
             preparedAttackRows = List.of();
+            // 방금 고정한 블록을 포함한 기존 보드 전체가 수신 행 수만큼 위로 밀린다.
+            // 떨어지는 중에는 삽입하지 않고, NEXT 배치 전에 한 번에 반영한다.
             boolean overflow = board.insertAttackRows(pendingAttackRows);
             pendingAttackRows.clear();
+            // 삽입으로 패배했다면 다음 블록을 생성하지 않는다.
             if (overflow || board.hasBlocksInHiddenRows()) {
                 markGameOver();
                 return;
@@ -515,7 +530,7 @@ public class ActionController {
         }
     }
 
-    // 하드드롭
+    // 기존 호출부 호환용: 이동·고정과 거리 반환만 수행한다. 점수는 WithScore 진입점에서 처리한다.
     public int hardDropAction() {
         synchronized (stateLock) {
             return hardDrop(false);
@@ -541,6 +556,7 @@ public class ActionController {
     }
 
     private boolean scoredDrop(DropType type) {
+        // 이동과 점수를 같은 잠금에서 처리해 경기 종료 뒤 늦게 점수가 붙는 상황을 막는다.
         if (cannotAct()) return false;
         boolean moved = moveDownAction();
         if (moved) scoreManager.addDropScore(1, type, gameStateManager.getCurrentLevel());

@@ -34,9 +34,12 @@ public final class BattleController implements AutoCloseable {
     }
 
     private final Map<Player, ActionController> players = new EnumMap<>(Player.class);
+    // 이 PC에 실제 상대 컨트롤러가 없을 때만 통신 계층이 꺼내갈 공격을 보관한다.
     private final List<Attack> outgoingAttacks = new ArrayList<>();
+    // true: 로컬/서버에서 승패 확정, false: 클라이언트에서 서버 결과 대기.
     private final boolean resultAuthority;
     private final List<Player> outgoingGameOvers = new ArrayList<>();
+    // 전송 대기 목록을 비운 뒤에도 같은 탈락을 다시 보고하지 않도록 별도로 기억한다.
     private final EnumSet<Player> reportedGameOvers = EnumSet.noneOf(Player.class);
     private boolean started;
     private boolean running;
@@ -57,6 +60,7 @@ public final class BattleController implements AutoCloseable {
         if (players.containsKey(player) || players.containsValue(action)) {
             throw new IllegalArgumentException("Player/controller already registered");
         }
+        // attachBattle에서 플레이어의 잠금을 이 경기 객체로 바꾼다. 실행 전 등록해야 하는 이유다.
         action.attachBattle(this, player);
         players.put(player, action);
     }
@@ -89,6 +93,7 @@ public final class BattleController implements AutoCloseable {
         if (!running || rows.size() < 2) return;
         Player target = sender.opponent();
         ActionController receiver = players.get(target);
+        // 로컬은 바로 상대 대기열로, P2P는 전송용 데이터로 넘긴다. 공격 생성 규칙은 동일하다.
         if (receiver != null) receiver.receiveAttackRows(rows);
         else outgoingAttacks.add(new Attack(sender, rows));
     }
@@ -105,6 +110,7 @@ public final class BattleController implements AutoCloseable {
     /** 원격 상대에게 전송할 공격을 정확히 한 번 꺼낸다. 소켓 쓰기는 이 메서드가 반환된 뒤 수행한다. */
     public synchronized List<Attack> drainOutgoingAttacks() {
         List<Attack> result = List.copyOf(outgoingAttacks);
+        // 다음 조회에서 같은 공격을 다시 보내지 않도록 꺼낸 항목은 제거한다.
         outgoingAttacks.clear();
         return result;
     }
@@ -122,6 +128,7 @@ public final class BattleController implements AutoCloseable {
         return finish(loser == Player.ONE ? Outcome.TWO_WINS : Outcome.ONE_WINS, EndReason.TOP_OUT);
     }
 
+    /** 클라이언트가 서버에 보고할 탈락 정보를 꺼낸다. 실제 전송은 반환 후 수행한다. */
     public synchronized List<Player> drainOutgoingGameOvers() {
         List<Player> result = List.copyOf(outgoingGameOvers);
         outgoingGameOvers.clear();
@@ -148,18 +155,21 @@ public final class BattleController implements AutoCloseable {
     }
 
     private boolean finish(Outcome result, EndReason reason) {
+        // 뒤늦은 상대 탈락이나 시간 만료가 이미 확정한 승자를 바꾸지 못하게 한다.
         if (!running) return false;
         running = false;
         outcome = result;
         endReason = reason;
         outgoingAttacks.clear();
         outgoingGameOvers.clear();
+        // 화면 전환만으로는 부족하다. 양쪽 조작·점수 처리와 예약된 행 삭제도 멈춘다.
         players.values().forEach(ActionController::shutdown);
         return true;
     }
 
     /** 연결 종료/화면 이탈용. 재경기는 새 BattleController와 새 플레이어 객체로 시작한다. */
     @Override public synchronized void close() {
+        // 승패가 정해진 뒤 창을 닫더라도 기존 결과를 CANCELLED로 덮어쓰지 않는다.
         if (outcome == Outcome.IN_PROGRESS) {
             running = false;
             outcome = Outcome.CANCELLED;
@@ -170,6 +180,7 @@ public final class BattleController implements AutoCloseable {
         players.values().forEach(ActionController::shutdown);
     }
 
+    // 리스트만 복사하면 내부 int[]는 공유된다. 검증 후 각 행까지 복사해 소유권을 분리한다.
     static List<int[]> copyAttackRows(List<int[]> rows) {
         Objects.requireNonNull(rows, "rows");
         List<int[]> result = new ArrayList<>();
