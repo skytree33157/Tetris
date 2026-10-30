@@ -16,7 +16,6 @@ import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
-import score.DropType;
 import score.ScoreManager;
 
 // 키 조작 클래스
@@ -27,7 +26,6 @@ public class GameController extends KeyAdapter {
     private final GameLoop gameLoop;
     private final ActionController actionController;
     private final GameStateManager gameStateManager;
-    private final ScoreManager scoreManager;
     private final AppStateManager appStateManager;
     private final Runnable pauseHandler;
     private final Runnable openSettingAction;
@@ -55,7 +53,6 @@ public class GameController extends KeyAdapter {
         this.gameLoop = gameLoop;
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
-        this.scoreManager = scoreManager;
         this.appStateManager = appStateManager;
         this.pauseHandler = pauseHandler;
         this.openSettingAction = openSettingAction;
@@ -127,6 +124,10 @@ public class GameController extends KeyAdapter {
 
     // 꾹 누르고 있는 키에 대한 입력 처리
     private void responseInput() {
+        if (stopped || actionController.isStopped()) {
+            shutdown();
+            return;
+        }
         if (gameLoop.isPaused()) {
             return;
         }
@@ -157,6 +158,10 @@ public class GameController extends KeyAdapter {
     }
 
     private void handleKeyPressed(int keyCode) {
+        if (stopped || actionController.isStopped()) {
+            shutdown();
+            return;
+        }
         if (keyCode == KeyEvent.VK_ESCAPE && ignoreEscapeUntilReleased) {
             return;
         }
@@ -229,15 +234,13 @@ public class GameController extends KeyAdapter {
             actionController.rotateAction();
         }
         else if(keyCode==KeyEvent.VK_SPACE){
-            int distance = actionController.hardDropAction();
-            int currentLevel = gameStateManager.getCurrentLevel();
-            // ScoreManager에 하드드롭 점수 전달
-            scoreManager.addDropScore(distance, DropType.HARD, currentLevel);
+            actionController.hardDropWithScoreAction();
         }
     }
 
     // 게임 재시작
     public void resumeGame() {
+        if (stopped || actionController.isStopped()) return;
         if (gameLoop.isPaused()) {
             gameLoop.togglePause();
             appStateManager.transitionTo(AppState.PLAYING);
@@ -251,6 +254,10 @@ public class GameController extends KeyAdapter {
     }
 
     private void handleKeyReleased(int keyCode) {
+        if (stopped || actionController.isStopped()) {
+            shutdown();
+            return;
+        }
         pressedKeys.remove(keyCode);
         if (keyCode == KeyEvent.VK_ESCAPE) {
             if (ignoreEscapeUntilReleased) {
@@ -323,10 +330,6 @@ public class GameController extends KeyAdapter {
 
     private void moveDownWithScore() {
         // 실제 하강한 경우에만 소프트 드롭 점수를 부여
-        boolean isMovedDown = actionController.moveDownAction();
-        if (isMovedDown) {
-            int currentLevel = gameStateManager.getCurrentLevel();
-            scoreManager.addDropScore(1, DropType.SOFT, currentLevel);
-        }
+        actionController.softDropAction();
     }
 }

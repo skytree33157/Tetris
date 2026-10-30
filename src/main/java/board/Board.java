@@ -3,6 +3,9 @@ package board;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
+
+import blocks.core.BlockType;
 
 import ui.ItemAppearanceResolver;
 
@@ -22,6 +25,37 @@ public class Board {
 
     public int[][] getBoard() {
         return board;
+    }
+
+    /** FR-42: 위→아래 순서의 공격을 아래에 삽입한다. true면 맨 위의 블록이 밀려났다. */
+    public boolean insertAttackRows(List<int[]> rows) {
+        Objects.requireNonNull(rows, "rows");
+        if (rows.size() > ROW) {
+            throw new IllegalArgumentException("Too many attack rows");
+        }
+        List<int[]> copies = new ArrayList<>();
+        for (int[] row : rows) {
+            if (row == null || row.length != COL) {
+                throw new IllegalArgumentException("Attack row must have 10 cells");
+            }
+            for (int cell : row) {
+                if (cell != 0 && cell != BlockType.ATTACK.getValue()) {
+                    throw new IllegalArgumentException("Attack cells must be empty or ATTACK");
+                }
+            }
+            copies.add(row.clone());
+        }
+        int count = copies.size();
+        if (count == 0) return false;
+        boolean overflow = false;
+        for (int r = 0; r < count; r++) {
+            for (int cell : board[r]) overflow |= cell != 0;
+        }
+        int[][] shifted = new int[ROW][COL];
+        for (int r = 0; r < ROW - count; r++) shifted[r] = board[r + count].clone();
+        for (int r = 0; r < count; r++) shifted[ROW - count + r] = copies.get(r);
+        board = shifted;
+        return overflow;
     }
 
     // 보드의 한 칸 값을 설정하는 메서드
@@ -216,23 +250,15 @@ public class Board {
 
     // 폭탄 아이템 3*3 영역 삭제
     public void clearArea(int centerX, int centerY, int width, int height) {
+        List<Integer> emptiedRows = findRowsEmptiedByArea(centerX, centerY, width, height);
         int columnRadius = width / 2;
         int rowRadius = height / 2;
-        boolean[] affectedRows = new boolean[ROW];
 
         for (int row = centerY - rowRadius; row <= centerY + rowRadius; row++) {
             for (int col = centerX - columnRadius; col <= centerX + columnRadius; col++) {
                 if (row >= 0 && row < ROW && col >= 0 && col < COL) {
-                    affectedRows[row] |= board[row][col] != 0;
                     board[row][col] = 0;
                 }
-            }
-        }
-
-        List<Integer> emptiedRows = new ArrayList<>();
-        for (int row = 0; row < ROW; row++) {
-            if (affectedRows[row] && isEmptyRow(row)) {
-                emptiedRows.add(row);
             }
         }
 
@@ -247,6 +273,22 @@ public class Board {
             }
             board = compactedBoard;
         }
+    }
+
+    /** 폭발 전에 부분적인 칸 제거와 행 자체의 삭제를 구분한다. */
+    public List<Integer> findRowsEmptiedByArea(int centerX, int centerY, int width, int height) {
+        List<Integer> rows = new ArrayList<>();
+        for (int r = Math.max(0, centerY - height / 2); r <= Math.min(ROW - 1, centerY + height / 2); r++) {
+            boolean affected = false;
+            boolean remaining = false;
+            for (int c = 0; c < COL; c++) {
+                if (board[r][c] == 0) continue;
+                if (c >= centerX - width / 2 && c <= centerX + width / 2) affected = true;
+                else remaining = true;
+            }
+            if (affected && !remaining) rows.add(r);
+        }
+        return rows;
     }
 
     private boolean isEmptyRow(int row) {
@@ -278,10 +320,8 @@ public class Board {
     }
 
     public boolean isPerfectClear() {
-            for (int col = 0; col < COL; col++) {
-                if (board[ROW-1][col] != 0) {
-                    return false;
-                }
+        for (int[] row : board) {
+            for (int cell : row) if (cell != 0) return false;
         }
         return true;
     }

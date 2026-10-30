@@ -43,7 +43,7 @@ class TetrominoTest {
     @Test
     void typeValuesKeepBoardCompatibilityAndRejectUnknownValues() {
         for (BlockType type : BlockType.values()) assertSame(type, BlockType.fromValue(type.getValue()));
-        for (int value : new int[]{0, -1, 11, Integer.MAX_VALUE}) {
+        for (int value : new int[]{0, -1, 12, Integer.MAX_VALUE}) {
             assertThrows(IllegalArgumentException.class, () -> BlockType.fromValue(value));
         }
     }
