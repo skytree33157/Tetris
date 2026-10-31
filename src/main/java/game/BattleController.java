@@ -45,6 +45,43 @@ public final class BattleController implements AutoCloseable {
     private boolean running;
     private Outcome outcome = Outcome.IN_PROGRESS;
     private EndReason endReason;
+    private boolean paused;
+    private long startedNanos;
+    private long pausedNanos;
+    private long pauseStartedNanos;
+    private long finishedNanos;
+
+    public record ViewSnapshot(Map<Player, ActionController.ViewSnapshot> players,
+            boolean paused, Outcome outcome, EndReason endReason, long elapsedPlayMillis) {
+        public ViewSnapshot { players = Map.copyOf(players); }
+    }
+
+    /** 양쪽 플레이어와 결과를 같은 시점에 조회한다. 실제 UI 갱신은 반환 후 EDT에서 한다. */
+    public synchronized ViewSnapshot getViewSnapshot() {
+        Map<Player, ActionController.ViewSnapshot> views = new EnumMap<>(Player.class);
+        players.forEach((player, action) -> views.put(player, action.getViewSnapshot()));
+        return new ViewSnapshot(views, paused, outcome, endReason, getElapsedPlayMillis());
+    }
+
+    /** 정지 상태는 경기 전체에서 하나만 관리한다. UI/네트워크 콜백은 잠금 안에서 호출하지 않는다. */
+    public synchronized void setPaused(boolean paused) {
+        if (!running || this.paused == paused || !reportedGameOvers.isEmpty()) return;
+        long now = System.nanoTime();
+        if (paused) pauseStartedNanos = now;
+        else pausedNanos += now - pauseStartedNanos;
+        this.paused = paused;
+        players.values().forEach(action -> action.setLocalPaused(paused));
+    }
+
+    public synchronized boolean isPaused() { return paused; }
+
+    /** 시간제한 담당자는 이 진행 시간을 사용하면 일시정지 시간을 제외할 수 있다. */
+    public synchronized long getElapsedPlayMillis() {
+        if (!started) return 0;
+        long now = finishedNanos != 0 ? finishedNanos : System.nanoTime();
+        long pendingPause = paused ? now - pauseStartedNanos : 0;
+        return Math.max(0, (now - startedNanos - pausedNanos - pendingPause) / 1_000_000L);
+    }
 
     /** 로컬 경기와 P2P 서버는 최종 결과를 확정한다. */
     public BattleController() { this(true); }
@@ -71,6 +108,8 @@ public final class BattleController implements AutoCloseable {
         if (players.isEmpty()) throw new IllegalStateException("At least one local player is required");
         started = true;
         running = true;
+        startedNanos = System.nanoTime();
+        players.values().forEach(action -> action.setLocalPaused(false));
         boolean oneOver = isGameOver(Player.ONE), twoOver = isGameOver(Player.TWO);
         if (oneOver && twoOver && resultAuthority) finish(Outcome.DRAW, EndReason.TOP_OUT);
         else {
@@ -158,6 +197,7 @@ public final class BattleController implements AutoCloseable {
         // 뒤늦은 상대 탈락이나 시간 만료가 이미 확정한 승자를 바꾸지 못하게 한다.
         if (!running) return false;
         running = false;
+        finishedNanos = System.nanoTime();
         outcome = result;
         endReason = reason;
         outgoingAttacks.clear();
@@ -172,6 +212,7 @@ public final class BattleController implements AutoCloseable {
         // 승패가 정해진 뒤 창을 닫더라도 기존 결과를 CANCELLED로 덮어쓰지 않는다.
         if (outcome == Outcome.IN_PROGRESS) {
             running = false;
+            finishedNanos = System.nanoTime();
             outcome = Outcome.CANCELLED;
             endReason = EndReason.CANCELLED;
             outgoingAttacks.clear();

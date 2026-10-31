@@ -36,6 +36,48 @@ public class ActionController {
 
     public record ClearingCell(int row, int column) {}
 
+    /** 셀에는 기존 보드와 같은 표시 인코딩을 사용한다. 원본 Block은 화면에 넘기지 않는다. */
+    public record BlockSnapshot(int x, int y, int[][] cells) {
+        public BlockSnapshot { cells = copyCells(cells); }
+        @Override public int[][] cells() { return copyCells(cells); }
+    }
+
+    /** 한 프레임에 필요한 값을 같은 잠금 안에서 수집한다. 배열은 매 조회마다 복사한다. */
+    public record ViewSnapshot(int[][] board, int hiddenRows,
+            BlockSnapshot currentBlock, BlockSnapshot nextBlock,
+            List<Integer> clearingRows, List<ClearingCell> clearingCells,
+            long animationElapsedMs, int score, int level, int lines,
+            List<int[]> pendingAttackRows, boolean paused, boolean stopped, boolean gameOver) {
+        public ViewSnapshot {
+            board = copyCells(board);
+            clearingRows = List.copyOf(clearingRows);
+            clearingCells = List.copyOf(clearingCells);
+            pendingAttackRows = BattleController.copyAttackRows(pendingAttackRows);
+        }
+        @Override public int[][] board() { return copyCells(board); }
+        @Override public List<int[]> pendingAttackRows() {
+            return BattleController.copyAttackRows(pendingAttackRows);
+        }
+    }
+
+    private static int[][] copyCells(int[][] cells) {
+        return java.util.Arrays.stream(cells).map(int[]::clone).toArray(int[][]::new);
+    }
+
+    /** 직접 호출할 때는 호출자가 소유한 블록만 넘긴다. 실행 중인 게임은 getViewSnapshot()으로 조회한다. */
+    public static BlockSnapshot snapshotOf(Block block) {
+        if (block == null) return null;
+        int[][] shape = block.getShape();
+        int[][] cells = new int[shape.length][];
+        for (int row = 0; row < shape.length; row++) {
+            cells[row] = new int[shape[row].length];
+            for (int col = 0; col < shape[row].length; col++) {
+                cells[row][col] = ItemAppearanceResolver.toBoardCell(block, row, col);
+            }
+        }
+        return new BlockSnapshot(block.getX(), block.getY(), cells);
+    }
+
     private Board board;
     private Block block;
     private Block nextBlock;
@@ -61,6 +103,10 @@ public class ActionController {
     private boolean stopped;
     private long clearDeadlineNanos;
     private long remainingClearMs;
+    private long animationStartedNanos;
+    private long activeNanos;
+    private long clockUpdatedNanos = System.nanoTime();
+    private long pauseRevision;
 
     public ActionController(Board board, Block block, GameStateManager gameStateManager,
                             ScoreManager scoreManager, Difficulty difficulty, GameMode mode) {
@@ -102,6 +148,37 @@ public class ActionController {
         return mode;
     }
 
+    public ViewSnapshot getViewSnapshot() {
+        synchronized (stateLock) {
+            long elapsedMs = clearing ? (activeTimeNanos() - animationStartedNanos) / 1_000_000L : 0;
+            return new ViewSnapshot(board.getBoard(), board.getHiddenRows(), snapshotOf(block),
+                    snapshotOf(nextBlock), clearingRows, clearingCells, elapsedMs,
+                    scoreManager.getScore(), gameStateManager.getCurrentLevel(),
+                    gameStateManager.getTotalLinesCleared(), pendingAttackRows,
+                    paused, stopped, gameStateManager.isGameOver());
+        }
+    }
+
+    // GameLoop도 같은 모니터에서 기다려 정지/종료 신호를 놓치지 않도록 한다.
+    Object stateLock() { return stateLock; }
+
+    long activeTimeNanos() {
+        synchronized (stateLock) {
+            long now = System.nanoTime();
+            if (!paused && !stopped) activeNanos += now - clockUpdatedNanos;
+            clockUpdatedNanos = now;
+            return activeNanos;
+        }
+    }
+
+    long pauseRevision() {
+        synchronized (stateLock) { return pauseRevision; }
+    }
+
+    public boolean isPaused() {
+        synchronized (stateLock) { return paused; }
+    }
+
     public boolean isClearing() {
         synchronized (stateLock) {
             return clearing;
@@ -119,7 +196,9 @@ public class ActionController {
     // 게임 종료 시 예약된 줄 삭제 타이머 정리 + //FR-37
     public void shutdown() {
         synchronized (stateLock) {
+            activeTimeNanos();
             stopped = true;
+            stateLock.notifyAll();
             clearTimer.cancel();
             if (pendingClear != null) pendingClear.cancel();
             pendingClear = null;
@@ -226,10 +305,24 @@ public class ActionController {
 
     public void setPaused(boolean paused) {
         synchronized (stateLock) {
+            if (battle != null) {
+                battle.setPaused(paused);
+            } else {
+                setLocalPaused(paused);
+            }
+        }
+    }
+
+    // BattleController에서만 플레이어 각각에 적용한다. 다시 경기 API로 위임하지 않는다.
+    void setLocalPaused(boolean paused) {
+        synchronized (stateLock) {
             if (stopped || this.paused == paused) {
                 return;
             }
+            activeTimeNanos();
             this.paused = paused;
+            pauseRevision++;
+            stateLock.notifyAll();
             if (!clearing) {
                 return;
             }
@@ -286,6 +379,7 @@ public class ActionController {
                     clearingBomb = bombItem;
                     clearingCells = findBombClearingCells(bombItem);
                     clearing = true;
+                    animationStartedNanos = activeTimeNanos();
                     scheduleLineClear(animationMs);
                 }
                 return;
@@ -350,6 +444,7 @@ public class ActionController {
                     // 삭제 대상 줄을 먼저 보여주고 animationMs 뒤에 실제로 삭제
                     clearingRows = List.copyOf(rowsToClear);
                     clearing = true;
+                    animationStartedNanos = activeTimeNanos();
                     scheduleLineClear(animationMs);
                 }
             }

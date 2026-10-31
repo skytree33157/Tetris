@@ -26,6 +26,16 @@ public class GamePanel extends JPanel{
     private final Board board;
     private int cellSize;
     private volatile Block currentBlock;
+    private volatile ActionController.ViewSnapshot snapshot;
+
+    /**
+     * EDT에서 호출한다. 대전에서는 각 패널에 해당 플레이어의 복사본을 전달한다.
+     * 이후 렌더링은 복사본만 사용한다. 기존 setCurrentBlock/setClearingRows/Cells는 이전 방식의 호출자용이다.
+     */
+    public void setSnapshot(ActionController.ViewSnapshot snapshot) {
+        this.snapshot = java.util.Objects.requireNonNull(snapshot);
+        repaint();
+    }
 
     public GamePanel(Board board) {
         this.board = board;
@@ -51,6 +61,18 @@ public class GamePanel extends JPanel{
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         ColorMode colormode = AppSettings.getInstance().getColorMode();
+        ActionController.ViewSnapshot frame = snapshot;
+        if (frame != null) {
+            BlockRenderer.drawCells(g2, frame.board(), 0, 0, cellSize, colormode);
+            ActionController.BlockSnapshot falling = frame.currentBlock();
+            if (falling != null) {
+                BlockRenderer.drawCells(g2, falling.cells(), falling.x() * cellSize,
+                        falling.y() * cellSize, cellSize, colormode);
+            }
+            drawClearingTargets(g2, frame.clearingRows(), frame.clearingCells(), frame.animationElapsedMs());
+            drawGridLines(g2);
+            return;
+        }
         
         drawFixedCells(g2, colormode);
         drawCurrentBlock(g2, colormode);
@@ -99,10 +121,15 @@ public class GamePanel extends JPanel{
     private void drawClearingTargets(Graphics2D g2) {
         List<Integer> rows = clearingRows;
         List<ActionController.ClearingCell> cells = clearingCells;
+        drawClearingTargets(g2, rows, cells, System.currentTimeMillis());
+    }
+
+    private void drawClearingTargets(Graphics2D g2, List<Integer> rows,
+            List<ActionController.ClearingCell> cells, long elapsedMs) {
         if (rows.isEmpty() && cells.isEmpty()) {
             return;
         }
-        if ((System.currentTimeMillis() / FLASH_INTERVAL_MS) % 2 != 0) {
+        if ((elapsedMs / FLASH_INTERVAL_MS) % 2 != 0) {
             return;
         }
         g2.setColor(FLASH_COLOR);
