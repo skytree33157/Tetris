@@ -1,49 +1,49 @@
 package game;
 
-import score.DropType;
+import java.util.concurrent.TimeUnit;
 import score.ScoreManager;
-// 스레드 및 일시정지 클래스
 
+/** 자동 낙하는 플레이어별로 실행하되, 정지 상태와 시계는 ActionController를 따른다. */
 public class GameLoop implements Runnable {
-
-    private ActionController actionController;
-    private GameStateManager gameStateManager;
-    private ScoreManager scoreManager;
-    private volatile boolean isPaused = false;
+    private final ActionController actionController;
+    private final GameStateManager gameStateManager;
 
     public GameLoop(ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager) {
         this.actionController = actionController;
         this.gameStateManager = gameStateManager;
-        this.scoreManager = scoreManager;
     }
 
-    public synchronized void togglePause() {
-        isPaused = !isPaused;
-
-        //FR-37
-        actionController.setPaused(isPaused);
+    public void togglePause() {
+        synchronized (actionController.stateLock()) {
+            actionController.setPaused(!actionController.isPaused());
+        }
     }
 
-    public boolean isPaused() {
-        return isPaused;
-    }
+    public boolean isPaused() { return actionController.isPaused(); }
 
-    @Override
-    public void run() {
-        while (!gameStateManager.isGameOver()) { //gameover = true일 때까지 반복
+    @Override public void run() {
+        Object lock = actionController.stateLock();
+        synchronized (lock) {
+            long nextDrop = actionController.activeTimeNanos()
+                    + TimeUnit.MILLISECONDS.toNanos(gameStateManager.getDropSpeed());
             try {
-                Thread.sleep(gameStateManager.getDropSpeed());
-                if (!isPaused) {
-                    boolean isMovedDown = actionController.moveDownAction();
-                    if(isMovedDown) {
-                        // AUTO Drop 점수 계산
-                        int currentLevel = gameStateManager.getCurrentLevel();
-                        scoreManager.addDropScore(1, DropType.AUTO, currentLevel);
+                while (!actionController.isGameOver() && !actionController.isStopped()) {
+                    if (actionController.isPaused()) {
+                        lock.wait();
+                        continue;
                     }
+                    long remaining = nextDrop - actionController.activeTimeNanos();
+                    if (remaining > 0) {
+                        TimeUnit.NANOSECONDS.timedWait(lock, remaining);
+                        continue;
+                    }
+                    actionController.automaticDropAction();
+                    // 지연된 프레임을 한꺼번에 보상하지 않고 다음 한 칸을 예약한다.
+                    nextDrop = actionController.activeTimeNanos()
+                            + TimeUnit.MILLISECONDS.toNanos(gameStateManager.getDropSpeed());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return;
             }
         }
     }

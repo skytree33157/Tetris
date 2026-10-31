@@ -27,6 +27,17 @@ public final class BlockRenderer {
 
     private BlockRenderer() {}
 
+    /** 보드와 같은 표시 인코딩의 복사본을 그린다. 원본 Block/Board에 접근하지 않는다. */
+    public static void drawCells(Graphics2D g, int[][] cells, int x, int y, int size, ColorMode mode) {
+        if (g == null || cells == null || mode == null || size <= 0) return;
+        for (int row = 0; row < cells.length; row++) {
+            if (y + row * size < 0) continue;
+            for (int col = 0; col < cells[row].length; col++) {
+                drawBoardCell(g, x + col * size, y + row * size, size, cells[row][col], mode);
+            }
+        }
+    }
+
     // 셀을 그리는 메서드
     public static void drawCell(
             Graphics2D g,

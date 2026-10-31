@@ -18,6 +18,56 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class GamePanelTest {
+    @Test
+    void snapshotPaintIgnoresLaterBoardChanges() throws Exception {
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+            Board board = new Board();
+            board.getBoard()[8][2] = 11;
+            ActionController action = new ActionController(board, new OBlock(), new GameStateManager(),
+                    new score.ScoreManager(), difficulty.Difficulty.NORMAL, GameMode.NORMAL, 0);
+            try {
+                GamePanel panel = new GamePanel(board);
+                action.setPaused(true);
+                panel.setSnapshot(action.getViewSnapshot());
+                BufferedImage before = paint(panel);
+                board.getBoard()[8][2] = 0;
+                BufferedImage after = paint(panel);
+                assertEquals(before.getRGB(65, 245), after.getRGB(65, 245));
+                assertTrue(hasNonBlackPixel(after, 61, 241, 28, 28));
+            } finally { action.shutdown(); }
+        });
+    }
+
+    @Test
+    void pausedDeletionPaintsTheSameFlashPhaseAcrossRefreshes() throws Exception {
+        Board board = new Board();
+        for (int row : new int[]{21, 22}) {
+            java.util.Arrays.fill(board.getBoard()[row], 1);
+            board.getBoard()[row][3] = board.getBoard()[row][4] = 0;
+        }
+        ActionController action = new ActionController(board, new OBlock(), new GameStateManager(),
+                new score.ScoreManager(), difficulty.Difficulty.NORMAL, GameMode.NORMAL, 10_000);
+        try {
+            action.hardDropAction();
+            action.setPaused(true);
+            int[][] images = new int[2][];
+            GamePanel[] panel = new GamePanel[1];
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                panel[0] = new GamePanel(board);
+                panel[0].setSnapshot(action.getViewSnapshot());
+                BufferedImage image = paint(panel[0]);
+                images[0] = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+            });
+            Thread.sleep(110);
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                panel[0].setSnapshot(action.getViewSnapshot());
+                BufferedImage image = paint(panel[0]);
+                images[1] = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+            });
+            org.junit.jupiter.api.Assertions.assertArrayEquals(images[0], images[1]);
+        } finally { action.shutdown(); }
+    }
+
     private final AppSettings settings = AppSettings.getInstance();
     private ScreenSize originalScreenSize;
     private ColorMode originalColorMode;

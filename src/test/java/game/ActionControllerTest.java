@@ -28,6 +28,22 @@ import score.ScoreManager;
 
 // FR-15 다음 블록, FR-30 줄 삭제 애니메이션, FR-31 모드별 아이템 생성
 class ActionControllerTest {
+    @Test
+    void everyDeletionStartsItsOwnDisplayClock() throws Exception {
+        ActionController action = create(GameMode.NORMAL, 10_000);
+        for (int row : new int[]{21, 22}) java.util.Arrays.fill(board.getBoard()[row], 1);
+        action.hardDropAction();
+        assertTrue(action.isClearing());
+        Thread.sleep(100);
+        long firstElapsed = action.getViewSnapshot().animationElapsedMs();
+        action.completeLineClear();
+        for (int row : new int[]{21, 22}) java.util.Arrays.fill(board.getBoard()[row], 1);
+        action.hardDropAction();
+        assertTrue(action.isClearing());
+        assertTrue(action.getViewSnapshot().animationElapsedMs() < firstElapsed,
+                "new deletion must restart its display clock");
+    }
+
     // 테스트 중 타이머가 먼저 줄을 지우지 않도록 길게 설정 (완료는 completeLineClear()로 직접 호출)
     private static final int LONG_ANIMATION_MS = 10_000;
 

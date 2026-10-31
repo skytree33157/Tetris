@@ -15,6 +15,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class BlockPreviewPanelTest {
+    @Test
+    void twoSnapshotPreviewsStayIndependentAndKeepItemSymbols() throws Exception {
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+            BlockPreviewPanel one = new BlockPreviewPanel(), two = new BlockPreviewPanel();
+            OBlock block = new OBlock();
+            one.setSnapshot(ActionController.snapshotOf(block));
+            two.setSnapshot(ActionController.snapshotOf(new item.types.BombItem()));
+            int[] before = paint(one).getRGB(0, 0, 80, 80, null, 0, 80);
+            block.getShape()[0][0] = 0;
+            assertTrue(java.util.Arrays.equals(before, paint(one).getRGB(0, 0, 80, 80, null, 0, 80)));
+            assertTrue(hasNonBlackPixel(paint(two), 20, 20, 40, 40));
+            two.setSnapshot(null);
+            assertEquals(Color.BLACK.getRGB(), paint(two).getRGB(40, 40));
+            assertTrue(hasNonBlackPixel(paint(one), 20, 20, 40, 40));
+        });
+    }
+
     private final AppSettings settings = AppSettings.getInstance();
     private ColorMode originalColorMode;
 
