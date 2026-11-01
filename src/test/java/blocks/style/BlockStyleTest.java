@@ -35,4 +35,14 @@ class BlockStyleTest {
             assertEquals(new Color(0x454B54), BlockStyle.of(BlockType.BOMB, mode).getColor());
         }
     }
+
+    @Test
+    void attackCellsAreGreyAndHaveNoItemSymbolInEveryMode() {
+        for (ColorMode mode:ColorMode.values()) {
+            BlockStyle style=BlockStyle.of(BlockType.ATTACK,mode);
+            assertEquals(new Color(0x808080),style.getColor());
+            assertEquals(BlockPattern.GRID,style.getPattern());
+        }
+        assertEquals('\0',ui.ItemAppearanceResolver.fromBoardCell(BlockType.ATTACK.getValue()).symbol());
+    }
 }
