@@ -84,8 +84,8 @@ public class AppSettings {
             KeyEvent.VK_C,
             KeyEvent.VK_V,
             KeyEvent.VK_H,
-            KeyEvent.VK_SHIFT,
-            KeyEvent.VK_CONTROL
+            KeyEvent.VK_J,
+            KeyEvent.VK_K
         };
 
         for (int candidate : candidates) {
