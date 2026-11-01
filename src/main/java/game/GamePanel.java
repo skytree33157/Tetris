@@ -13,6 +13,7 @@ import blocks.style.ColorMode;
 import board.Board;
 import menu.settings.AppSettings;
 import ui.BlockRenderer;
+import ui.theme.Theme;
 
 // 보드 상태 + 현재 낙하 중인 블록을 그리는 패널
 public class GamePanel extends JPanel{
@@ -46,16 +47,21 @@ public class GamePanel extends JPanel{
         this.clearingCells = clearingCells;
     }
 
-    @Override 
+    @ Override 
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         ColorMode colormode = AppSettings.getInstance().getColorMode();
-        
+
+        if (colormode == ColorMode.TFSE) {
+            g2.setColor(Theme.BOARD_BG);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+        }
+
         drawFixedCells(g2, colormode);
         drawCurrentBlock(g2, colormode);
         drawClearingTargets(g2);
-        drawGridLines(g2);
+        drawGridLines(g2, colormode);
     }
     
     // 이미 고정된(쌓인) 블록들을 그림
@@ -80,8 +86,8 @@ public class GamePanel extends JPanel{
         BlockRenderer.drawBlock(g2, block, 0, 0, cellSize, colorMode);
     }
 
-    private void drawGridLines(Graphics2D g2) {
-        g2.setColor(Color.DARK_GRAY);
+    private void drawGridLines(Graphics2D g2, ColorMode colorMode) {
+        g2.setColor(colorMode == ColorMode.TFSE ? Theme.GRID_LINE : Color.DARK_GRAY);
         int width = board.getWidth() * cellSize;
         int top = board.getHiddenRows() * cellSize;
         int bottom = (board.getHiddenRows() + board.getHeight()) * cellSize;

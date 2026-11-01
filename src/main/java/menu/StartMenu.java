@@ -10,9 +10,8 @@ import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 
 import game.GameMode;
-
+import menu.screens.StartMenuScreen;
 import menu.settings.SettingsScreen;
-import menu.settings.screens.StartMenuScreen;
 
 
 public class StartMenu extends JFrame {

@@ -169,6 +169,7 @@ public class SettingsScreen extends JDialog {
             case PROTANOPIA -> "적색맹";
             case DEUTERANOPIA -> "녹색맹";
             case TRITANOPIA -> "청황색맹";
+            case TFSE -> "TFSE 테마";
         };
     }
 
