@@ -26,6 +26,11 @@ public class ActionController {
     private Board board;
     private Block block;
     private Block nextBlock;
+
+    //FR-50
+    private Block heldBlock;
+    private boolean holdUsed;
+
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
     private final Difficulty difficulty;
@@ -80,6 +85,45 @@ public class ActionController {
     public synchronized Block getNextBlock() {
         return nextBlock;
     }
+
+    //FR-50
+    public synchronized Block getHeldBlock() {
+        return heldBlock;
+    }
+
+    public synchronized boolean holdAction() {
+        if (gameStateManager.isGameOver()
+                || clearing || paused || stopped || holdUsed) {
+            return false;
+        }
+
+        // 착지 후 처리 중인 무게추를 홀드로 빼내지 않음
+        if (block instanceof WeightItem weightItem && weightItem.isLanded()) {
+            return false;
+        }
+
+        Block outgoing = block;
+
+        if (heldBlock == null) {
+            heldBlock = outgoing;
+            spawnNextBlock(false);
+        } else {
+            block = heldBlock;
+            heldBlock = outgoing;
+
+            block.setX(startX);
+            block.setY(startY);
+
+            if (!board.isValidPosition(block.getShape(), startX, startY)) {
+                gameStateManager.setGameOver(true);
+            }
+        }
+
+        holdUsed = true;
+        return true;
+    }
+
+
 
     public GameMode getMode() {
         return mode;
@@ -319,6 +363,7 @@ public class ActionController {
     }
     // 다음 블록 또는 아이템을 생성하는 메서드 (아이템은 미리보기에 먼저 표시됨)
     private void spawnNextBlock(boolean shouldSpawnItem) {
+        holdUsed = false; //FR-50
         block = nextBlock;
         if (mode == GameMode.ITEM && shouldSpawnItem) {
             nextBlock = BlockFactory.createRandomItem(difficulty);

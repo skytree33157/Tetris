@@ -49,6 +49,7 @@ public class GameScreen extends JFrame {
     private final Thread gameThread;
     private final Timer renderTimer;
     private final BlockPreviewPanel blockPreviewPanel;
+    private final BlockPreviewPanel holdPreviewPanel; //FR-50
     private final Difficulty difficulty;
     private final GameMode mode;
     private PauseScreen pauseScreen;
@@ -91,6 +92,11 @@ public class GameScreen extends JFrame {
         gamePanel.setCurrentBlock(actionController.getCurrentBlock());
         blockPreviewPanel = new BlockPreviewPanel();
         blockPreviewPanel.setBlock(actionController.getNextBlock());
+
+        //FR-50
+        holdPreviewPanel = new BlockPreviewPanel();
+        holdPreviewPanel.setBlock(actionController.getHeldBlock());
+
         gameController = new GameController(
             gameLoop, actionController, gameStateManager, scoreManager, appStateManager, 
                 () -> {
@@ -150,6 +156,7 @@ public class GameScreen extends JFrame {
         gamePanel.setClearingRows(actionController.getClearingRows());
         gamePanel.setClearingCells(actionController.getClearingCells());
         blockPreviewPanel.setBlock(actionController.getNextBlock());
+        holdPreviewPanel.setBlock(actionController.getHeldBlock()); //FR-50
         levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
         linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());
         scoreLabel.setText("SCORE: " + scoreManager.getScore());
@@ -183,12 +190,26 @@ public class GameScreen extends JFrame {
         blockPreviewPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         blockPreviewPanel.setMaximumSize(blockPreviewPanel.getPreferredSize());
 
+        //FR-50
+        holdPreviewPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        holdPreviewPanel.setMaximumSize(holdPreviewPanel.getPreferredSize());
+
         side.add(modeLabel);
         side.add(Box.createVerticalStrut(8));
         side.add(difficultyLabel);
         side.add(Box.createVerticalStrut(15));
+
+        //FR-50
+        side.add(createInfoLabel("NEXT"));
+        side.add(Box.createVerticalStrut(4));
         side.add(blockPreviewPanel);
+        side.add(Box.createVerticalStrut(12));
+
+        side.add(createInfoLabel("HOLD"));
+        side.add(Box.createVerticalStrut(4));
+        side.add(holdPreviewPanel);
         side.add(Box.createVerticalStrut(15));
+        
         side.add(levelLabel);
         side.add(Box.createVerticalStrut(8));
         side.add(linesLabel);

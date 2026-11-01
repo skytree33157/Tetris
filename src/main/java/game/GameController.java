@@ -98,6 +98,7 @@ public class GameController extends KeyAdapter {
         boundKeyCodes.add(settings.getKey(KeyAction.MOVE_RIGHT));
         boundKeyCodes.add(settings.getKey(KeyAction.MOVE_DOWN));
         boundKeyCodes.add(settings.getKey(KeyAction.ROTATE));
+        boundKeyCodes.add(settings.getKey(KeyAction.HOLD));
         boundKeyCodes.add(KeyEvent.VK_P);
         boundKeyCodes.add(KeyEvent.VK_ESCAPE);
         boundKeyCodes.add(KeyEvent.VK_SPACE);
@@ -227,6 +228,9 @@ public class GameController extends KeyAdapter {
         }
         else if(keyCode==settings.getKey(KeyAction.ROTATE)){
             actionController.rotateAction();
+        }
+        else if(keyCode==settings.getKey(KeyAction.HOLD)) {
+            actionController.holdAction();
         }
         else if(keyCode==KeyEvent.VK_SPACE){
             int distance = actionController.hardDropAction();
