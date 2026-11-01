@@ -35,6 +35,25 @@ import item.types.SlowItem;
 import item.types.WeightItem;
 // FR-06·16·33·36: 화면 없는 이미지로 렌더러 검증. NEXT 패널 자체 검증 X.
 class BlockRendererTest {
+    @Test
+    void copiedBlocksRenderExactlyLikeLiveBlocksIncludingItemsInEveryColorMode() {
+        for (ColorMode mode : ColorMode.values()) {
+            for (Block block : new Block[]{new OBlock(), new IBlock(), new BombItem(), new WeightItem(),
+                    new LineClearItem(new OBlock(), 0, 0), new BonusItem(new OBlock(), 0, 0),
+                    new SlowItem(new OBlock(), 0, 0)}) {
+                block.setX(0); block.setY(0);
+                var copy = game.ActionController.snapshotOf(block);
+                BufferedImage live = image(), detached = image();
+                Graphics2D g1 = live.createGraphics(), g2 = detached.createGraphics();
+                try {
+                    BlockRenderer.drawBlock(g1, block, 5, 5, 20, mode);
+                    BlockRenderer.drawCells(g2, copy.cells(), 5, 5, 20, mode);
+                } finally { g1.dispose(); g2.dispose(); }
+                assertArrayEquals(pixels(live), pixels(detached), block.getClass().getSimpleName() + ": " + mode);
+            }
+        }
+    }
+
     private BufferedImage image() { return new BufferedImage(90,90,BufferedImage.TYPE_INT_ARGB); }
     private int[] pixels(BufferedImage image) { return image.getRGB(0,0,90,90,null,0,90); }
     private BufferedImage cell(Block block, int row, int col, ColorMode mode, int size) {

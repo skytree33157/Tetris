@@ -88,9 +88,9 @@ public class GameScreen extends JFrame {
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
         gamePanel = new GamePanel(board);
-        gamePanel.setCurrentBlock(actionController.getCurrentBlock());
+        gamePanel.setSnapshot(actionController.getViewSnapshot());
         blockPreviewPanel = new BlockPreviewPanel();
-        blockPreviewPanel.setBlock(actionController.getNextBlock());
+        blockPreviewPanel.setSnapshot(actionController.getViewSnapshot().nextBlock());
         gameController = new GameController(
             gameLoop, actionController, gameStateManager, scoreManager, appStateManager, 
                 () -> {
@@ -146,21 +146,19 @@ public class GameScreen extends JFrame {
 
     // 주기적으로 상태를 화면에 반영하고, 게임오서 시 결과 화면으로 전환
     private void onTick(){
-        gamePanel.setCurrentBlock(actionController.getCurrentBlock());
-        gamePanel.setClearingRows(actionController.getClearingRows());
-        gamePanel.setClearingCells(actionController.getClearingCells());
-        blockPreviewPanel.setBlock(actionController.getNextBlock());
-        levelLabel.setText("LEVEL: " + gameStateManager.getCurrentLevel());
-        linesLabel.setText("LINES: " + gameStateManager.getTotalLinesCleared());
-        scoreLabel.setText("SCORE: " + scoreManager.getScore());
-        gamePanel.repaint();
+        ActionController.ViewSnapshot frame = actionController.getViewSnapshot();
+        gamePanel.setSnapshot(frame);
+        blockPreviewPanel.setSnapshot(frame.nextBlock());
+        levelLabel.setText("LEVEL: " + frame.level());
+        linesLabel.setText("LINES: " + frame.lines());
+        scoreLabel.setText("SCORE: " + frame.score());
 
-        if (gameStateManager.isGameOver() && !gameOverHandled) {
+        if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
             stopGame();
             dispose();
             GameOverScreen gameOverScreen = new GameOverScreen(
-                scoreManager.getScore(), difficulty.name(), mode.name());
+                frame.score(), difficulty.name(), mode.name());
             gameOverScreen.setVisible(true);
         }
     }
