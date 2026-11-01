@@ -39,11 +39,11 @@ public final class BlockRenderer {
         if (g == null || type == null || mode == null || size <= 0) return;
 
         BlockStyle style = BlockStyle.of(type, mode);
-        drawCell(g, x, y, size, style, style.getColor());
+        drawCell(g, x, y, size, style, style.getColor(), mode == ColorMode.TFSE);
     }
 
     private static void drawCell(Graphics2D g, int x, int y, int size,
-                                 BlockStyle style, Color fillColor) {
+                                 BlockStyle style, Color fillColor, boolean bevel) {
 
         Graphics2D g2d = (Graphics2D) g.create();
 
@@ -52,6 +52,12 @@ public final class BlockRenderer {
             g2d.fillRect(x, y, size, size);
 
             Graphics2D patternGraphics = (Graphics2D) g2d.create();
+
+            // TFSE 테마: 패턴·검정 테두리 대신 좌상 하이라이트 / 우하 그림자
+            if (bevel) {
+                drawBevel(g2d, x, y, size);
+                return;
+            }
 
             try {
                 // 패턴 영역 클리핑
@@ -180,9 +186,21 @@ public final class BlockRenderer {
 
     private static void drawAttachedItemCell(Graphics2D g, int x, int y, int size,
                                              BlockType type, char symbol, ColorMode mode) {
-        drawCell(g, x, y, size, BlockStyle.of(type, mode), Color.WHITE);
+        drawCell(g, x, y, size, BlockStyle.of(type, mode), Color.WHITE, false);
         drawItemSymbol(g, x, y, size, symbol, Color.WHITE);
     }
+
+    // TFSE 테마 셀 입체감: 디자인 기준 30px에 3px
+    private static void drawBevel(Graphics2D g, int x, int y, int size) {
+        int b = Math.max(1, size / 10);
+        g.setColor(new Color(255, 255, 255, 82));
+        g.fillRect(x, y, size, b);
+        g.fillRect(x, y + b, b, size - b);
+        g.setColor(new Color(0, 0, 0, 82));
+        g.fillRect(x + b, y + size - b, size - b, b);
+        g.fillRect(x + size - b, y + b, b, size - 2 * b);
+    }
+
 
     // 한 칸 안에 폭탄 몸체·심지·B 표시. NEXT도 같은 메서드 사용.
     private static void drawBomb(Graphics2D g, int x, int y, int size) {

@@ -1,13 +1,14 @@
 package game;
 
 import blocks.core.Block;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import ui.BlockRenderer;
+import blocks.style.ColorMode;
+import ui.theme.Theme;
 
 public class BlockPreviewPanel extends JPanel {
 
@@ -19,7 +20,7 @@ public class BlockPreviewPanel extends JPanel {
 
     public BlockPreviewPanel() {
         setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
-        setBackground(Color.BLACK);
+        setBackground(Theme.CARD);
     }
 
     public void setBlock(Block block) {
@@ -36,6 +37,7 @@ public class BlockPreviewPanel extends JPanel {
             return;
         }
 
+        ColorMode mode = AppSettings.getInstance().getColorMode();
         int[][] shape = previewBlock.getShape();
         int shapeWidth = shape[0].length * CELL_SIZE;
         int shapeHeight = shape.length * CELL_SIZE;
@@ -56,7 +58,7 @@ public class BlockPreviewPanel extends JPanel {
                             x,
                             y,
                             CELL_SIZE,
-                            AppSettings.getInstance().getColorMode()
+                            mode
                     );
                 }
             }

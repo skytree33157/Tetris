@@ -10,6 +10,8 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import menu.settings.AppSettings;
+import ui.theme.Theme;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.Test;
 class BlockPreviewPanelTest {
     private final AppSettings settings = AppSettings.getInstance();
     private ColorMode originalColorMode;
+    private static final Color BG = Theme.CARD;
+
 
     @BeforeEach
     void setUp() {
@@ -34,15 +38,15 @@ class BlockPreviewPanelTest {
         BlockPreviewPanel panel = new BlockPreviewPanel();
 
         assertEquals(new Dimension(80, 80), panel.getPreferredSize());
-        assertEquals(Color.BLACK, panel.getBackground());
+        assertEquals(BG, panel.getBackground());
     }
 
     @Test // 빈 미리보기 패널이 배경만 그리는지 테스트
     void emptyPreviewPaintsOnlyTheBackground() {
         BufferedImage image = paint(new BlockPreviewPanel());
 
-        assertEquals(Color.BLACK.getRGB(), image.getRGB(40, 40));
-        assertEquals(Color.BLACK.getRGB(), image.getRGB(5, 5));
+        assertEquals(BG.getRGB(), image.getRGB(40, 40));
+        assertEquals(BG.getRGB(), image.getRGB(5, 5));
     }
 
     @Test // 블록을 설정하고 렌더링한 후 지우는지 테스트
@@ -53,13 +57,13 @@ class BlockPreviewPanelTest {
         BufferedImage image = paint(panel);
 
         assertTrue(hasNonBlackPixel(image, 20, 20, 40, 40));
-        assertEquals(Color.BLACK.getRGB(), image.getRGB(10, 40));
-        assertEquals(Color.BLACK.getRGB(), image.getRGB(70, 40));
+        assertEquals(BG.getRGB(), image.getRGB(10, 40));
+        assertEquals(BG.getRGB(), image.getRGB(70, 40));
 
         panel.setBlock(null);
         BufferedImage clearedImage = paint(panel);
 
-        assertEquals(Color.BLACK.getRGB(), clearedImage.getRGB(40, 40));
+        assertEquals(BG.getRGB(), clearedImage.getRGB(40, 40));
     }
 
     private static BufferedImage paint(BlockPreviewPanel panel) {
@@ -78,7 +82,7 @@ class BlockPreviewPanelTest {
     private static boolean hasNonBlackPixel(BufferedImage image, int x, int y, int width, int height) {
         for (int row = y; row < y + height; row++) {
             for (int col = x; col < x + width; col++) {
-                if (image.getRGB(col, row) != Color.BLACK.getRGB()) {
+                if (image.getRGB(col, row) != BG.getRGB()) {
                     return true;
                 }
             }
