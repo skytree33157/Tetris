@@ -294,7 +294,7 @@ public class GameController extends KeyAdapter {
         ignoreEscapeUntilReleased = true;
     }
 
-    private void openSettings() {
+    public void openSettings() {
         boolean wasPaused = gameLoop.isPaused();
         if (!wasPaused) {
             gameLoop.togglePause();

@@ -1,4 +1,4 @@
-package menu;
+package menu.screens;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -38,6 +38,7 @@ import game.GameLoop;
 import game.GameMode;
 import game.GamePanel;
 import game.GameStateManager;
+import menu.StartMenu;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
 import menu.settings.SettingsScreen;
@@ -45,6 +46,11 @@ import score.ScoreManager;
 import storage.ScoreStorage;
 import ui.components.RoundedPanel;
 import ui.theme.Theme;
+
+// need refactoring 
+import menu.GameOverScreen;
+import menu.ScoreRecord;
+
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
 public class GameScreen extends JFrame {
@@ -132,6 +138,9 @@ private JLabel scoreLabel;
                     refreshKeyGuide();
                     gamePanel.refreshCellSize();
                     pack();
+                    if (pauseScreen != null){
+                        pauseScreen.requestFocusInWindow();
+                    }
                 },
                 this::showPauseScreen,
                 this::exitApplication
@@ -515,33 +524,44 @@ private JLabel scoreLabel;
             return;
         }
 
-        pauseScreen = new PauseScreen(this::goToGame, this::goToStartMenu, this::exitApplication);
-        remove(boardHolder);
-        add(pauseScreen, BorderLayout.CENTER);
-        revalidate();
-        repaint();
+        pauseScreen = new PauseScreen(
+            this::goToGame, 
+            this::restartGame,
+            gameController::openSettings,
+            this::goToStartMenu, 
+            this::exitApplication);
+        setGlassPane((pauseScreen));
+        pauseScreen.setVisible(true);
         pauseScreen.requestFocusInWindow();
+    }
+
+    private void hidePauseScreen() {
+        if (pauseScreen != null) {
+            pauseScreen.setVisible(false);
+            pauseScreen = null;
+        }
     }
 
     // 게임 화면으로 돌아가기
     private void goToGame() {
-        if (pauseScreen != null) {
-            remove(pauseScreen);
-            add(boardHolder, BorderLayout.CENTER);
-            revalidate();
-            repaint();
-            pauseScreen = null;
-        }
+        hidePauseScreen();
         gameController.resumeGame();
         requestFocusInWindow();
     }
+
+    // 현재 판을 버리고 같은 모드로 새 게임
+    private void restartGame() {
+        stopGame();
+        hidePauseScreen();
+        dispose();
+        GameScreen gameScreen = new GameScreen(mode);
+        gameScreen.setVisible(true);
+    }
+
     // 시작 화면으로 돌아가기
     private void goToStartMenu() {
         stopGame();
-        if (pauseScreen != null) {
-            remove(pauseScreen);
-            pauseScreen = null;
-        }
+        hidePauseScreen();
         dispose();
         StartMenu startMenu = new StartMenu();
         startMenu.setVisible(true);

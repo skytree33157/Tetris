@@ -10,6 +10,7 @@ import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 
 import game.GameMode;
+import menu.screens.GameScreen;
 import menu.screens.StartMenuScreen;
 import menu.settings.SettingsScreen;
 
