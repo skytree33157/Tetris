@@ -154,7 +154,7 @@ class GamePanelGhostTest {
     }
 
     @Test
-    void weightGhostAppearsBelowObstaclesWithoutRemovingThem()
+    void weightGhostMatchesOneHardDropWithoutRemovingObstacles()
             throws Exception {
         board.getBoard()[15][3] = BlockType.I.getValue();
 
@@ -162,12 +162,21 @@ class GamePanelGhostTest {
 
         BufferedImage image = renderSnapshot();
 
-        assertTrue(hasInteriorDrawing(image, 3, 22, 30));
+        assertTrue(hasInteriorDrawing(image, 4, 14, 30));
+
+        assertFalse(hasInteriorDrawing(image, 3, 22, 30));
+
         assertEquals(
                 BlockType.I.getValue(),
                 board.getBoard()[15][3]
         );
-        assertEquals(0, controller.getCurrentBlock().getY());
+
+        Block weight = controller.getCurrentBlock();
+        assertEquals(0, weight.getY());
+
+        controller.hardDropAction();
+
+        assertEquals(14, weight.getY());
     }
 
     @Test
