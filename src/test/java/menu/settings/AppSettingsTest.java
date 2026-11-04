@@ -105,4 +105,21 @@ class AppSettingsTest {
         assertEquals(ScreenSize.MEDIUM, settings.getScreenSize());
         assertEquals(Difficulty.NORMAL, settings.getDifficulty());
     }
+
+    @Test
+    void missingHoldKeyUsesAvailableLetterKey() throws IOException {
+        Files.createDirectories(SETTINGS_PATH.getParent());
+
+        Files.writeString(
+                SETTINGS_PATH,
+                "key.MOVE_LEFT=" + KeyEvent.VK_C + "\n"
+                        + "key.MOVE_RIGHT=" + KeyEvent.VK_V + "\n"
+                        + "key.MOVE_DOWN=" + KeyEvent.VK_H + "\n"
+                        + "key.ROTATE=" + KeyEvent.VK_J + "\n"
+        );
+
+        settings.load();
+
+        assertEquals(KeyEvent.VK_K, settings.getKey(KeyAction.HOLD));
+    }
 }

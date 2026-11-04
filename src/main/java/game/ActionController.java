@@ -44,7 +44,7 @@ public class ActionController {
 
     /** 한 프레임에 필요한 값을 같은 잠금 안에서 수집한다. 배열은 매 조회마다 복사한다. */
     public record ViewSnapshot(int[][] board, int hiddenRows,
-            BlockSnapshot currentBlock, BlockSnapshot nextBlock,
+            BlockSnapshot currentBlock, BlockSnapshot nextBlock, BlockSnapshot heldBlock,
             List<Integer> clearingRows, List<ClearingCell> clearingCells,
             long animationElapsedMs, int score, int level, int lines,
             List<int[]> pendingAttackRows, boolean paused, boolean stopped, boolean gameOver) {
@@ -81,6 +81,11 @@ public class ActionController {
     private Board board;
     private Block block;
     private Block nextBlock;
+
+    //FR-50
+    private Block heldBlock;
+    private boolean holdUsed;
+
     private GameStateManager gameStateManager;
     private ScoreManager scoreManager;
     private final Difficulty difficulty;
@@ -144,6 +149,47 @@ public class ActionController {
         }
     }
 
+    //FR-50
+    public Block getHeldBlock() {
+        synchronized (stateLock) {
+            return heldBlock;
+        }
+    }
+
+    public boolean holdAction() {
+        synchronized (stateLock) {
+            if (cannotAct() || holdUsed) {
+                return false;
+            }
+
+            if (block instanceof WeightItem weightItem && weightItem.isLanded()) {
+                return false;
+            }
+
+            Block outgoing = block;
+
+            if (heldBlock == null) {
+                heldBlock = outgoing;
+                spawnNextBlock(false);
+            } else {
+                block = heldBlock;
+                heldBlock = outgoing;
+
+                block.setX(startX);
+                block.setY(startY);
+
+                if (!board.isValidPosition(block.getShape(), startX, startY)) {
+                    markGameOver();
+                }
+            }
+
+            holdUsed = true;
+            return true;
+        }
+    }
+
+
+
     public GameMode getMode() {
         return mode;
     }
@@ -152,7 +198,8 @@ public class ActionController {
         synchronized (stateLock) {
             long elapsedMs = clearing ? (activeTimeNanos() - animationStartedNanos) / 1_000_000L : 0;
             return new ViewSnapshot(board.getBoard(), board.getHiddenRows(), snapshotOf(block),
-                    snapshotOf(nextBlock), clearingRows, clearingCells, elapsedMs,
+                    snapshotOf(nextBlock), snapshotOf(heldBlock),
+                    clearingRows, clearingCells, elapsedMs,
                     scoreManager.getScore(), gameStateManager.getCurrentLevel(),
                     gameStateManager.getTotalLinesCleared(), pendingAttackRows,
                     paused, stopped, gameStateManager.isGameOver());
@@ -550,6 +597,7 @@ public class ActionController {
     }
     // 다음 블록 또는 아이템을 생성하는 메서드 (아이템은 미리보기에 먼저 표시됨)
     private void spawnNextBlock(boolean shouldSpawnItem) {
+        holdUsed = false; //FR-50
         block = nextBlock;
         if (mode == GameMode.ITEM && shouldSpawnItem) {
             nextBlock = BlockFactory.createRandomItem(difficulty);
