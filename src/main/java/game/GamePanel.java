@@ -1,5 +1,8 @@
 package game;
 
+//FR-51
+import java.awt.BasicStroke;
+
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -20,6 +23,9 @@ public class GamePanel extends JPanel{
     private static final long serialVersionUID =1L;
     private static final int FLASH_INTERVAL_MS = 75;
     private static final Color FLASH_COLOR = new Color(255, 255, 255, 220);
+    //FR-51
+    private static final Color GHOST_COLOR = new Color(160, 160, 160);
+
     private volatile List<Integer> clearingRows = List.of();
     private volatile List<ActionController.ClearingCell> clearingCells = List.of();
 
@@ -56,28 +62,123 @@ public class GamePanel extends JPanel{
         this.clearingCells = clearingCells;
     }
 
-    @Override 
+    @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
         Graphics2D g2 = (Graphics2D) g;
-        ColorMode colormode = AppSettings.getInstance().getColorMode();
+        ColorMode colorMode = AppSettings.getInstance().getColorMode();
         ActionController.ViewSnapshot frame = snapshot;
+
         if (frame != null) {
-            BlockRenderer.drawCells(g2, frame.board(), 0, 0, cellSize, colormode);
-            ActionController.BlockSnapshot falling = frame.currentBlock();
-            if (falling != null) {
-                BlockRenderer.drawCells(g2, falling.cells(), falling.x() * cellSize,
-                        falling.y() * cellSize, cellSize, colormode);
+            int[][] boardCells = frame.board();
+
+            BlockRenderer.drawCells(
+                    g2, boardCells, 0, 0, cellSize, colorMode
+            );
+
+            ActionController.BlockSnapshot falling =
+                    frame.currentBlock();
+
+            boolean showGhost = !frame.stopped()
+                    && !frame.gameOver()
+                    && frame.clearingRows().isEmpty()
+                    && frame.clearingCells().isEmpty();
+
+            if (showGhost) {
+                drawGhostBlock(g2, boardCells, falling);
             }
-            drawClearingTargets(g2, frame.clearingRows(), frame.clearingCells(), frame.animationElapsedMs());
+
+            if (falling != null) {
+                BlockRenderer.drawCells(
+                        g2,
+                        falling.cells(),
+                        falling.x() * cellSize,
+                        falling.y() * cellSize,
+                        cellSize,
+                        colorMode
+                );
+            }
+
+            drawClearingTargets(
+                    g2,
+                    frame.clearingRows(),
+                    frame.clearingCells(),
+                    frame.animationElapsedMs()
+            );
+
             drawGridLines(g2);
             return;
         }
-        
-        drawFixedCells(g2, colormode);
-        drawCurrentBlock(g2, colormode);
+
+        drawFixedCells(g2, colorMode);
+
+        // 기존 setCurrentBlock() 방식의 호출부에서도 표시
+        if (clearingRows.isEmpty() && clearingCells.isEmpty()) {
+            drawGhostBlock(
+                    g2,
+                    board.getBoard(),
+                    ActionController.snapshotOf(currentBlock)
+            );
+        }
+
+        drawCurrentBlock(g2, colorMode);
         drawClearingTargets(g2);
         drawGridLines(g2);
+    }
+
+    private void drawGhostBlock(
+            Graphics2D graphics,
+            int[][] boardCells,
+            ActionController.BlockSnapshot falling) {
+
+        if (falling == null) {
+            return;
+        }
+
+        ActionController.BlockSnapshot ghost =
+                GhostProjection.project(boardCells, falling);
+
+        // 현재 블록과 같은 위치면 별도 윤곽선을 표시할 필요가 없음
+        if (ghost == null || ghost.y() <= falling.y()) {
+            return;
+        }
+
+        int[][] shape = ghost.cells();
+
+        Graphics2D ghostGraphics =
+                (Graphics2D) graphics.create();
+
+        try {
+            ghostGraphics.setColor(GHOST_COLOR);
+            ghostGraphics.setStroke(new BasicStroke(2.0f));
+
+            for (int row = 0; row < shape.length; row++) {
+                int boardY = ghost.y() + row;
+
+                if (boardY < 0) {
+                    continue;
+                }
+
+                for (int col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col] == 0) {
+                        continue;
+                    }
+
+                    int pixelX = (ghost.x() + col) * cellSize;
+                    int pixelY = boardY * cellSize;
+
+                    ghostGraphics.drawRect(
+                            pixelX + 2,
+                            pixelY + 2,
+                            cellSize - 5,
+                            cellSize - 5
+                    );
+                }
+            }
+        } finally {
+            ghostGraphics.dispose();
+        }
     }
     
     // 이미 고정된(쌓인) 블록들을 그림
