@@ -22,15 +22,11 @@ import blocks.core.Block;
 import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
-import java.awt.event.KeyEvent;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
 import score.ScoreManager;
 
-// FR-13 게임 중 종료(ESC로 설정 진입), FR-19 게임 중 설정 변경
+// FR-13 게임 중 종료(ESC 길게), FR-19 게임 중 설정 변경(일시정지 메뉴에서 진입)
 class GameControllerTest {
     private final JPanel source = new JPanel();
 
@@ -84,9 +80,9 @@ class GameControllerTest {
                 System.currentTimeMillis(), 0, keyCode, KeyEvent.CHAR_UNDEFINED));
     }
 
-    @Test // FR-19: ESC로 설정을 여는 동안 일시정지, 닫으면 게임 재개
-    void escPausesWhileSettingsOpenAndResumesAfter() {
-        press(KeyEvent.VK_ESCAPE);
+        @Test // FR-19: 설정을 여는 동안 일시정지, 닫으면 게임 재개
+    void openSettingsPausesWhileOpenAndResumesAfter() {
+        controller.openSettings();
 
         assertEquals(1, settingsOpened);
         assertTrue(pausedWhileSettingsOpen);
@@ -100,24 +96,36 @@ class GameControllerTest {
         GameController[] holder = new GameController[1];
         holder[0] = new GameController(loop, action, manager, scoreManager, appState,
                 () -> holder[0].shutdown(), () -> { }, () -> { });
-        holder[0].keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
-                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
-        holder[0].keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED,
-                System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+        holder[0].openSettings();
 
         assertTrue(loop.isPaused());
         assertEquals(AppState.SETTINGS, appState.getCurrentState());
     }
 
     @Test // FR-19: P로 멈춘 상태에서 설정을 열고 닫으면 일시정지 유지
-    void escWhilePausedKeepsPausedAfterSettings() {
+    void settingsFromPauseMenuKeepsPaused() {
         press(KeyEvent.VK_P);
-        press(KeyEvent.VK_ESCAPE);
+        controller.openSettings();
 
         assertEquals(1, settingsOpened);
         assertTrue(loop.isPaused());
         assertEquals(AppState.PAUSED, appState.getCurrentState());
     }
+
+    @Test // ESC 짧게 누르기는 P처럼 일시정지 메뉴를 열고 닫으며 설정은 열지 않음
+    void shortEscapeTogglesPauseMenu() {
+        press(KeyEvent.VK_ESCAPE);
+        assertTrue(loop.isPaused());
+        assertEquals(AppState.PAUSED, appState.getCurrentState());
+        assertEquals(1, pauseHandlerCalls);
+
+        press(KeyEvent.VK_ESCAPE);
+        assertFalse(loop.isPaused());
+        assertEquals(AppState.PLAYING, appState.getCurrentState());
+        assertEquals(2, pauseHandlerCalls);
+        assertEquals(0, settingsOpened);
+    }
+
 
     @Test // P로 일시정지 화면 표시, 다시 P로 재개
     void pTogglesPause() {
@@ -177,7 +185,7 @@ class GameControllerTest {
     }
 
     @Test
-    void holdingEscapeExitsInsteadOfOpeningSettings() throws InterruptedException {
+    void holdingEscapeExitsInsteadOfPausing() throws InterruptedException {
         controller.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED,
                 System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
         assertTrue(exitCalled.await(GameController.ESCAPE_HOLD_THRESHOLD_MS + 1000L,
@@ -186,6 +194,7 @@ class GameControllerTest {
                 System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
 
         assertEquals(1, exitHandlerCalls);
+        assertEquals(0, pauseHandlerCalls);
         assertEquals(0, settingsOpened);
     }
 }

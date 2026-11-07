@@ -171,22 +171,8 @@ public class GameController extends KeyAdapter {
             if (gameStateManager.isGameOver()) {
                 return;
             }
-            
             // 일시정지 상태 변경
-            boolean wasPaused = gameLoop.isPaused();
-            gameLoop.togglePause();
-            appStateManager.transitionTo(
-                    wasPaused ? AppState.PLAYING : AppState.PAUSED
-            );
-            if (!wasPaused) {
-                leftPressed = false;
-                rightPressed = false;
-                downPressed = false;
-                keyTimer.stop();
-                
-            }
-            //FR-37
-            pauseHandler.run();
+            togglePauseMenu();
             return;
         }
 
@@ -264,7 +250,7 @@ public class GameController extends KeyAdapter {
             escapePressed = false;
             escapeHoldTimer.stop();
             if (!escapeHoldTriggered && !gameStateManager.isGameOver()) {
-                openSettings();
+                togglePauseMenu();
             }
             escapeHoldTriggered = false;
             return;
@@ -293,6 +279,26 @@ public class GameController extends KeyAdapter {
     public void suppressEscapeUntilReleased() {
         ignoreEscapeUntilReleased = true;
     }
+
+    // P와 ESC 짧게 누르기가 공유하는 일시정지 메뉴 열기/닫기
+    private void togglePauseMenu() {
+        boolean wasPaused = gameLoop.isPaused();
+        gameLoop.togglePause();
+        appStateManager.transitionTo(
+                wasPaused ? AppState.PLAYING : AppState.PAUSED
+        );
+        if (!wasPaused) {
+            leftPressed = false;
+            rightPressed = false;
+            downPressed = false;
+            keyTimer.stop();
+        }
+        //FR-37
+        pauseHandler.run();
+    }
+
+    // 일시정지 메뉴의 '설정' 버튼에서 호출
+
 
     public void openSettings() {
         boolean wasPaused = gameLoop.isPaused();

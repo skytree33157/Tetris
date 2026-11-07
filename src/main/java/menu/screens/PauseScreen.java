@@ -56,7 +56,7 @@ public class PauseScreen extends JPanel {
         card.add(Box.createVerticalStrut(6));
         card.add(centered(label("일시정지", Theme.body(28, Font.BOLD), Theme.TEXT)));
         card.add(Box.createVerticalStrut(4));
-        card.add(centered(label("P를 다시 누르면 계속합니다", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED)));
+        card.add(centered(label("P 또는 ESC를 다시 누르면 계속합니다", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED)));
         card.add(Box.createVerticalStrut(18));
 
         for (int i = 0; i < MENU_ITEMS.length; i++) {
