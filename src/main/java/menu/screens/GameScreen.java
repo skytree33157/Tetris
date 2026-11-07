@@ -38,10 +38,9 @@ import game.GameLoop;
 import game.GameMode;
 import game.GamePanel;
 import game.GameStateManager;
-import menu.StartMenu;
+import menu.views.PauseView;
 import menu.settings.AppSettings;
 import menu.settings.KeyAction;
-import menu.settings.SettingsScreen;
 import score.ScoreManager;
 import storage.ScoreStorage;
 import ui.components.RoundedPanel;
@@ -73,7 +72,7 @@ public class GameScreen extends JFrame {
     private final Difficulty difficulty;
     private final GameMode mode;
     private final int bestScore;
-    private PauseScreen pauseScreen;
+    private PauseView PauseView;
 
 private JLabel scoreLabel;
     private JLabel bestLabel;
@@ -126,8 +125,8 @@ private JLabel scoreLabel;
                     SettingsScreen settingsScreen = new SettingsScreen(GameScreen.this, () -> {}, () -> {
                         stopGame();
                         dispose();
-                        StartMenu startMenu = new StartMenu();
-                        startMenu.setVisible(true);
+                        StartMenuScreen StartMenuScreen = new StartMenuScreen();
+                        StartMenuScreen.setVisible(true);
                     }, true, this::suppressEscapeUntilReleased);
                     settingsScreen.setVisible(true);
                     if (closed) {
@@ -137,8 +136,8 @@ private JLabel scoreLabel;
                     refreshKeyGuide();
                     gamePanel.refreshCellSize();
                     pack();
-                    if (pauseScreen != null){
-                        pauseScreen.requestFocusInWindow();
+                    if (PauseView != null){
+                        PauseView.requestFocusInWindow();
                     }
                 },
                 this::showPauseScreen,
@@ -516,7 +515,7 @@ private JLabel scoreLabel;
 
     // 일시정지 화면 표시
     private void showPauseScreen() {
-        if (pauseScreen != null && pauseScreen.isVisible()) {
+        if (PauseView != null && PauseView.isVisible()) {
             //FR-37
             if(!gameLoop.isPaused()) {
                 goToGame();
@@ -524,21 +523,21 @@ private JLabel scoreLabel;
             return;
         }
 
-        pauseScreen = new PauseScreen(
+        PauseView = new PauseView(
             this::goToGame, 
             this::restartGame,
             gameController::openSettings,
             this::goToStartMenu, 
             this::exitApplication);
-        setGlassPane((pauseScreen));
-        pauseScreen.setVisible(true);
-        pauseScreen.requestFocusInWindow();
+        setGlassPane((PauseView));
+        PauseView.setVisible(true);
+        PauseView.requestFocusInWindow();
     }
 
     private void hidePauseScreen() {
-        if (pauseScreen != null) {
-            pauseScreen.setVisible(false);
-            pauseScreen = null;
+        if (PauseView != null) {
+            PauseView.setVisible(false);
+            PauseView = null;
         }
     }
 
@@ -563,8 +562,8 @@ private JLabel scoreLabel;
         stopGame();
         hidePauseScreen();
         dispose();
-        StartMenu startMenu = new StartMenu();
-        startMenu.setVisible(true);
+        StartMenuScreen StartMenuScreen = new StartMenuScreen();
+        StartMenuScreen.setVisible(true);
     }
 
     // 게임을 정리한 뒤 프로그램 종료

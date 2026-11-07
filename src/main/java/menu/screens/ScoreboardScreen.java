@@ -1,4 +1,4 @@
-package menu;
+package menu.screens;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -10,8 +10,8 @@ import java.util.Comparator;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import menu.screens.GameOverScreen;
-import menu.screens.ScoreboardView;
+import menu.ScoreRecord;
+import menu.views.ScoreboardView;
 import storage.ScoreStorage;
 
 public class ScoreboardScreen extends JFrame {
@@ -121,7 +121,7 @@ public class ScoreboardScreen extends JFrame {
         dispose();
 
         // 시작 메뉴 새로 생성
-        StartMenu menu = new StartMenu();
+        StartMenuScreen menu = new StartMenuScreen();
 
         // 시작 메뉴 화면 표시
         menu.setVisible(true);

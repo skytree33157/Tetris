@@ -1,4 +1,4 @@
-package menu.screens;
+package menu.views;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -34,7 +34,7 @@ public class GameOverView extends JPanel {
     public record Result(int score, String difficulty, String mode, int level, int lines, long elapsedMs,
                          boolean canRecord, boolean newBest) { }
 
-    private final ScoreBoardScreen ScoreBoard;
+    private final ScoreBoardPanel ScoreBoard;
     private final ThemedButton[] menuButtons;
     private final JTextField nameField = new JTextField();
     private final ThemedButton registerButton = new ThemedButton("등록", Kind.PRIMARY);
@@ -45,7 +45,7 @@ public class GameOverView extends JPanel {
         setBackground(Theme.BG);
         setBorder(BorderFactory.createEmptyBorder(28, 40, 28, 40));
 
-        ScoreBoard = new ScoreBoardScreen(onDifficulty, onMode);
+        ScoreBoard = new ScoreBoardPanel(onDifficulty, onMode);
 
         JPanel columns = new JPanel(new GridLayout(1, 2, 20, 0));
         columns.setOpaque(false);
@@ -193,7 +193,7 @@ public class GameOverView extends JPanel {
         return "ITEM".equals(mode) ? "아이템 모드" : "일반 모드";
     }
 
-    public ScoreBoardScreen ScoreBoard() {
+    public ScoreBoardPanel ScoreBoard() {
         return ScoreBoard;
     }
 

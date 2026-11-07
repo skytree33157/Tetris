@@ -1,4 +1,4 @@
-package menu.screens;
+package menu.views;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -25,7 +25,7 @@ import ui.components.ThemedButton.Kind;
 import ui.theme.Theme;
 
 // 일시정지 화면: 게임 창 전체를 어둡게 덮고 가운데에 메뉴 카드를 띄움
-public class PauseScreen extends JPanel {
+public class PauseView extends JPanel {
 
     private static final String[] MENU_ITEMS = {
         "계속하기",
@@ -40,7 +40,7 @@ public class PauseScreen extends JPanel {
     private final ThemedButton[] buttons = new ThemedButton[MENU_ITEMS.length];
     private int selectedIndex;
 
-    public PauseScreen(Runnable onResume, Runnable onRestart, Runnable onSettings,
+    public PauseView(Runnable onResume, Runnable onRestart, Runnable onSettings,
                        Runnable onQuit, Runnable onExit) {
         actions = new Runnable[] {onResume, onRestart, onSettings, onQuit, onExit};
 

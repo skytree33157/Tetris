@@ -11,7 +11,7 @@ import javax.swing.JFrame;
 
 import game.GameMode;
 import menu.ScoreRecord;
-import menu.StartMenu;
+import menu.views.GameOverView;
 import storage.ScoreStorage;
 
 public class GameOverScreen extends JFrame {
@@ -247,7 +247,7 @@ public class GameOverScreen extends JFrame {
             case 1:
                 dispose(); //GameOverScreen 종료(프로그램 자체 x)
 
-                StartMenu menu = new StartMenu(); //StartMenu 객체 생성
+                StartMenuScreen menu = new StartMenuScreen(); //StartMenuScreen 객체 생성
                 menu.setVisible(true); //화면에 보여주기
 
                 break;

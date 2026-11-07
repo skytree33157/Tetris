@@ -1,4 +1,4 @@
-package menu;
+package menu.screens;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import storage.ScoreStorage;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import menu.screens.GameOverScreen;
+import menu.ScoreRecord;
 
 class GameOverScreenTest {
     @TempDir

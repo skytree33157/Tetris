@@ -1,4 +1,4 @@
-package menu.screens;
+package menu.views;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -22,7 +22,7 @@ import ui.components.SegmentedControl;
 import ui.theme.Theme;
 
 // 난이도·모드별 TOP 10을 보여주는 카드. 게임오버 화면과 스코어보드 화면이 함께 사용
-public class ScoreBoardScreen extends RoundedPanel {
+public class ScoreBoardPanel extends RoundedPanel {
 
     private static final long serialVersionUID = 1L;
     private static final int ROW_COUNT = 10;
@@ -37,7 +37,7 @@ public class ScoreBoardScreen extends RoundedPanel {
     private final ScoreRow[] rows = new ScoreRow[ROW_COUNT];
     private final JLabel emptyLabel = new JLabel("저장된 기록이 없습니다.");
 
-    public ScoreBoardScreen(Consumer<String> onDifficulty, Consumer<String> onMode) {
+    public ScoreBoardPanel(Consumer<String> onDifficulty, Consumer<String> onMode) {
         super(Theme.CARD, Theme.CARD_BORDER, 12);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));

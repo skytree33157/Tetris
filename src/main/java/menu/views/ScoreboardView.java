@@ -1,4 +1,4 @@
-package menu.screens;
+package menu.views;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -18,7 +18,7 @@ public class ScoreboardView extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private final ScoreBoardScreen scoreBoard;
+    private final ScoreBoardPanel scoreBoard;
 
     public ScoreboardView(Runnable onBack, Runnable onReset,
                           Consumer<String> onDifficulty, Consumer<String> onMode) {
@@ -31,7 +31,7 @@ public class ScoreboardView extends JPanel {
         title.setForeground(Theme.TEXT);
         add(title, BorderLayout.NORTH);
 
-        scoreBoard = new ScoreBoardScreen(onDifficulty, onMode);
+        scoreBoard = new ScoreBoardPanel(onDifficulty, onMode);
         add(scoreBoard, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new BorderLayout());
@@ -52,7 +52,7 @@ public class ScoreboardView extends JPanel {
         return button;
     }
 
-    public ScoreBoardScreen ScoreBoard() {
+    public ScoreBoardPanel ScoreBoard() {
         return scoreBoard;
     }
 }
