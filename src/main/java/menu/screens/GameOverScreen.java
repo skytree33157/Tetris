@@ -179,6 +179,22 @@ public class GameOverScreen extends JFrame {
         }
     }
 
+    // 기록 조회 난이도 순환: EASY → NORMAL → HARD → EASY (direction이 음수면 반대로)
+    public static String nextDifficulty(String current, int direction) {
+        String[] order = {"EASY", "NORMAL", "HARD"};
+        int index = java.util.Arrays.asList(order).indexOf(current);
+        if (index < 0) {
+            index = 1;
+        }
+        int step = direction < 0 ? -1 : 1;
+        return order[(index + step + order.length) % order.length];
+    }
+
+    // 기록 조회 모드 전환: NORMAL ↔ ITEM
+    public static String nextMode(String current) {
+        return "NORMAL".equals(current) ? "ITEM" : "NORMAL";
+    }
+
     // 자격이 있는데 아직 등록하지 않았으면 입력한 이름으로 등록 (화면을 떠날 때도 호출)
     private void registerRecord() {
 
@@ -273,32 +289,13 @@ public class GameOverScreen extends JFrame {
             } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                 moveDown();
             } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                if (viewDifficulty.equals("EASY")) {
-                    viewDifficulty = "NORMAL";
-                } else if (viewDifficulty.equals("NORMAL")) {
-                    viewDifficulty = "HARD";
-                } else {
-                    viewDifficulty = "EASY";
-                }
-
+                viewDifficulty = nextDifficulty(viewDifficulty, 1);
                 refreshRecords();
             } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                if (viewDifficulty.equals("HARD")) {
-                    viewDifficulty = "NORMAL";
-                } else if (viewDifficulty.equals("NORMAL")) {
-                    viewDifficulty = "EASY";
-                } else {
-                    viewDifficulty = "HARD";
-                }
-
+                viewDifficulty = nextDifficulty(viewDifficulty, -1);
                 refreshRecords();
             } else if (e.getKeyCode() == KeyEvent.VK_TAB) {
-                if (viewMode.equals("NORMAL")) {
-                    viewMode = "ITEM";
-                } else {
-                    viewMode = "NORMAL";
-                }
-
+                viewMode = nextMode(viewMode);
                 refreshRecords();
             }
         }

@@ -10,7 +10,6 @@ import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
-import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.EnumMap;
@@ -46,8 +45,6 @@ import storage.ScoreStorage;
 import ui.components.RoundedPanel;
 import ui.theme.Theme;
 
-// need refactoring 
-import menu.ScoreRecord;
 
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
@@ -56,7 +53,6 @@ public class GameScreen extends JFrame {
     private static final long serialVersionUID = 1L;
     private static final int RENDER_INTERVAL_MS = 50;
     private static final int SIDE_WIDTH = 210;
-    private static final int MAX_LEVEL = 10;
 
   private final GameStateManager gameStateManager;
     private final AppStateManager appStateManager;
@@ -219,25 +215,16 @@ private JLabel scoreLabel;
         levelLabel.setText(String.valueOf(level));
         linesLabel.setText(String.valueOf(gameStateManager.getTotalLinesCleared()));
 
-        long sec = elapsedMs / 1000;
-        timeLabel.setText(String.format("%02d:%02d", sec / 60, sec % 60));
+        timeLabel.setText(GameHud.formatTime(elapsedMs));
 
         // getLevelSettings(): {감소량, 최소속도, 레벨업 블록 수, 레벨업 줄 수, 현재속도}
         int[] lv = gameStateManager.getLevelSettings();
-        if (level >= MAX_LEVEL) {
-            nextLevelLabel.setText("MAX");
-            levelProgress.setRatio(1.0);
-        } else {
-            int blocksLeft = lv[2] - gameStateManager.getCountBlock();
-            int linesLeft = lv[3] - gameStateManager.getCountClearLine();
-            nextLevelLabel.setText("블록 " + blocksLeft + " · 라인 " + linesLeft);
-            levelProgress.setRatio(Math.max(
-                    gameStateManager.getCountBlock() / (double) lv[2],
-                    gameStateManager.getCountClearLine() / (double) lv[3]));
-        }
+        int countBlock = gameStateManager.getCountBlock();
+        int countLine = gameStateManager.getCountClearLine();
+        nextLevelLabel.setText(GameHud.nextLevelText(level, countBlock, lv[2], countLine, lv[3]));
+        levelProgress.setRatio(GameHud.levelProgress(level, countBlock, lv[2], countLine, lv[3]));
 
-        int combo = scoreManager.getComboCount();
-        comboLabel.setText(combo >= 2 ? "x" + combo : "-");
+        comboLabel.setText(GameHud.comboText(scoreManager.getComboCount()));
     }
 
     // ---------- 레이아웃 ----------
@@ -335,7 +322,7 @@ private JLabel scoreLabel;
                 text(mode == GameMode.ITEM ? "아이템" : "일반", Theme.body(13, Font.BOLD), Theme.TEXT)));
         infoCard.add(Box.createVerticalStrut(6));
         infoCard.add(row(text("난이도", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED),
-                text(difficultyLabel(difficulty), Theme.body(13, Font.BOLD), Theme.TEXT)));
+                text(GameHud.difficultyLabel(difficulty), Theme.body(13, Font.BOLD), Theme.TEXT)));
         addBlock(col, infoCard);
 
         RoundedPanel keyCard = card();
@@ -368,37 +355,13 @@ private JLabel scoreLabel;
     private void refreshKeyGuide() {
         AppSettings settings = AppSettings.getInstance();
         for (Map.Entry<KeyAction, JLabel> e : keyLabels.entrySet()) {
-            e.getValue().setText(keyName(settings.getKey(e.getKey())));
+            e.getValue().setText(GameHud.keyName(settings.getKey(e.getKey())));
         }
-    }
-
-    private static String keyName(int keyCode) {
-        return switch (keyCode) {
-            case KeyEvent.VK_LEFT -> "←";
-            case KeyEvent.VK_RIGHT -> "→";
-            case KeyEvent.VK_UP -> "↑";
-            case KeyEvent.VK_DOWN -> "↓";
-            default -> KeyEvent.getKeyText(keyCode);
-        };
-    }
-
-    private static String difficultyLabel(Difficulty d) {
-        return switch (d) {
-            case EASY -> "쉬움";
-            case NORMAL -> "보통";
-            case HARD -> "어려움";
-        };
     }
 
     // 같은 난이도·모드 기록 중 최고 점수
     private static int loadBestScore(Difficulty difficulty, GameMode mode) {
-        int best = 0;
-        for (ScoreRecord r : new ScoreStorage().load()) {
-            if (difficulty.name().equals(r.getDifficulty()) && mode.name().equals(r.getMode())) {
-                best = Math.max(best, r.getScore());
-            }
-        }
-        return best;
+        return GameHud.bestScore(new ScoreStorage().load(), difficulty, mode);
     }
 
     // ---------- 작은 UI 헬퍼 ----------

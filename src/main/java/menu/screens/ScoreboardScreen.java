@@ -141,32 +141,13 @@ public class ScoreboardScreen extends JFrame {
             if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                 backToMenu();
             } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) { // 오른쪽 방향키를 누를 때마다 EASY -> NORMAL -> HARD로 이동함
-                if (difficulty.equals("EASY")) {
-                    difficulty = "NORMAL";
-                } else if (difficulty.equals("NORMAL")) {
-                    difficulty = "HARD";
-                } else {
-                    difficulty = "EASY";
-                }
-
+                difficulty = GameOverScreen.nextDifficulty(difficulty, 1);
                 refresh();
             } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { // 왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
-                if (difficulty.equals("HARD")) {
-                    difficulty = "NORMAL";
-                } else if (difficulty.equals("NORMAL")) {
-                    difficulty = "EASY";
-                } else {
-                    difficulty = "HARD";
-                }
-
+                difficulty = GameOverScreen.nextDifficulty(difficulty, -1);
                 refresh();
             } else if (e.getKeyCode() == KeyEvent.VK_TAB) { // 탭 키를 눌러 NORMAL -> ITEM으로 이동
-                if (mode.equals("NORMAL")) {
-                    mode = "ITEM";
-                } else {
-                    mode = "NORMAL";
-                }
-
+                mode = GameOverScreen.nextMode(mode);
                 refresh();
             }
         }
