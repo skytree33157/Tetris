@@ -25,6 +25,17 @@ class BlockStyleTest {
         }
     }
 
+    @Test // TFSE 테마는 디자인 시안의 블루 팔레트 사용
+    void tfseModeUsesDesignPalette() {
+        assertEquals(new Color(0x82BEF5), BlockStyle.of(BlockType.I, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0x5096E6), BlockStyle.of(BlockType.O, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0x3264C8), BlockStyle.of(BlockType.T, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0x6FA8F0), BlockStyle.of(BlockType.S, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0x2A4FA8), BlockStyle.of(BlockType.Z, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0x1E3C8C), BlockStyle.of(BlockType.J, ColorMode.TFSE).getColor());
+        assertEquals(new Color(0xA9D4FA), BlockStyle.of(BlockType.L, ColorMode.TFSE).getColor());
+    }
+
     @Test
     void specialItemsKeepDedicatedStylesAcrossModes() {
         for (ColorMode mode : ColorMode.values()) {

@@ -118,6 +118,21 @@ class GameOverScreenTest {
         assertEquals("1234567890", GameOverScreen.normalizeName("12345678901"));
     }
 
+    @Test // 게임오버·스코어보드 화면의 ←→ 난이도 순환과 Tab 모드 전환
+    void scoreViewDifficultyCyclesAndModeToggles() {
+        assertEquals("NORMAL", GameOverScreen.nextDifficulty("EASY", 1));
+        assertEquals("HARD", GameOverScreen.nextDifficulty("NORMAL", 1));
+        assertEquals("EASY", GameOverScreen.nextDifficulty("HARD", 1));
+        assertEquals("HARD", GameOverScreen.nextDifficulty("EASY", -1));
+        assertEquals("EASY", GameOverScreen.nextDifficulty("NORMAL", -1));
+        assertEquals("NORMAL", GameOverScreen.nextDifficulty("HARD", -1));
+        // 알 수 없는 값은 NORMAL 기준으로 이동
+        assertEquals("HARD", GameOverScreen.nextDifficulty("?", 1));
+
+        assertEquals("ITEM", GameOverScreen.nextMode("NORMAL"));
+        assertEquals("NORMAL", GameOverScreen.nextMode("ITEM"));
+    }
+
     @Test
     void newBestRequiresPositiveScoreAboveFirstPlace() {
         ArrayList<ScoreRecord> records = new ArrayList<>();
