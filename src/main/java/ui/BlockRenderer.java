@@ -39,11 +39,11 @@ public final class BlockRenderer {
         if (g == null || type == null || mode == null || size <= 0) return;
 
         BlockStyle style = BlockStyle.of(type, mode);
-        drawCell(g, x, y, size, style, style.getColor(), mode == ColorMode.TFSE);
+        drawCell(g, x, y, size, style, style.getColor(), mode == ColorMode.TFSE, false);
     }
 
-    private static void drawCell(Graphics2D g, int x, int y, int size,
-                                 BlockStyle style, Color fillColor, boolean bevel) {
+        private static void drawCell(Graphics2D g, int x, int y, int size,
+                                 BlockStyle style, Color fillColor, boolean bevel, boolean insetBorder) {
 
         Graphics2D g2d = (Graphics2D) g.create();
 
@@ -51,13 +51,13 @@ public final class BlockRenderer {
             g2d.setColor(fillColor);
             g2d.fillRect(x, y, size, size);
 
-            Graphics2D patternGraphics = (Graphics2D) g2d.create();
-
             // TFSE 테마: 패턴·검정 테두리 대신 좌상 하이라이트 / 우하 그림자
             if (bevel) {
                 drawBevel(g2d, x, y, size);
                 return;
             }
+
+            Graphics2D patternGraphics = (Graphics2D) g2d.create();
 
             try {
                 // 패턴 영역 클리핑
@@ -103,7 +103,7 @@ public final class BlockRenderer {
 
             // 셀 테두리 그리기
             g2d.setColor(Color.BLACK);
-            g2d.setStroke(new BasicStroke(size >= 30 ? 2.0f : 1.0f));
+            g2d.setStroke(new BasicStroke(size >= 30 && !insetBorder ? 2.0f : 1.0f));
             g2d.drawRect(x, y, size - 1, size - 1);
 
         } finally {
@@ -186,7 +186,7 @@ public final class BlockRenderer {
 
     private static void drawAttachedItemCell(Graphics2D g, int x, int y, int size,
                                              BlockType type, char symbol, ColorMode mode) {
-        drawCell(g, x, y, size, BlockStyle.of(type, mode), Color.WHITE, false);
+        drawCell(g, x, y, size, BlockStyle.of(type, mode), Color.WHITE, false, mode == ColorMode.TFSE);
         drawItemSymbol(g, x, y, size, symbol, Color.WHITE);
     }
 
