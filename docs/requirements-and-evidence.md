@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 기본 게임 기능 | 1차 5~14쪽 | 메뉴, 20×10 보드, 7종 블록, NEXT·점수, 조작·종료, 색맹 모드, 설정 지속성, 상위 10개 이상 기록 | [게임 안내](../README.md#기본-게임-규칙), 기능별 테스트, 직접 확인 결과 |
 | 기능·성능 검증 | 1차 4·17쪽 | 충분한 단위 테스트, 기능·성능 충족 여부 검증 | [테스트 코드](../src/test/java), [실행 방법과 결과](test-results.md) |
-| 라인 커버리지 | 1차 17쪽 / 2차 12쪽 | 직접 작성한 코드 기준 중간 평가 50%, 기말 평가 70% | [실제 커버리지 54.97%와 측정 범위](test-results.md#커버리지-기록) |
+| 라인 커버리지 | 1차 17쪽 / 2차 12쪽 | 직접 작성한 코드 기준 중간 평가 50%, 기말 평가 70% | [실제 커버리지 57.40%와 측정 범위](test-results.md#커버리지-기록) |
 | 비기능 테스트 | 1차 15·17쪽 | 비기능 요구사항 충족 여부를 검증하는 테스트 1개 이상 | [입력 응답 시간 검사](../src/test/java/game/GameControllerTest.java), [환경 테스트 PR #76](https://github.com/skytree33157/Tetris/pull/76) |
 | 반복 실행 체계 | 1차 17쪽 | 테스트도 관리하고 변경 시 손쉽게 실행하여 검증 | [Gradle 설정](../build.gradle), [CI 설정](../.github/workflows/ci.yml), [실행 명령](test-results.md#직접-실행하는-방법) |
 | 난이도별 생성 확률 | 2차 3~5쪽 | I 상대 가중치 EASY 12 / NORMAL 10 / HARD 8, 나머지 각 10. 실제 게임 생성 코드로 1,000회 이상 선택하여 설정 확률과 오차 ±5% 이내인지 검증 | [확률 검증 기준](test-results.md#블록-생성-확률-검증), 테스트·횟수·기대값·실제 결과 |
@@ -27,7 +27,7 @@
 
 ## 요구사항·코드·테스트·PR 연결
 
-기능 설명에서 구현과 개발 기록으로 이동할 수 있도록 노션의 FR/NFR 번호로 정리했습니다. 전체 테스트 결과는 2026-10-26 로컬 실행 기준 **124개 통과**이며, 난이도별 실제 분포와 커버리지는 [테스트 결과](test-results.md)에 정리했습니다.
+기능 설명에서 구현과 개발 기록으로 이동할 수 있도록 노션의 FR/NFR 번호로 정리했습니다. 전체 테스트 결과는 2026-11-07 로컬 실행 기준 **146개 통과**이며, 난이도별 실제 분포와 커버리지는 [테스트 결과](test-results.md)에 정리했습니다.
 
 ### 1차 기능 요구사항
 
@@ -89,7 +89,7 @@
 | NFR-03 · 성능 | 이동 키 처리 250ms 제한과 실제 위치 변경을 자동 검사. | [입력 테스트](../src/test/java/game/GameControllerTest.java)의 `movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget` 통과 | [#71](https://github.com/skytree33157/Tetris/pull/71) |
 | NFR-04 · 산출물 추적성 | 요구사항별 설명·코드·테스트·PR·이슈·리뷰 댓글 연결. | 이 문서 / [팀 노션](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7) | [이슈](https://github.com/skytree33157/Tetris/issues) · [PR](https://github.com/skytree33157/Tetris/pulls) |
 | NFR-05 · 버전 관리 | Git/GitHub 사용, main·feature·fix·test·docs 브랜치와 커밋·PR 규칙. | [개발 규칙](rule.md) | [변경 이력](https://github.com/skytree33157/Tetris/commits/main/) |
-| NFR-06 · 단위 테스트·커버리지 | 23개 클래스·124개 테스트 통과. 보고서 기준 LINE 54.97% — Main·ui 제외. | [실행 결과](test-results.md#테스트-결과) / [커버리지](test-results.md#커버리지-기록) | [#44](https://github.com/skytree33157/Tetris/pull/44), [#62](https://github.com/skytree33157/Tetris/pull/62), [#65](https://github.com/skytree33157/Tetris/pull/65), [#71](https://github.com/skytree33157/Tetris/pull/71) |
+| NFR-06 · 단위 테스트·커버리지 | 26개 클래스·146개 테스트 통과. 보고서 기준 LINE 57.40% — Main·ui·menu/views 제외, CI 최소 50% 검증 통과. | [실행 결과](test-results.md#테스트-결과) / [커버리지](test-results.md#커버리지-기록) | [#44](https://github.com/skytree33157/Tetris/pull/44), [#62](https://github.com/skytree33157/Tetris/pull/62), [#65](https://github.com/skytree33157/Tetris/pull/65), [#71](https://github.com/skytree33157/Tetris/pull/71) |
 | NFR-07 · 비기능 검증 | 키 입력 반응 시간의 상한을 검사하는 자동 테스트. | [입력 테스트](../src/test/java/game/GameControllerTest.java)의 250ms 제한 검사 통과 | [#71](https://github.com/skytree33157/Tetris/pull/71), [#76](https://github.com/skytree33157/Tetris/pull/76) |
 | NFR-08 · 테스트 실행 체계 | Gradle Wrapper·JUnit·JaCoCo·GitHub Actions로 테스트와 커버리지 검사. | [실행 명령](test-results.md#직접-실행하는-방법) · [CI 설정](../.github/workflows/ci.yml) | [실행된 CI](https://github.com/skytree33157/Tetris/actions/runs/40293831562) |
 | NFR-09 · 배포 가능성 | 아이콘·런타임을 포함하는 TFSE ZIP과 EXE 패키징. |  | [#77](https://github.com/skytree33157/Tetris/pull/77) |
