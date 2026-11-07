@@ -1,8 +1,5 @@
 package menu;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
@@ -10,29 +7,21 @@ import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 
-import javax.swing.BorderFactory;
 import javax.swing.JFrame;
-import javax.swing.JTextPane;
-import javax.swing.border.CompoundBorder;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
+import javax.swing.JOptionPane;
 
+import menu.screens.GameOverScreen;
+import menu.screens.ScoreboardView;
 import storage.ScoreStorage;
 
 public class ScoreboardScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
-    private JTextPane pane;
-
-    private SimpleAttributeSet defaultStyle;
-
-    private SimpleAttributeSet titleStyle;
+    private final ScoreboardView view;
 
     private ArrayList<ScoreRecord> records;
     private ArrayList<ScoreRecord> categoryRecords;
-
 
     private ScoreStorage storage;
 
@@ -45,49 +34,17 @@ public class ScoreboardScreen extends JFrame {
         ui.AppIcon.apply(this);
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(600, 700);
-        setMinimumSize(new Dimension(600, 700));
-        setLocationRelativeTo(null);
 
-        // 스코어보드를 표시할 영역
-        pane = new JTextPane();
-        pane.setEditable(false);
-        pane.setFocusable(false);
-        pane.setBackground(Color.BLACK);
-
-        CompoundBorder border = BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.GRAY, 10),
-                BorderFactory.createLineBorder(Color.DARK_GRAY, 5)
-        );
-
-        pane.setBorder(border);
-
-        getContentPane().add(pane, BorderLayout.CENTER);
-
-
-        // 일반 글자 스타일
-        defaultStyle = new SimpleAttributeSet();
-        StyleConstants.setFontSize(defaultStyle, 20);
-        StyleConstants.setFontFamily(defaultStyle, "Courier");
-        StyleConstants.setBold(defaultStyle, true);
-        StyleConstants.setForeground(defaultStyle, Color.WHITE);
-        StyleConstants.setAlignment(
-                defaultStyle,
-                StyleConstants.ALIGN_CENTER
-        );
-
-
-        // SCOREBOARD 제목 스타일
-        titleStyle = new SimpleAttributeSet();
-        StyleConstants.setFontSize(titleStyle, 24);
-        StyleConstants.setFontFamily(titleStyle, "Courier");
-        StyleConstants.setBold(titleStyle, true);
-        StyleConstants.setForeground(titleStyle, Color.YELLOW);
-        StyleConstants.setAlignment(
-                titleStyle,
-                StyleConstants.ALIGN_CENTER
-        );
-
+        view = new ScoreboardView(this::backToMenu, this::resetRecords,
+                value -> {
+                    difficulty = value;
+                    refresh();
+                },
+                value -> {
+                    mode = value;
+                    refresh();
+                });
+        setContentPane(view);
 
         // 저장된 점수 불러오기
         storage = new ScoreStorage();
@@ -98,17 +55,16 @@ public class ScoreboardScreen extends JFrame {
         records.sort(
                 Comparator.comparingInt(ScoreRecord::getScore).reversed());
 
-        updateCategoryRecords();
+        refresh();
 
-        // 화면 출력
-        drawScreen();
-
+        setResizable(false);
+        pack();
+        setLocationRelativeTo(null);
 
         // Enter 키 입력을 받기 위한 KeyListener 등록
         addKeyListener(new ScoreboardKeyListener());
         setFocusable(true);
         setFocusTraversalKeysEnabled(false); // tab의 기본 포커스 이동 기능 끔(keyPressed()에서 tab 키를 쓰기 위해)
-
 
         // 창이 실제로 열린 다음 키보드 포커스를 요청
         addWindowListener(new WindowAdapter() {
@@ -130,82 +86,33 @@ public class ScoreboardScreen extends JFrame {
         this.difficulty = difficulty;
         this.mode = mode;
 
-        updateCategoryRecords();
-        drawScreen();
+        refresh();
     }
 
-    private void updateCategoryRecords() {
-            categoryRecords = new ArrayList<>();
+    // 현재 난이도·모드의 기록을 다시 골라 화면에 반영
+    private void refresh() {
+        categoryRecords = GameOverScreen.selectCategoryRecords(records, difficulty, mode);
+        view.ScoreBoard().update(difficulty, mode, categoryRecords, null);
+    }
 
-            for (ScoreRecord record : records) {
-                if (record.getDifficulty().equals(difficulty) && record.getMode().equals(mode)) {
-                    categoryRecords.add(record);
-                }
+    private void resetRecords() {
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                "스코어보드를 초기화할까요?",
+                "스코어보드 초기화",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (result == JOptionPane.YES_OPTION) {
+            if (storage.clear()) {
+                records.clear();
+                refresh();
+            } else {
+                JOptionPane.showMessageDialog(this, "스코어보드 초기화에 실패했습니다.");
             }
-
-            categoryRecords.sort(Comparator.comparingInt(ScoreRecord::getScore).reversed());
-    }
-
-
-    // 스코어보드 화면 출력
-    private void drawScreen() {
-
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("SCOREBOARD\n\n");
-        sb.append("난이도: ").append(difficulty).append("\n");
-        sb.append("모드: ").append(mode).append("\n");
-
-        // 기록이 10개보다 적으면 실제 기록 개수만큼만 출력
-        int count = Math.min(categoryRecords.size(), 10);
-
-        for (int i = 0; i < count; i++) {
-
-            ScoreRecord record = categoryRecords.get(i);
-
-            sb.append(i + 1)
-              .append(". ")
-              .append(record.getName())
-              .append("  ")
-              .append(record.getScore())
-              .append("\n");
         }
-
-        sb.append("\n[← →] 난이도 변경");
-        sb.append("\n[Tab] 모드 변경");
-        sb.append("\n> 시작 메뉴 <");
-        sb.append("\n\n[Enter] 선택");
-
-        pane.setText(sb.toString());
-
-        applyStyles();
+        requestFocusInWindow();
     }
-
-
-    // 글자 스타일 적용
-    private void applyStyles() {
-
-        StyledDocument doc = pane.getStyledDocument();
-
-        // 전체 글자에 기본 스타일 적용
-        doc.setParagraphAttributes(
-                0,
-                doc.getLength(),
-                defaultStyle,
-                false
-        );
-
-        String title = "SCOREBOARD";
-
-        // SCOREBOARD 제목만 노란색으로 강조
-        doc.setCharacterAttributes(
-                0,
-                title.length(),
-                titleStyle,
-                false
-        );
-    }
-
 
     // 시작 메뉴로 돌아가기
     private void backToMenu() {
@@ -219,7 +126,6 @@ public class ScoreboardScreen extends JFrame {
         // 시작 메뉴 화면 표시
         menu.setVisible(true);
     }
-
 
     // 스코어보드 화면의 키보드 입력 처리
     private class ScoreboardKeyListener implements KeyListener {
@@ -242,9 +148,8 @@ public class ScoreboardScreen extends JFrame {
                 } else {
                     difficulty = "EASY";
                 }
-                
-                updateCategoryRecords();
-                drawScreen();
+
+                refresh();
             } else if (e.getKeyCode() == KeyEvent.VK_LEFT) { // 왼쪽 방향키를 누르면 오른쪽 때의 반대로 이동함
                 if (difficulty.equals("HARD")) {
                     difficulty = "NORMAL";
@@ -253,19 +158,17 @@ public class ScoreboardScreen extends JFrame {
                 } else {
                     difficulty = "HARD";
                 }
-                
-                updateCategoryRecords();
-                drawScreen();
+
+                refresh();
             } else if (e.getKeyCode() == KeyEvent.VK_TAB) { // 탭 키를 눌러 NORMAL -> ITEM으로 이동
                 if (mode.equals("NORMAL")) {
                     mode = "ITEM";
                 } else {
                     mode = "NORMAL";
                 }
-                
-                updateCategoryRecords();
-                drawScreen();
-            } 
+
+                refresh();
+            }
         }
 
         @Override
