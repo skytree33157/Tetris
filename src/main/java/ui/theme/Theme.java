@@ -28,7 +28,7 @@ public final class Theme {
     // 진행바 트랙, 순위 메달
     public static final Color TRACK  = new Color(0x1E3360);
     public static final Color GOLD   = new Color(0xFFD66B);
-    public static final Color SILVER = new Color(0xDCE8FA);
+    public static final Color SILVER = new Color(0xB8C4D6);
     public static final Color BRONZE = new Color(0xF2A86B);
 
     public static final int RADIUS = 10;

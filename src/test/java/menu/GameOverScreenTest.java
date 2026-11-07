@@ -16,6 +16,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import storage.ScoreStorage;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import menu.screens.GameOverScreen;
+
 class GameOverScreenTest {
     @TempDir
     Path tempDir;
@@ -104,5 +107,25 @@ class GameOverScreenTest {
         storage.save(allRecords);
         assertEquals(10, GameOverScreen.selectCategoryRecords(
                 storage.load(), "NORMAL", "ITEM").size());
+    }
+
+    @Test
+    void normalizesPlayerName() {
+        assertEquals("PLAYER", GameOverScreen.normalizeName(null));
+        assertEquals("PLAYER", GameOverScreen.normalizeName("   "));
+        assertEquals("PLAYER", GameOverScreen.normalizeName("a,b"));
+        assertEquals("TESTER", GameOverScreen.normalizeName("  TESTER "));
+        assertEquals("1234567890", GameOverScreen.normalizeName("12345678901"));
+    }
+
+    @Test
+    void newBestRequiresPositiveScoreAboveFirstPlace() {
+        ArrayList<ScoreRecord> records = new ArrayList<>();
+        assertTrue(GameOverScreen.isNewBest(records, 1));
+        assertFalse(GameOverScreen.isNewBest(records, 0));
+
+        records.add(new ScoreRecord("PLAYER", 1000, "HARD", "ITEM"));
+        assertTrue(GameOverScreen.isNewBest(records, 1001));
+        assertFalse(GameOverScreen.isNewBest(records, 1000));
     }
 }

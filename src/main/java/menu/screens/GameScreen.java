@@ -48,7 +48,6 @@ import ui.components.RoundedPanel;
 import ui.theme.Theme;
 
 // need refactoring 
-import menu.GameOverScreen;
 import menu.ScoreRecord;
 
 
@@ -206,9 +205,10 @@ private JLabel scoreLabel;
             stopGame();
             dispose();
             GameOverScreen gameOverScreen = new GameOverScreen(
-                scoreManager.getScore(), difficulty.name(), mode.name());
-            gameOverScreen.setVisible(true);
-        }
+                scoreManager.getScore(), difficulty.name(), mode.name(),
+                gameStateManager.getCurrentLevel(), gameStateManager.getTotalLinesCleared(), elapsedMs);
+                gameOverScreen.setVisible(true);
+            }
     }
 
     private void updateHud() {
@@ -347,8 +347,8 @@ private JLabel scoreLabel;
         addKeyRow(keyCard, "회전", KeyAction.ROTATE, null);
         addKeyRow(keyCard, "소프트 드롭", KeyAction.MOVE_DOWN, null);
         addKeyRow(keyCard, "하드 드롭", null, "Space");
-        addKeyRow(keyCard, "일시정지", null, "P");
-        addKeyRow(keyCard, "설정", null, "Esc");
+        addKeyRow(keyCard, "일시정지", null, "P, ESC");
+        addKeyRow(keyCard, "종료", null, "Esc hold");
         refreshKeyGuide();
         addBlock(col, keyCard);
 
