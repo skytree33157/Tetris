@@ -35,12 +35,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: 단위 테스트 실행 (기능 검증)
-      env:
-        GRADLE_OPTS: "-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
-      run: ./gradlew test --no-daemon
+      run: gradle test --no-daemon
 
-    # 2. 테스트가 통과했을 때만 커버리지를 검사합니다.
     - name: 라인 커버리지 50% 이상 달성 검증
-      env:
-        GRADLE_OPTS: "-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
-      run: ./gradlew jacocoTestCoverageVerification --no-daemon
+      run: gradle jacocoTestCoverageVerification --no-daemon
