@@ -51,6 +51,7 @@ public final class P2PGameRunner {
     // P2P 게임 루프 클래스
     private static final class P2PGameRunnerLoop {
         private final P2PGameSession session;
+        private volatile GameScreen gameScreen;
         private volatile boolean monitoringDisconnection = false;
 
         private P2PGameRunnerLoop(P2PGameSession session) {
@@ -62,17 +63,28 @@ public final class P2PGameRunner {
         }
 
         private void showGame() {
-            // 새로운 게임 화면을 생성하여 표시. 이전 연결을 재사용.
-            GameScreen screen = new GameScreen(session.getMode());
+            // 게임 화면 생성
+            gameScreen = new GameScreen(session.getMode());
             
-            // P2P 세션 리스너 설정 - 지연 및 연결 상태 모니터링
+            // P2P 게임 컨트롤러 생성 - 게임 화면과 P2P 세션 연결
+            P2PGameController p2pController = new P2PGameController(
+                    session,
+                    gameScreen,
+                    gameScreen.getGameStateManager(),
+                    gameScreen.getActionController(),
+                    gameScreen.getScoreManager()
+            );
+
+            // 게임 화면에 P2P 컨트롤러 설정
+            gameScreen.setP2PController(p2pController);
+            
+            // P2P 세션 이벤트 리스너 추가 설정 - 지연 및 연결 상태
             session.setListener(new P2PGameSession.Listener() {
                 @Override
                 public void onConnectionLatency() {
                     // 지연 상태를 UI에 표시
                     SwingUtilities.invokeLater(() -> {
-                        // 게임 화면의 상태 표시줄에 "연결 지연 중..." 메시지 표시
-                        screen.showConnectionStatus("연결 지연 중...", true);
+                        gameScreen.showConnectionStatus("연결 지연 중...", true);
                     });
                 }
                 
@@ -80,7 +92,7 @@ public final class P2PGameRunner {
                 public void onConnectionRecovered() {
                     // 연결 정상화 시 상태 메시지 제거
                     SwingUtilities.invokeLater(() -> {
-                        screen.hideConnectionStatus();
+                        gameScreen.hideConnectionStatus();
                     });
                 }
                 
@@ -91,8 +103,15 @@ public final class P2PGameRunner {
                 }
             });
             
-            screen.setVisible(true);
+            gameScreen.setVisible(true);
             monitoringDisconnection = true;
+
+            // 게임 화면이 표시된 후 준비 완료 통지
+            try {
+                p2pController.notifyPlayerReady();
+            } catch (IOException exception) {
+                handleDisconnect(exception);
+            }
         }
 
         // 연결 종료 처리 - P2P 초기 화면으로 복귀
@@ -106,9 +125,15 @@ public final class P2PGameRunner {
             monitoringDisconnection = false;
             
             SwingUtilities.invokeLater(() -> {
+                // 게임 화면 정리 - 렌더링 타이머와 게임 루프 스레드 중지
+                if (gameScreen != null) {
+                    gameScreen.stopGame();
+                    gameScreen.dispose();
+                }
+                
                 // 연결 끊김 상황에 따른 메시지
                 String message;
-                if (exception.getMessage().contains("연결이 끊어졌습니다")) {
+                if ("연결이 끊어졌습니다".equals(exception.getMessage())) {
                     message = "네트워크 연결이 끊어졌습니다.\n P2P 초기 화면으로 돌아갑니다.";
                 } else {
                     message = "대전 연결이 종료되었습니다.\n" + exception.getMessage() + "\nP2P 초기 화면으로 돌아갑니다.";
@@ -119,7 +144,6 @@ public final class P2PGameRunner {
                         message,
                         "P2P 연결 오류",
                         JOptionPane.ERROR_MESSAGE);
-                
                 // P2P 초기 화면으로 복귀
                 new StartMenu().setVisible(true);
             });

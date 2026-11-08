@@ -25,6 +25,7 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_START = 2;
     private static final int MESSAGE_STATUS = 3;
     private static final int MESSAGE_CLOSE = 4;
+    private static final int MESSAGE_KEEP_ALIVE = 5;
 
 
     // 세션 이벤트 리스너 인터페이스
@@ -164,6 +165,11 @@ public final class P2PGameSession implements AutoCloseable {
                     // 콜백에서 예외 발생 시 무시
                 }
             }
+            
+            @Override
+            public void onConnectionRecovered() {
+                listener.onConnectionRecovered();
+            }
         });
 
 
@@ -171,6 +177,11 @@ public final class P2PGameSession implements AutoCloseable {
         Thread reader = new Thread(this::readMessages, "p2p-reader");
         reader.setDaemon(true);
         reader.start();
+
+        // Keep-alive 스레드 시작 - 연결이 유휴 상태일 때도 정기적으로 신호 전송
+        Thread keepAliveThread = new Thread(this::sendKeepAlives, "p2p-keepalive");
+        keepAliveThread.setDaemon(true);
+        keepAliveThread.start();
 
         // 지연 감시 스레드 시작
         monitorThread = new Thread(this::monitorConnection, "p2p-monitor");
@@ -286,6 +297,9 @@ public final class P2PGameSession implements AutoCloseable {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
                     case MESSAGE_START -> receiveStart();
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
+                    case MESSAGE_KEEP_ALIVE -> {
+                        // Keep-alive 메시지는 처리 없음 - recordMessageReceived()에서 활동으로 기록됨
+                    }
                     case MESSAGE_CLOSE -> {
                         // 상대가 명시적으로 종료한 경우에는 종료 사유를 리스너에 한 번 알린다.
                         notifyDisconnected(new IOException("상대 플레이어가 연결을 종료했습니다."));
@@ -450,14 +464,38 @@ public final class P2PGameSession implements AutoCloseable {
         socket.close();
     }
 
+    // Keep-alive 메시지 정기 전송 - 연결이 유휴 상태일 때도 활동을 신호
+    private void sendKeepAlives(){
+        try{
+            // 2초마다 keep-alive 메시지 전송 (3초 지연 threshold보다 작음)
+            while(!Thread.currentThread().isInterrupted()){
+                Thread.sleep(2000);
+                synchronized(this){
+                    if(closed){
+                        return;
+                    }
+                    try {
+                        output.writeByte(MESSAGE_KEEP_ALIVE);
+                        output.flush();
+                    } catch (IOException e) {
+                        // 송신 실패는 연결 모니터에서 감지
+                    }
+                }
+            }
+        }catch(InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
     // 연결 상태 모니터링 스레드
     private void monitorConnection(){
         try{
             while(!Thread.currentThread().isInterrupted()){
                 synchronized(this){
-                    if(!closed){
-                        connectionMonitor.checkAndUpdate();
+                    if(closed){
+                        return;
                     }
+                    connectionMonitor.checkAndUpdate();
                 }
                 Thread.sleep(500);
             }

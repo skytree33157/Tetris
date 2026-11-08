@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -54,6 +55,7 @@ public class GameScreen extends JFrame {
     private final GameMode mode;
 
     private PauseScreen pauseScreen;
+    private P2PGameController p2pController;
 
     private JLabel levelLabel;
     private JLabel linesLabel;
@@ -65,9 +67,14 @@ public class GameScreen extends JFrame {
     private boolean closed = false;
 
     public GameScreen(GameMode mode) {
+        this(mode, null);
+    }
+
+    public GameScreen(GameMode mode, P2PGameController p2pController) {
         super("TFSE");
         ui.AppIcon.apply(this);
         this.mode = mode;
+        this.p2pController = p2pController;
 
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -192,8 +199,27 @@ public class GameScreen extends JFrame {
         linesLabel.setText("LINES: " + frame.lines());
         scoreLabel.setText("SCORE: " + frame.score());
 
+        // P2P 게임 상태 전송
+        if (p2pController != null && p2pController.isRoundActive()) {
+            try {
+                p2pController.sendGameStatus();
+            } catch (IOException exception) {
+                // 연결 끊김은 P2PGameSession의 리스너에서 처리
+                exception.printStackTrace();
+            }
+        }
+
         if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
+
+            // P2P 게임이면 게임 오버를 상대에게 통지
+            if (p2pController != null) {
+                try {
+                    p2pController.notifyGameOver();
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
+            }
 
             stopGame();
             dispose();
@@ -272,7 +298,7 @@ public class GameScreen extends JFrame {
         return label;
     }
 
-    private void stopGame() {
+    public void stopGame() {
         closed = true;
         renderTimer.stop();
         gameController.shutdown();
@@ -320,6 +346,46 @@ public class GameScreen extends JFrame {
             revalidate();
             repaint();
         }
+    }
+
+    /**
+     * 상대 플레이어의 게임 상태 업데이트
+     */
+    public void updateRemoteStatus(network.GameStatus status) {
+        // 상대 플레이어 정보 표시
+        // 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음
+        if (status != null) {
+            // 현재는 게임 화면에 표시하지 않음
+            // 필요시 별도 패널에 상대 플레이어 정보 추가
+        }
+    }
+
+    /**
+     * P2P 게임 컨트롤러 설정
+     */
+    public void setP2PController(P2PGameController controller) {
+        this.p2pController = controller;
+    }
+
+    /**
+     * 게임 상태 관리자 접근
+     */
+    public GameStateManager getGameStateManager() {
+        return gameStateManager;
+    }
+
+    /**
+     * 행동 컨트롤러 접근
+     */
+    public ActionController getActionController() {
+        return actionController;
+    }
+
+    /**
+     * 점수 관리자 접근
+     */
+    public ScoreManager getScoreManager() {
+        return scoreManager;
     }
 
     private void suppressEscapeUntilReleased() {
