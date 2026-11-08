@@ -31,61 +31,25 @@ public final class P2PGameController {
         this.gameStateManager = gameStateManager;
         this.actionController = actionController;
         this.scoreManager = scoreManager;
-
-        // P2P 세션 이벤트 리스너 설정
-        setupSessionListener();
     }
 
-    //P2P 세션 이벤트 리스너 설정
-    private void setupSessionListener() {
-        session.setListener(new P2PGameSession.Listener() {
-            @Override
-            public void onStarted() {
-                // 라운드 시작
-                SwingUtilities.invokeLater(() -> {
-                    roundActive = true;
-                    ready = false;
-                });
-            }
+    // P2P 세션 onStarted() 이벤트 처리
+    public void onSessionStarted() {
+        roundActive = true;
+        ready = false;
+    }
 
-            @Override
-            public void onRemoteStatus(GameStatus status) {
-                // 상대 플레이어의 게임 상태 수신
-                // UI에 표시하거나 게임 로직에 반영
-                SwingUtilities.invokeLater(() -> {
-                    gameScreen.updateRemoteStatus(status);
-                });
-            }
-
-            @Override
-            public void onRoundFinished() {
-                // 라운드 종료
-                SwingUtilities.invokeLater(() -> {
-                    roundActive = false;
-                });
-            }
-
-            @Override
-            public void onConnectionLatency() {
-                // 연결 지연
-                SwingUtilities.invokeLater(() -> {
-                    gameScreen.showConnectionStatus("연결 지연 중...", true);
-                });
-            }
-
-            @Override
-            public void onConnectionRecovered() {
-                // 연결 복구
-                SwingUtilities.invokeLater(() -> {
-                    gameScreen.hideConnectionStatus();
-                });
-            }
-
-            @Override
-            public void onDisconnected(IOException exception) {
-                // 연결 끊김 - P2PGameRunner에서 처리함
-            }
+    // P2P 세션 onRemoteStatus() 이벤트 처리
+    public void onRemoteStatus(GameStatus status) {
+        // 상대 플레이어의 게임 상태 수신
+        SwingUtilities.invokeLater(() -> {
+            gameScreen.updateRemoteStatus(status);
         });
+    }
+
+    // P2P 세션 onRoundFinished() 이벤트 처리
+    public void onRoundFinished() {
+        roundActive = false;
     }
 
     // 게임 준비 상태를 P2P 세션에 전달

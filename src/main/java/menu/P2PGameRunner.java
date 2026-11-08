@@ -52,6 +52,7 @@ public final class P2PGameRunner {
     private static final class P2PGameRunnerLoop {
         private final P2PGameSession session;
         private volatile GameScreen gameScreen;
+        private volatile P2PGameController p2pController;
         private volatile boolean monitoringDisconnection = false;
 
         private P2PGameRunnerLoop(P2PGameSession session) {
@@ -67,7 +68,7 @@ public final class P2PGameRunner {
             gameScreen = new GameScreen(session.getMode());
             
             // P2P 게임 컨트롤러 생성 - 게임 화면과 P2P 세션 연결
-            P2PGameController p2pController = new P2PGameController(
+            p2pController = new P2PGameController(
                     session,
                     gameScreen,
                     gameScreen.getGameStateManager(),
@@ -78,8 +79,30 @@ public final class P2PGameRunner {
             // 게임 화면에 P2P 컨트롤러 설정
             gameScreen.setP2PController(p2pController);
             
-            // P2P 세션 이벤트 리스너 추가 설정 - 지연 및 연결 상태
+            // 통합 리스너: Runner와 Controller 모두에 event 전달
             session.setListener(new P2PGameSession.Listener() {
+                @Override
+                public void onStarted() {
+                    // Controller에 전달
+                    p2pController.onSessionStarted();
+                    // GameScreen에 게임 시작 허용
+                    SwingUtilities.invokeLater(() -> gameScreen.allowGameStart());
+                }
+                
+                @Override
+                public void onRemoteStatus(network.GameStatus status) {
+                    // Controller에 전달
+                    p2pController.onRemoteStatus(status);
+                }
+                
+                @Override
+                public void onRoundFinished() {
+                    // Controller에 전달
+                    p2pController.onRoundFinished();
+                    // 다음 라운드 준비
+                    SwingUtilities.invokeLater(() -> gameScreen.resetForNextRound());
+                }
+                
                 @Override
                 public void onConnectionLatency() {
                     // 지연 상태를 UI에 표시

@@ -56,6 +56,7 @@ public class GameScreen extends JFrame {
 
     private PauseScreen pauseScreen;
     private P2PGameController p2pController;
+    private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
 
     private JLabel levelLabel;
     private JLabel linesLabel;
@@ -167,7 +168,13 @@ public class GameScreen extends JFrame {
             @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
-                gameThread.start();
+                // P2P 모드: onStarted() 콜백을 기다림
+                // 단일 플레이어 모드: 즉시 게임 시작
+                if (p2pController == null) {
+                    gameStartAllowed = true;
+                    gameThread.start();
+                }
+                // P2P 모드는 onStarted() 콜백 이후에 시작됨
             }
 
             @Override
@@ -207,8 +214,24 @@ public class GameScreen extends JFrame {
                 // 연결 끊김은 P2PGameSession의 리스너에서 처리
                 exception.printStackTrace();
             }
+            
+            // 상대 플레이어 게임 오버 감지
+            network.GameStatus remoteStatus = p2pController.getRemoteStatus();
+            if (remoteStatus != null && remoteStatus.isGameOver() && !gameOverHandled) {
+                gameOverHandled = true;
+                stopGame();
+                dispose();
+                
+                GameOverScreen gameOverScreen = new GameOverScreen(
+                        frame.score(),
+                        difficulty.name(),
+                        mode.name());
+                gameOverScreen.setVisible(true);
+                return;
+            }
         }
 
+        // 로컬 게임 오버 처리
         if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
 
@@ -348,44 +371,50 @@ public class GameScreen extends JFrame {
         }
     }
 
-    /**
-     * 상대 플레이어의 게임 상태 업데이트
-     */
+//------------------------------------------------------------------
+    // 상대 플레이어의 게임 상태 업데이트
     public void updateRemoteStatus(network.GameStatus status) {
-        // 상대 플레이어 정보 표시
-        // 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음
+// 상대 플레이어 정보 표시
+// 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음
         if (status != null) {
-            // 현재는 게임 화면에 표시하지 않음
-            // 필요시 별도 패널에 상대 플레이어 정보 추가
+// 현재는 게임 화면에 표시하지 않음
+// 필요시 별도 패널에 상대 플레이어 정보 추가
         }
     }
+//------------------------------------------------------------------
 
-    /**
-     * P2P 게임 컨트롤러 설정
-     */
+    //P2P 게임 컨트롤러 설정
     public void setP2PController(P2PGameController controller) {
         this.p2pController = controller;
     }
 
-    /**
-     * 게임 상태 관리자 접근
-     */
+    //게임 상태 관리자 접근
     public GameStateManager getGameStateManager() {
         return gameStateManager;
     }
 
-    /**
-     * 행동 컨트롤러 접근
-     */
+    //행동 컨트롤러 접근
     public ActionController getActionController() {
         return actionController;
     }
 
-    /**
-     * 점수 관리자 접근
-     */
+    //점수 관리자 접근
     public ScoreManager getScoreManager() {
         return scoreManager;
+    }
+
+    //P2P onStarted() 콜백: 게임 루프 시작 허용
+    public void allowGameStart() {
+        if (!gameStartAllowed && gameThread.getState() == Thread.State.NEW) {
+            gameStartAllowed = true;
+            gameThread.start();
+        }
+    }
+
+    //P2P 다음 라운드 준비: 게임 상태 리셋
+    public void resetForNextRound() {
+        gameOverHandled = false;
+        gameStartAllowed = false;
     }
 
     private void suppressEscapeUntilReleased() {
