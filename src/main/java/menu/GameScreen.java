@@ -60,7 +60,7 @@ public class GameScreen extends JFrame {
     private JLabel scoreLabel;
     private JLabel difficultyLabel;
     private JLabel modeLabel;
-
+    private JLabel connectionStatusLabel;
     private boolean gameOverHandled = false;
     private boolean closed = false;
 
@@ -283,6 +283,43 @@ public class GameScreen extends JFrame {
     private void refreshInputBindings() {
         gameController.installKeyBindings(getRootPane());
         requestFocusInWindow();
+    }
+    
+    // 연결 상태를 상단 바에 보여줌 (정상 제외)
+    public void showConnectionStatus(String message, boolean isWarning) {
+        if (connectionStatusLabel == null) {
+            connectionStatusLabel = new JLabel(message);
+            connectionStatusLabel.setFont(new Font("Courier", Font.BOLD, 14));
+            if (isWarning) {
+                connectionStatusLabel.setForeground(Color.YELLOW);
+            } else {
+                connectionStatusLabel.setForeground(Color.RED);
+            }
+            connectionStatusLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        } else {
+            connectionStatusLabel.setText(message);
+            if (isWarning) {
+                connectionStatusLabel.setForeground(Color.YELLOW);
+            } else {
+                connectionStatusLabel.setForeground(Color.RED);
+            }
+        }
+        
+        // 상단에 상태 레이블 추가 (이미 추가되었다면 업데이트만)
+        if (connectionStatusLabel.getParent() == null) {
+            add(connectionStatusLabel, BorderLayout.NORTH);
+            revalidate();
+            repaint();
+        }
+    }
+    
+    // 정상 상태로 복구 시 상단 바 제거
+    public void hideConnectionStatus() {
+        if (connectionStatusLabel != null && connectionStatusLabel.getParent() != null) {
+            remove(connectionStatusLabel);
+            revalidate();
+            repaint();
+        }
     }
 
     private void suppressEscapeUntilReleased() {

@@ -39,6 +39,10 @@ public final class P2PGameSession implements AutoCloseable {
         default void onRoundFinished() {}
         // 연결 끊김 또는 프로토콜 오류 시 호출
         default void onDisconnected(IOException exception) {}
+        // 연결 지연 상태로 전환 시 호출
+        default void onConnectionLatency(){}
+        // 연결 정상 복구 시 호출
+        default void onConnectionRecovered(){}
     }
 
     // 호스트 초대 클래스
@@ -126,6 +130,8 @@ public final class P2PGameSession implements AutoCloseable {
     private boolean roundActive;
     private boolean localGameOver;
     private GameStatus remoteStatus;
+    private ConnectionMonitor connectionMonitor=new ConnectionMonitor();
+    private volatile Thread monitorThread;
 
     private P2PGameSession(
             Socket socket,
@@ -138,10 +144,38 @@ public final class P2PGameSession implements AutoCloseable {
         this.output = output;
         this.mode = mode;
         this.server = server;
+
+        // 연결 모니터 콜백 설정
+        connectionMonitor.setCallback(new Callback() {
+            @Override
+            public void onLatency() {
+                listener.onConnectionLatency();
+            }
+
+            @Override
+            public void onDisconnected() {
+                try {
+                    synchronized (P2PGameSession.this) {
+                        if (!closed) {
+                            notifyDisconnected(new IOException("연결이 끊어졌습니다"));
+                        }
+                    }
+                } catch (Exception e) {
+                    // 콜백에서 예외 발생 시 무시
+                }
+            }
+        });
+
+
         // 읽기 전용 데몬 스레드가 수신을 담당해 게임/UI 스레드의 입력을 막지 않는다.
         Thread reader = new Thread(this::readMessages, "p2p-reader");
         reader.setDaemon(true);
         reader.start();
+
+        // 지연 감시 스레드 시작
+        monitorThread = new Thread(this::monitorConnection, "p2p-monitor");
+        monitorThread.setDaemon(true);
+        monitorThread.start();
     }
 
     /**
@@ -244,6 +278,9 @@ public final class P2PGameSession implements AutoCloseable {
         try {
             while (true) {
                 int message = input.readUnsignedByte();
+
+                // 메시지 수신할 때마다 연결 모니터 업데이트
+                connectionMonitor.recordMessageReceived();
                 // 메시지 식별자에 따라 필요한 데이터만 읽고 해당 상태 전이 처리기에 전달한다.
                 switch (message) {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
@@ -323,6 +360,7 @@ public final class P2PGameSession implements AutoCloseable {
         localGameOver = false;
         remoteStatus = null;
         roundActive = true;
+        connectionMonitor.reset();
         listener.onStarted();
     }
 
@@ -410,5 +448,21 @@ public final class P2PGameSession implements AutoCloseable {
         }
         closed = true;
         socket.close();
+    }
+
+    // 연결 상태 모니터링 스레드
+    private void monitorConnection(){
+        try{
+            while(!Thread.currentThread().isInterrupted()){
+                synchronized(this){
+                    if(!closed){
+                        connectionMonitor.checkAndUpdate();
+                    }
+                }
+                Thread.sleep(500);
+            }
+        }catch(InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
     }
 }
