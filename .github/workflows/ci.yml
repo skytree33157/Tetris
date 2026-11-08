@@ -1,5 +1,7 @@
 name: Java CI with Gradle
 
+
+
 # main 브랜치에 코드가 푸시되거나 Pull Request가 열릴 때 실행
 on:
   push:
@@ -20,6 +22,14 @@ jobs:
       with:
         java-version: '21' # 요구사항에 맞춘 버전
         distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: wrapper # 프로젝트의 wrapper 버전을 그대로 사용
+
+    - name: Run Tests
+      run: ./gradlew test --no-daemon
 
     - name: Gradle 실행 권한 부여
       run: chmod +x gradlew
