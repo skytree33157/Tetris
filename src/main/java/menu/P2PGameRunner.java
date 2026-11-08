@@ -79,6 +79,16 @@ public final class P2PGameRunner {
             // 게임 화면에 P2P 컨트롤러 설정
             gameScreen.setP2PController(p2pController);
             
+            // 게임 오버 콜백 설정 - session을 정리
+            gameScreen.setOnGameOverCallback(() -> {
+                try {
+                    session.close();
+                } catch (IOException e) {
+                    // 연결 이미 끊어졌을 가능성 - 무시
+                }
+                monitoringDisconnection = false;
+            });
+            
             // 통합 리스너: Runner와 Controller 모두에 event 전달
             session.setListener(new P2PGameSession.Listener() {
                 @Override

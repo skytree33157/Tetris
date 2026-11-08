@@ -57,6 +57,7 @@ public class GameScreen extends JFrame {
     private PauseScreen pauseScreen;
     private P2PGameController p2pController;
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
+    private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
 
     private JLabel levelLabel;
     private JLabel linesLabel;
@@ -222,6 +223,11 @@ public class GameScreen extends JFrame {
                 stopGame();
                 dispose();
                 
+                // P2P 게임 오버 콜백 호출 (session 정리 등)
+                if (onGameOverCallback != null) {
+                    onGameOverCallback.run();
+                }
+                
                 GameOverScreen gameOverScreen = new GameOverScreen(
                         frame.score(),
                         difficulty.name(),
@@ -246,6 +252,11 @@ public class GameScreen extends JFrame {
 
             stopGame();
             dispose();
+
+            // P2P 게임 오버 콜백 호출 (session 정리 등)
+            if (onGameOverCallback != null) {
+                onGameOverCallback.run();
+            }
 
             GameOverScreen gameOverScreen = new GameOverScreen(
                     frame.score(),
@@ -401,6 +412,11 @@ public class GameScreen extends JFrame {
     //점수 관리자 접근
     public ScoreManager getScoreManager() {
         return scoreManager;
+    }
+
+    //P2P 게임 오버 콜백 설정 - session 정리 등 필요한 작업 수행
+    public void setOnGameOverCallback(Runnable callback) {
+        this.onGameOverCallback = callback;
     }
 
     //P2P onStarted() 콜백: 게임 루프 시작 허용
