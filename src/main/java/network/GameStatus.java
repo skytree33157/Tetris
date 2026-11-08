@@ -16,6 +16,18 @@ public final class GameStatus {
     private final boolean gameOver;
 
     public GameStatus(int score, int level, int lines, boolean gameOver) {
+        // 유효성 검사: 점수와 줄 수는 음수가 아니어야 함
+        if (score < 0) {
+            throw new IllegalArgumentException("점수가 음수");
+        }
+        if (lines < 0) {
+            throw new IllegalArgumentException("줄이 음수");
+        }
+        // 레벨은 1~10 범위여야 함
+        if (level < 1 || level > 10) {
+            throw new IllegalArgumentException("이상한 레벨");
+        }
+        
         this.score = score;
         this.level = level;
         this.lines = lines;
