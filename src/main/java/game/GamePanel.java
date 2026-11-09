@@ -77,8 +77,19 @@ public class GamePanel extends JPanel{
 
         ActionController.ViewSnapshot frame = snapshot;
         if (frame != null) {
-            BlockRenderer.drawCells(g2, frame.board(), 0, 0, cellSize, colormode);
+            int[][] boardCells = frame.board();
+            BlockRenderer.drawCells(g2, boardCells, 0, 0, cellSize, colormode);
             ActionController.BlockSnapshot falling = frame.currentBlock();
+
+            // FR-51: 착지 위치 미리보기
+            boolean showGhost = !frame.stopped()
+                    && !frame.gameOver()
+                    && frame.clearingRows().isEmpty()
+                    && frame.clearingCells().isEmpty();
+            if (showGhost) {
+                drawGhostBlock(g2, boardCells, falling);
+            }
+
             if (falling != null) {
                 BlockRenderer.drawCells(g2, falling.cells(), falling.x() * cellSize,
                         falling.y() * cellSize, cellSize, colormode);
@@ -89,6 +100,12 @@ public class GamePanel extends JPanel{
         }
 
         drawFixedCells(g2, colormode);
+
+        // 기존 setCurrentBlock() 방식의 호출부에서도 표시
+        if (clearingRows.isEmpty() && clearingCells.isEmpty()) {
+            drawGhostBlock(g2, board.getBoard(), ActionController.snapshotOf(currentBlock));
+        }
+
         drawCurrentBlock(g2, colormode);
         drawClearingTargets(g2);
         drawGridLines(g2, colormode);
