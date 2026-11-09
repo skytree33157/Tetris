@@ -1,4 +1,4 @@
-package menu.settings;
+package menu.screens;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,6 +19,9 @@ import javax.swing.text.StyledDocument;
 
 import blocks.style.ColorMode;
 import difficulty.Difficulty;
+import menu.settings.AppSettings;
+import menu.settings.KeyAction;
+import menu.settings.ScreenSize;
 import storage.ScoreStorage;
 
 public class SettingsScreen extends JDialog {
@@ -169,6 +172,7 @@ public class SettingsScreen extends JDialog {
             case PROTANOPIA -> "적색맹";
             case DEUTERANOPIA -> "녹색맹";
             case TRITANOPIA -> "청황색맹";
+            case TFSE -> "TFSE 테마";
         };
     }
 

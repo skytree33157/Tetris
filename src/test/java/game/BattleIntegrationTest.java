@@ -291,8 +291,8 @@ class BattleIntegrationTest {
                     controller.installKeyBindings(root);
                     for (boolean paused : new boolean[]{false, true}) {
                         battle.setPaused(paused);
-                        key(root, KeyEvent.VK_ESCAPE, false);
-                        key(root, KeyEvent.VK_ESCAPE, true);
+                        // ESC 짧게 누르기는 일시정지 메뉴로 바뀌어, 설정은 일시정지 메뉴의 버튼으로 연다
+                        controller.openSettings();
                         assertEquals(paused, one.isPaused());
                         assertEquals(paused, two.isPaused());
                     }

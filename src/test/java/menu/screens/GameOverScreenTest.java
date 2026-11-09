@@ -1,4 +1,4 @@
-package menu;
+package menu.screens;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,6 +15,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import storage.ScoreStorage;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import menu.ScoreRecord;
 
 class GameOverScreenTest {
     @TempDir
@@ -104,5 +107,40 @@ class GameOverScreenTest {
         storage.save(allRecords);
         assertEquals(10, GameOverScreen.selectCategoryRecords(
                 storage.load(), "NORMAL", "ITEM").size());
+    }
+
+    @Test
+    void normalizesPlayerName() {
+        assertEquals("PLAYER", GameOverScreen.normalizeName(null));
+        assertEquals("PLAYER", GameOverScreen.normalizeName("   "));
+        assertEquals("PLAYER", GameOverScreen.normalizeName("a,b"));
+        assertEquals("TESTER", GameOverScreen.normalizeName("  TESTER "));
+        assertEquals("1234567890", GameOverScreen.normalizeName("12345678901"));
+    }
+
+    @Test // 게임오버·스코어보드 화면의 ←→ 난이도 순환과 Tab 모드 전환
+    void scoreViewDifficultyCyclesAndModeToggles() {
+        assertEquals("NORMAL", GameOverScreen.nextDifficulty("EASY", 1));
+        assertEquals("HARD", GameOverScreen.nextDifficulty("NORMAL", 1));
+        assertEquals("EASY", GameOverScreen.nextDifficulty("HARD", 1));
+        assertEquals("HARD", GameOverScreen.nextDifficulty("EASY", -1));
+        assertEquals("EASY", GameOverScreen.nextDifficulty("NORMAL", -1));
+        assertEquals("NORMAL", GameOverScreen.nextDifficulty("HARD", -1));
+        // 알 수 없는 값은 NORMAL 기준으로 이동
+        assertEquals("HARD", GameOverScreen.nextDifficulty("?", 1));
+
+        assertEquals("ITEM", GameOverScreen.nextMode("NORMAL"));
+        assertEquals("NORMAL", GameOverScreen.nextMode("ITEM"));
+    }
+
+    @Test
+    void newBestRequiresPositiveScoreAboveFirstPlace() {
+        ArrayList<ScoreRecord> records = new ArrayList<>();
+        assertTrue(GameOverScreen.isNewBest(records, 1));
+        assertFalse(GameOverScreen.isNewBest(records, 0));
+
+        records.add(new ScoreRecord("PLAYER", 1000, "HARD", "ITEM"));
+        assertTrue(GameOverScreen.isNewBest(records, 1001));
+        assertFalse(GameOverScreen.isNewBest(records, 1000));
     }
 }

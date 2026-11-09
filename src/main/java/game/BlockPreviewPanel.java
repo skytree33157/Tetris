@@ -1,13 +1,13 @@
 package game;
 
 import blocks.core.Block;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import ui.BlockRenderer;
+import ui.theme.Theme;
 
 public class BlockPreviewPanel extends JPanel {
 
@@ -19,7 +19,8 @@ public class BlockPreviewPanel extends JPanel {
 
     public BlockPreviewPanel() {
         setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
-        setBackground(Color.BLACK);
+        // NEXT·HOLD 카드와 같은 색이라 블록만 보임
+        setBackground(Theme.CARD);
     }
 
     public void setBlock(Block block) {

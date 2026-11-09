@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 기본 게임 기능 | 1차 5~14쪽 | 메뉴, 20×10 보드, 7종 블록, NEXT·점수, 조작·종료, 색맹 모드, 설정 지속성, 상위 10개 이상 기록 | [게임 안내](../README.md#기본-게임-규칙), 기능별 테스트, 직접 확인 결과 |
 | 기능·성능 검증 | 1차 4·17쪽 | 충분한 단위 테스트, 기능·성능 충족 여부 검증 | [테스트 코드](../src/test/java), [실행 방법과 결과](test-results.md) |
-| 라인 커버리지 | 1차 17쪽 / 2차 12쪽 | 직접 작성한 코드 기준 중간 평가 50%, 기말 평가 70% | [실제 커버리지 54.97%와 측정 범위](test-results.md#커버리지-기록) |
+| 라인 커버리지 | 1차 17쪽 / 2차 12쪽 | 직접 작성한 코드 기준 중간 평가 50%, 기말 평가 70% | [실제 커버리지 57.40%와 측정 범위](test-results.md#커버리지-기록) |
 | 비기능 테스트 | 1차 15·17쪽 | 비기능 요구사항 충족 여부를 검증하는 테스트 1개 이상 | [입력 응답 시간 검사](../src/test/java/game/GameControllerTest.java), [환경 테스트 PR #76](https://github.com/skytree33157/Tetris/pull/76) |
 | 반복 실행 체계 | 1차 17쪽 | 테스트도 관리하고 변경 시 손쉽게 실행하여 검증 | [Gradle 설정](../build.gradle), [CI 설정](../.github/workflows/ci.yml), [실행 명령](test-results.md#직접-실행하는-방법) |
 | 난이도별 생성 확률 | 2차 3~5쪽 | I 상대 가중치 EASY 12 / NORMAL 10 / HARD 8, 나머지 각 10. 실제 게임 생성 코드로 1,000회 이상 선택하여 설정 확률과 오차 ±5% 이내인지 검증 | [확률 검증 기준](test-results.md#블록-생성-확률-검증), 테스트·횟수·기대값·실제 결과 |
@@ -27,13 +27,13 @@
 
 ## 요구사항·코드·테스트·PR 연결
 
-기능 설명에서 구현과 개발 기록으로 이동할 수 있도록 노션의 FR/NFR 번호로 정리했습니다. 전체 테스트 결과는 2026-10-26 로컬 실행 기준 **124개 통과**이며, 난이도별 실제 분포와 커버리지는 [테스트 결과](test-results.md)에 정리했습니다.
+기능 설명에서 구현과 개발 기록으로 이동할 수 있도록 노션의 FR/NFR 번호로 정리했습니다. 전체 테스트 결과는 2026-11-07 로컬 실행 기준 **146개 통과**이며, 난이도별 실제 분포와 커버리지는 [테스트 결과](test-results.md)에 정리했습니다.
 
 ### 1차 기능 요구사항
 
 | ID·요구사항 | 구현·규칙 | 테스트·결과 | 개발 기록(Pull Request List) |
 |---|---|---|---|
-| FR-01 · 시작 메뉴 | 게임 이름과 시작·설정·스코어보드·종료 항목, 방향키·Enter 조작. [StartMenu](../src/main/java/menu/StartMenu.java) |  | [#5](https://github.com/skytree33157/Tetris/pull/5) |
+| FR-01 · 시작 메뉴 | 게임 이름과 시작·설정·스코어보드·종료 항목, 방향키·Enter 조작. [StartMenuScreen](../src/main/java/menu/screens/StartMenuScreen.java) |  | [#5](https://github.com/skytree33157/Tetris/pull/5) |
 | FR-02 · 메뉴 확장 구조 | 메뉴 목록을 관리하고 화면 상태를 AppStateManager로 분리. [상태 관리](../src/main/java/app/AppStateManager.java) | [상태 테스트](../src/test/java/app/AppStateManagerTest.java) | [#5](https://github.com/skytree33157/Tetris/pull/5) |
 | FR-03 · 20×10 보드 | 화면에 표시하는 보드는 20행×10열. 생성·충돌용 상단 여유 공간은 별도 관리. | [보드 테스트](../src/test/java/board/BoardTest.java) | [#1](https://github.com/skytree33157/Tetris/pull/1), [#56](https://github.com/skytree33157/Tetris/pull/56) / [#55](https://github.com/skytree33157/Tetris/issues/55) |
 | FR-04 · 7종 테트로미노 | I·O·T·S·Z·J·L 모양과 타입별 블록 생성. [블록 7종](../src/main/java/blocks/tetromino) | [모양·회전 테스트](../src/test/java/blocks/core/TetrominoTest.java) | [#2](https://github.com/skytree33157/Tetris/pull/2) |
@@ -54,19 +54,19 @@
 | FR-19 · 설정 화면 | 화면 크기 3종·이동/회전 키·색상 모드·스코어보드 초기화·기본값 복원. | [설정 저장 테스트](../src/test/java/menu/settings/AppSettingsTest.java), [입력 테스트](../src/test/java/game/GameControllerTest.java) | [#15](https://github.com/skytree33157/Tetris/pull/15), [#22](https://github.com/skytree33157/Tetris/pull/22), [#29](https://github.com/skytree33157/Tetris/pull/29), [#75](https://github.com/skytree33157/Tetris/pull/75) |
 | FR-20 · 설정 지속성 | 설정을 파일로 저장하고 다시 불러옴. 난이도도 저장 대상에 포함. | [설정 저장 테스트](../src/test/java/menu/settings/AppSettingsTest.java) | [#15](https://github.com/skytree33157/Tetris/pull/15), [#50](https://github.com/skytree33157/Tetris/pull/50) |
 | FR-21 · 게임 오버 | 새 블록 배치 불가 또는 상단 여유 공간에 고정되면 게임 오버. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#13](https://github.com/skytree33157/Tetris/pull/13), [#56](https://github.com/skytree33157/Tetris/pull/56) / [#55](https://github.com/skytree33157/Tetris/issues/55) |
-| FR-22 · 게임 종료 화면 | 최종 점수와 해당 난이도·모드의 상위 10위 표시. | [게임 종료·순위 테스트](../src/test/java/menu/GameOverScreenTest.java) | [#7](https://github.com/skytree33157/Tetris/pull/7), [#64](https://github.com/skytree33157/Tetris/pull/64) / [#63](https://github.com/skytree33157/Tetris/issues/63) |
-| FR-23 · 스코어보드 갱신 | 기록 조건에 따라 이름 입력·저장 후 새 기록 강조. | [게임 종료·순위 테스트](../src/test/java/menu/GameOverScreenTest.java), [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java) | [#7](https://github.com/skytree33157/Tetris/pull/7), [#64](https://github.com/skytree33157/Tetris/pull/64), [#65](https://github.com/skytree33157/Tetris/pull/65) |
-| FR-24 · 기록 유지 | 카테고리별 상위 10위 조회와 기록 파일 저장·불러오기. | [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java), [게임 종료·순위 테스트](../src/test/java/menu/GameOverScreenTest.java) | [#18](https://github.com/skytree33157/Tetris/pull/18), [#28](https://github.com/skytree33157/Tetris/pull/28), [#65](https://github.com/skytree33157/Tetris/pull/65) |
-| FR-25 · 종료 후 이동 | 게임 종료 화면에서 시작 메뉴 또는 프로그램 종료 선택. [GameOverScreen](../src/main/java/menu/GameOverScreen.java) |  | [#20](https://github.com/skytree33157/Tetris/pull/20), [#64](https://github.com/skytree33157/Tetris/pull/64) |
+| FR-22 · 게임 종료 화면 | 최종 점수와 해당 난이도·모드의 상위 10위 표시. | [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java) | [#7](https://github.com/skytree33157/Tetris/pull/7), [#64](https://github.com/skytree33157/Tetris/pull/64) / [#63](https://github.com/skytree33157/Tetris/issues/63) |
+| FR-23 · 스코어보드 갱신 | 기록 조건에 따라 이름 입력·저장 후 새 기록 강조. | [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java), [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java) | [#7](https://github.com/skytree33157/Tetris/pull/7), [#64](https://github.com/skytree33157/Tetris/pull/64), [#65](https://github.com/skytree33157/Tetris/pull/65) |
+| FR-24 · 기록 유지 | 카테고리별 상위 10위 조회와 기록 파일 저장·불러오기. | [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java), [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java) | [#18](https://github.com/skytree33157/Tetris/pull/18), [#28](https://github.com/skytree33157/Tetris/pull/28), [#65](https://github.com/skytree33157/Tetris/pull/65) |
+| FR-25 · 종료 후 이동 | 게임 종료 화면에서 다시 하기·시작 메뉴·프로그램 종료 선택. [GameOverScreen](../src/main/java/menu/screens/GameOverScreen.java) |  | [#20](https://github.com/skytree33157/Tetris/pull/20), [#64](https://github.com/skytree33157/Tetris/pull/64) |
 
 ### 2차 기능 요구사항
 
 | ID·요구사항 | 구현·규칙 | 테스트·결과 | 개발 기록 |
 |---|---|---|---|
-| FR-26 · 난이도 설정 | 설정에서 EASY·NORMAL·HARD 선택·저장, 새 게임에 적용. | [설정 저장 테스트](../src/test/java/menu/settings/AppSettingsTest.java), [난이도 선택 테스트](../src/test/java/menu/settings/SettingsScreenTest.java) | [#50](https://github.com/skytree33157/Tetris/pull/50) |
+| FR-26 · 난이도 설정 | 설정에서 EASY·NORMAL·HARD 선택·저장, 새 게임에 적용. | [설정 저장 테스트](../src/test/java/menu/settings/AppSettingsTest.java), [난이도 선택 테스트](../src/test/java/menu/screens/SettingsScreenTest.java) | [#50](https://github.com/skytree33157/Tetris/pull/50) |
 | FR-27 · 난이도별 생성 확률 | I 가중치 EASY 12·NORMAL 10·HARD 8, 나머지 각 10. Stochastic Acceptance로 선택. | [생성 확률 테스트](../src/test/java/blocks/core/BlockFactoryTest.java) / [100,000회·오차 결과](test-results.md#블록-생성-확률-검증) | [#35](https://github.com/skytree33157/Tetris/pull/35), [#44](https://github.com/skytree33157/Tetris/pull/44) |
 | FR-28 · 난이도별 하강 속도 | 10줄 삭제 시 하강 간격 감소량 EASY 80ms·NORMAL 100ms·HARD 120ms. | [속도 테스트](../src/test/java/game/GameStateManagerTest.java) | [#49](https://github.com/skytree33157/Tetris/pull/49) |
-| FR-29 · 난이도·모드별 기록 | 기록에 난이도·모드 저장, 조합별 순위 조회와 종료 화면 연동. | [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java), [게임 종료·순위 테스트](../src/test/java/menu/GameOverScreenTest.java) | [#42](https://github.com/skytree33157/Tetris/pull/42), [#48](https://github.com/skytree33157/Tetris/pull/48), [#64](https://github.com/skytree33157/Tetris/pull/64) |
+| FR-29 · 난이도·모드별 기록 | 기록에 난이도·모드 저장, 조합별 순위 조회와 종료 화면 연동. | [기록 저장 테스트](../src/test/java/storage/ScoreStorageTest.java), [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java) | [#42](https://github.com/skytree33157/Tetris/pull/42), [#48](https://github.com/skytree33157/Tetris/pull/48), [#64](https://github.com/skytree33157/Tetris/pull/64) |
 | FR-30 · 줄 삭제 애니메이션 | 삭제 대상 행을 표시한 뒤 실제 삭제. 표시 중 입력 처리도 검사. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#50](https://github.com/skytree33157/Tetris/pull/50), [#71](https://github.com/skytree33157/Tetris/pull/71) |
 | FR-31 · 아이템 모드 시작 | 시작 메뉴에서 일반/아이템 모드를 선택하고 GameMode 전달. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#50](https://github.com/skytree33157/Tetris/pull/50), [#48](https://github.com/skytree33157/Tetris/pull/48) |
 | FR-32 · 아이템 등장 조건 | 누적 10줄 경계 뒤 기존 NEXT를 현재 블록으로 승계하고 새 NEXT에 아이템 생성. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#33](https://github.com/skytree33157/Tetris/pull/33), [#41](https://github.com/skytree33157/Tetris/pull/41), [#52](https://github.com/skytree33157/Tetris/pull/52) / [#51](https://github.com/skytree33157/Tetris/issues/51) |
@@ -77,7 +77,7 @@
 | FR-36-1 · Bonus P | P를 포함한 행 삭제 시 P 한 칸당 기본 1,000점. 난이도 배율 적용. | [Bonus 타입 테스트](../src/test/java/item/types/BonusItemTest.java), [점수 테스트](../src/test/java/score/ScoreManagerTest.java), [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#38](https://github.com/skytree33157/Tetris/pull/38), [#37](https://github.com/skytree33157/Tetris/pull/37), [#47](https://github.com/skytree33157/Tetris/pull/47) |
 | FR-36-2 · Bomb B | 1×1 폭탄 고정 시 중심 3×3 제거·폭발 표시. [범위·점수 명세](items.md#폭탄-b) | [Bomb 타입 테스트](../src/test/java/item/types/BombItemTest.java), [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java), [보드 테스트](../src/test/java/board/BoardTest.java) | [#38](https://github.com/skytree33157/Tetris/pull/38), [#41](https://github.com/skytree33157/Tetris/pull/41), [#68](https://github.com/skytree33157/Tetris/pull/68) / [#66](https://github.com/skytree33157/Tetris/issues/66) |
 | FR-36-3 · Slow S | S를 포함한 행 삭제 시 S 한 칸당 하강 간격 500ms 증가, 최대 1,000ms. | [Slow 타입 테스트](../src/test/java/item/types/SlowItemTest.java), [속도 테스트](../src/test/java/game/GameStateManagerTest.java), [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java) | [#45](https://github.com/skytree33157/Tetris/pull/45), [#47](https://github.com/skytree33157/Tetris/pull/47) |
-| FR-37 · 아이템 모드 연동 | 모드별 공급·색상·점수·정지·게임 오버·기록 메타데이터를 각 모듈에 연결. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java), [렌더러 테스트](../src/test/java/ui/BlockRendererTest.java), [입력 테스트](../src/test/java/game/GameControllerTest.java), [게임 종료·순위 테스트](../src/test/java/menu/GameOverScreenTest.java) | [#48](https://github.com/skytree33157/Tetris/pull/48), [#50](https://github.com/skytree33157/Tetris/pull/50), [#64](https://github.com/skytree33157/Tetris/pull/64) |
+| FR-37 · 아이템 모드 연동 | 모드별 공급·색상·점수·정지·게임 오버·기록 메타데이터를 각 모듈에 연결. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java), [렌더러 테스트](../src/test/java/ui/BlockRendererTest.java), [입력 테스트](../src/test/java/game/GameControllerTest.java), [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java) | [#48](https://github.com/skytree33157/Tetris/pull/48), [#50](https://github.com/skytree33157/Tetris/pull/50), [#64](https://github.com/skytree33157/Tetris/pull/64) |
 | FR-38 · 난이도·아이템 점수 | EASY ×0.8·NORMAL ×1.0·HARD ×1.2, P 개수별 고정 보너스. [점수 명세](scoring.md) | [점수 테스트](../src/test/java/score/ScoreManagerTest.java) / [점수 검증](test-results.md#점수-계산) | [#37](https://github.com/skytree33157/Tetris/pull/37), [#44](https://github.com/skytree33157/Tetris/pull/44), [#47](https://github.com/skytree33157/Tetris/pull/47) |
 
 ### 비기능 요구사항
@@ -89,7 +89,7 @@
 | NFR-03 · 성능 | 이동 키 처리 250ms 제한과 실제 위치 변경을 자동 검사. | [입력 테스트](../src/test/java/game/GameControllerTest.java)의 `movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget` 통과 | [#71](https://github.com/skytree33157/Tetris/pull/71) |
 | NFR-04 · 산출물 추적성 | 요구사항별 설명·코드·테스트·PR·이슈·리뷰 댓글 연결. | 이 문서 / [팀 노션](https://app.notion.com/p/3dd5a0723f0d8027bed9e58150ca3dc7) | [이슈](https://github.com/skytree33157/Tetris/issues) · [PR](https://github.com/skytree33157/Tetris/pulls) |
 | NFR-05 · 버전 관리 | Git/GitHub 사용, main·feature·fix·test·docs 브랜치와 커밋·PR 규칙. | [개발 규칙](rule.md) | [변경 이력](https://github.com/skytree33157/Tetris/commits/main/) |
-| NFR-06 · 단위 테스트·커버리지 | 23개 클래스·124개 테스트 통과. 보고서 기준 LINE 54.97% — Main·ui 제외. | [실행 결과](test-results.md#테스트-결과) / [커버리지](test-results.md#커버리지-기록) | [#44](https://github.com/skytree33157/Tetris/pull/44), [#62](https://github.com/skytree33157/Tetris/pull/62), [#65](https://github.com/skytree33157/Tetris/pull/65), [#71](https://github.com/skytree33157/Tetris/pull/71) |
+| NFR-06 · 단위 테스트·커버리지 | 26개 클래스·146개 테스트 통과. 보고서 기준 LINE 57.40% — Main·ui·menu/views 제외, CI 최소 50% 검증 통과. | [실행 결과](test-results.md#테스트-결과) / [커버리지](test-results.md#커버리지-기록) | [#44](https://github.com/skytree33157/Tetris/pull/44), [#62](https://github.com/skytree33157/Tetris/pull/62), [#65](https://github.com/skytree33157/Tetris/pull/65), [#71](https://github.com/skytree33157/Tetris/pull/71) |
 | NFR-07 · 비기능 검증 | 키 입력 반응 시간의 상한을 검사하는 자동 테스트. | [입력 테스트](../src/test/java/game/GameControllerTest.java)의 250ms 제한 검사 통과 | [#71](https://github.com/skytree33157/Tetris/pull/71), [#76](https://github.com/skytree33157/Tetris/pull/76) |
 | NFR-08 · 테스트 실행 체계 | Gradle Wrapper·JUnit·JaCoCo·GitHub Actions로 테스트와 커버리지 검사. | [실행 명령](test-results.md#직접-실행하는-방법) · [CI 설정](../.github/workflows/ci.yml) | [실행된 CI](https://github.com/skytree33157/Tetris/actions/runs/40293831562) |
 | NFR-09 · 배포 가능성 | 아이콘·런타임을 포함하는 TFSE ZIP과 EXE 패키징. |  | [#77](https://github.com/skytree33157/Tetris/pull/77) |

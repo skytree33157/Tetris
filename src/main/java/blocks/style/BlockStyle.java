@@ -38,6 +38,14 @@ public class BlockStyle {
     private static final Color TRITANOPIA_J = new Color(0x995736);
     private static final Color TRITANOPIA_L = new Color(0xF5C056);
 
+    private static final Color TFSE_I = new Color(0x82BEF5);
+    private static final Color TFSE_O = new Color(0x5096E6);
+    private static final Color TFSE_T = new Color(0x3264C8);
+    private static final Color TFSE_S = new Color(0x6FA8F0);
+    private static final Color TFSE_Z = new Color(0x2A4FA8);
+    private static final Color TFSE_J = new Color(0x1E3C8C);
+    private static final Color TFSE_L = new Color(0xA9D4FA);
+
     // Weight는 모든 색상 모드에서 동일한 은회색을 사용하고 BRICK 패턴으로 구분한다.
     private static final Color WEIGHT_COLOR = new Color(0xC8CDD3);
     // 폭탄은 모든 색상 모드에서 어두운 배경·대비되는 외곽선·B 문자로 구분.
@@ -70,6 +78,8 @@ public class BlockStyle {
             case PROTANOPIA -> getProtanopiaColor(type);
             case DEUTERANOPIA -> getDeuteranopiaColor(type);
             case TRITANOPIA -> getTritanopiaColor(type);
+            case TFSE -> getTfseColor(type);
+
         };
     }
 
@@ -132,6 +142,22 @@ public class BlockStyle {
             case ATTACK -> ATTACK_COLOR;
         };
     }
+
+    private static Color getTfseColor(BlockType type) {
+        return switch (type) {
+            case I -> TFSE_I;
+            case O -> TFSE_O;
+            case T -> TFSE_T;
+            case S -> TFSE_S;
+            case Z -> TFSE_Z;
+            case J -> TFSE_J;
+            case L -> TFSE_L;
+            case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
+            case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
+        };
+    }
+
 
     private static BlockPattern getPattern(BlockType type) {
         return switch (type) {

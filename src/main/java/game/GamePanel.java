@@ -16,6 +16,7 @@ import blocks.style.ColorMode;
 import board.Board;
 import menu.settings.AppSettings;
 import ui.BlockRenderer;
+import ui.theme.Theme;
 
 // 보드 상태 + 현재 낙하 중인 블록을 그리는 패널
 public class GamePanel extends JPanel{
@@ -62,69 +63,52 @@ public class GamePanel extends JPanel{
         this.clearingCells = clearingCells;
     }
 
-    @Override
+    @ Override 
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
         Graphics2D g2 = (Graphics2D) g;
-        ColorMode colorMode = AppSettings.getInstance().getColorMode();
-        ActionController.ViewSnapshot frame = snapshot;
+        ColorMode colormode = AppSettings.getInstance().getColorMode();
 
+        if (colormode == ColorMode.TFSE) {
+            g2.setColor(Theme.BOARD_BG);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+        }
+
+        ActionController.ViewSnapshot frame = snapshot;
         if (frame != null) {
             int[][] boardCells = frame.board();
+            BlockRenderer.drawCells(g2, boardCells, 0, 0, cellSize, colormode);
+            ActionController.BlockSnapshot falling = frame.currentBlock();
 
-            BlockRenderer.drawCells(
-                    g2, boardCells, 0, 0, cellSize, colorMode
-            );
-
-            ActionController.BlockSnapshot falling =
-                    frame.currentBlock();
-
+            // FR-51: 착지 위치 미리보기
             boolean showGhost = !frame.stopped()
                     && !frame.gameOver()
                     && frame.clearingRows().isEmpty()
                     && frame.clearingCells().isEmpty();
-
             if (showGhost) {
                 drawGhostBlock(g2, boardCells, falling);
             }
 
             if (falling != null) {
-                BlockRenderer.drawCells(
-                        g2,
-                        falling.cells(),
-                        falling.x() * cellSize,
-                        falling.y() * cellSize,
-                        cellSize,
-                        colorMode
-                );
+                BlockRenderer.drawCells(g2, falling.cells(), falling.x() * cellSize,
+                        falling.y() * cellSize, cellSize, colormode);
             }
-
-            drawClearingTargets(
-                    g2,
-                    frame.clearingRows(),
-                    frame.clearingCells(),
-                    frame.animationElapsedMs()
-            );
-
-            drawGridLines(g2);
+            drawClearingTargets(g2, frame.clearingRows(), frame.clearingCells(), frame.animationElapsedMs());
+            drawGridLines(g2, colormode);
             return;
         }
 
-        drawFixedCells(g2, colorMode);
+        drawFixedCells(g2, colormode);
 
         // 기존 setCurrentBlock() 방식의 호출부에서도 표시
         if (clearingRows.isEmpty() && clearingCells.isEmpty()) {
-            drawGhostBlock(
-                    g2,
-                    board.getBoard(),
-                    ActionController.snapshotOf(currentBlock)
-            );
+            drawGhostBlock(g2, board.getBoard(), ActionController.snapshotOf(currentBlock));
         }
 
-        drawCurrentBlock(g2, colorMode);
+        drawCurrentBlock(g2, colormode);
         drawClearingTargets(g2);
-        drawGridLines(g2);
+        drawGridLines(g2, colormode);
     }
 
     private void drawGhostBlock(
@@ -203,8 +187,8 @@ public class GamePanel extends JPanel{
         BlockRenderer.drawBlock(g2, block, 0, 0, cellSize, colorMode);
     }
 
-    private void drawGridLines(Graphics2D g2) {
-        g2.setColor(Color.DARK_GRAY);
+    private void drawGridLines(Graphics2D g2, ColorMode colorMode) {
+        g2.setColor(colorMode == ColorMode.TFSE ? Theme.GRID_LINE : Color.DARK_GRAY);
         int width = board.getWidth() * cellSize;
         int top = board.getHiddenRows() * cellSize;
         int bottom = (board.getHiddenRows() + board.getHeight()) * cellSize;
