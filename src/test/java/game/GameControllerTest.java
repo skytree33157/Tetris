@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import javax.swing.JPanel;
 
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertSame;//FR-50 TEST
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -196,5 +197,31 @@ class GameControllerTest {
         assertEquals(1, exitHandlerCalls);
         assertEquals(0, pauseHandlerCalls);
         assertEquals(0, settingsOpened);
+    }
+
+    //FR-50
+    @Test
+    void holdKeyStoresCurrentBlock() {
+        Block current = action.getCurrentBlock();
+        Block next = action.getNextBlock();
+
+        press(AppSettings.getInstance().getKey(KeyAction.HOLD));
+
+        assertSame(current, action.getHeldBlock());
+        assertSame(next, action.getCurrentBlock());
+    }
+
+    @Test
+    void holdKeyIsIgnoredWhilePaused() {
+        Block current = action.getCurrentBlock();
+        Block next = action.getNextBlock();
+        Block held = action.getHeldBlock();
+
+        press(KeyEvent.VK_P);
+        press(AppSettings.getInstance().getKey(KeyAction.HOLD));
+
+        assertSame(current, action.getCurrentBlock());
+        assertSame(next, action.getNextBlock());
+        assertSame(held, action.getHeldBlock());
     }
 }

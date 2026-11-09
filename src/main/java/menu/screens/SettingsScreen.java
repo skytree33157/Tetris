@@ -286,6 +286,7 @@ public class SettingsScreen extends JDialog {
             case MOVE_RIGHT -> "오른쪽 이동";
             case MOVE_DOWN -> "아래 이동";
             case ROTATE -> "회전";
+            case HOLD -> "홀드";
         };
     }
 

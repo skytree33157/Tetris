@@ -75,6 +75,31 @@ public class AppSettings {
         keyBindings.put(KeyAction.MOVE_RIGHT, KeyEvent.VK_RIGHT);
         keyBindings.put(KeyAction.MOVE_DOWN, KeyEvent.VK_DOWN);
         keyBindings.put(KeyAction.ROTATE, KeyEvent.VK_UP);
+        keyBindings.put(KeyAction.HOLD, KeyEvent.VK_C);
+    }
+
+    //FR-50
+    private int findAvailableHoldKey() {
+        int[] candidates = {
+            KeyEvent.VK_C,
+            KeyEvent.VK_V,
+            KeyEvent.VK_H,
+            KeyEvent.VK_J,
+            KeyEvent.VK_K
+        };
+
+        for (int candidate : candidates) {
+            boolean used = keyBindings.entrySet().stream()
+                    .anyMatch(entry ->
+                            entry.getKey() != KeyAction.HOLD
+                            && entry.getValue() == candidate);
+
+            if (!used) {
+                return candidate;
+            }
+        }
+
+        throw new IllegalStateException("홀드 기본 키를 지정할 수 없습니다.");
     }
 
     // 설정을 파일에 저장
@@ -115,6 +140,11 @@ public class AppSettings {
                 if (value != null) {
                     keyBindings.put(action, Integer.parseInt(value));
                 }
+            }
+
+            //FR-50
+            if (props.getProperty("key.HOLD") == null) {
+                keyBindings.put(KeyAction.HOLD, findAvailableHoldKey());
             }
         } catch (IllegalArgumentException e) {
             resetToDefaults(); // 저장된 값이 깨져 있으면 기본값으로 복구

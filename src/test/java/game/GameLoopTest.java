@@ -12,6 +12,31 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 
 class GameLoopTest {
+    @Test
+    void resumeUsesTheUnspentPartOfTheDropIntervalAndShutdownWakesTheLoop() throws Exception {
+        Thread thread = new Thread(loop);
+        thread.start();
+        try {
+            long readyDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+            while (thread.getState() != Thread.State.TIMED_WAITING && System.nanoTime() < readyDeadline) Thread.yield();
+            assertEquals(Thread.State.TIMED_WAITING, thread.getState());
+            Thread.sleep(400);
+            action.setPaused(true);
+            Thread.sleep(1100);
+            assertEquals(0, action.getCurrentBlock().getY());
+            action.setPaused(false);
+            Thread.sleep(200);
+            assertEquals(0, action.getCurrentBlock().getY());
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(550);
+            while (action.getCurrentBlock().getY() == 0 && System.nanoTime() < deadline) Thread.sleep(5);
+            assertEquals(1, action.getCurrentBlock().getY());
+            action.setPaused(true);
+            action.shutdown();
+            thread.join(500);
+            assertFalse(thread.isAlive());
+        } finally { action.shutdown(); thread.interrupt(); thread.join(1000); }
+    }
+
     private GameStateManager manager;
     private GameLoop loop;
     private ActionController action;

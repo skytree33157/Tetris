@@ -50,6 +50,7 @@ public class BlockStyle {
     private static final Color WEIGHT_COLOR = new Color(0xC8CDD3);
     // 폭탄은 모든 색상 모드에서 어두운 배경·대비되는 외곽선·B 문자로 구분.
     private static final Color BOMB_COLOR = new Color(0x454B54);
+    private static final Color ATTACK_COLOR = new Color(0x808080);
 
     private final Color color;
     private final BlockPattern pattern;
@@ -93,6 +94,7 @@ public class BlockStyle {
             case L -> NORMAL_L;
             case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
             case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
         };
     }
 
@@ -107,6 +109,7 @@ public class BlockStyle {
             case L -> PROTANOPIA_L;
             case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
             case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
         };
     }
 
@@ -121,6 +124,7 @@ public class BlockStyle {
             case L -> DEUTERANOPIA_L;
             case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
             case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
         };
     }
 
@@ -135,6 +139,7 @@ public class BlockStyle {
             case L -> TRITANOPIA_L;
             case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
             case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
         };
     }
 
@@ -149,6 +154,7 @@ public class BlockStyle {
             case L -> TFSE_L;
             case WEIGHT, LINE_CLEAR -> WEIGHT_COLOR;
             case BOMB -> BOMB_COLOR;
+            case ATTACK -> ATTACK_COLOR;
         };
     }
 
@@ -165,6 +171,7 @@ public class BlockStyle {
             case WEIGHT -> BlockPattern.BRICK;
             case BOMB -> BlockPattern.DOT;
             case LINE_CLEAR -> BlockPattern.HORIZONTAL;
+            case ATTACK -> BlockPattern.GRID;
         };
     }
 }

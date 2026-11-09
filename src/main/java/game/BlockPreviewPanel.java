@@ -7,7 +7,6 @@ import java.awt.Graphics2D;
 import javax.swing.JPanel;
 import menu.settings.AppSettings;
 import ui.BlockRenderer;
-import blocks.style.ColorMode;
 import ui.theme.Theme;
 
 public class BlockPreviewPanel extends JPanel {
@@ -16,14 +15,20 @@ public class BlockPreviewPanel extends JPanel {
     private static final int PREVIEW_WIDTH = 80;
     private static final int PREVIEW_HEIGHT = 80;
 
-    private volatile Block block;
+    private volatile ActionController.BlockSnapshot block;
 
     public BlockPreviewPanel() {
         setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
+        // NEXT·HOLD 카드와 같은 색이라 블록만 보임
         setBackground(Theme.CARD);
     }
 
     public void setBlock(Block block) {
+        setSnapshot(ActionController.snapshotOf(block));
+    }
+
+    /** EDT에서 호출한다. NEXT가 현재 블록으로 바뀌어도 기존 프레임은 변하지 않는다. */
+    public void setSnapshot(ActionController.BlockSnapshot block) {
         this.block = block;
         repaint();
     }
@@ -32,36 +37,18 @@ public class BlockPreviewPanel extends JPanel {
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
 
-        Block previewBlock = block;
+        ActionController.BlockSnapshot previewBlock = block;
         if (previewBlock == null) {
             return;
         }
 
-        ColorMode mode = AppSettings.getInstance().getColorMode();
-        int[][] shape = previewBlock.getShape();
+        int[][] shape = previewBlock.cells();
         int shapeWidth = shape[0].length * CELL_SIZE;
         int shapeHeight = shape.length * CELL_SIZE;
         int offsetX = (getWidth() - shapeWidth) / 2;
         int offsetY = (getHeight() - shapeHeight) / 2;
 
-        Graphics2D graphics2D = (Graphics2D) graphics;
-        for (int row = 0; row < shape.length; row++) {
-            for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] != 0) {
-                    int x = offsetX + col * CELL_SIZE;
-                    int y = offsetY + row * CELL_SIZE;
-                    BlockRenderer.drawBlockCell(
-                            graphics2D,
-                            previewBlock,
-                            row,
-                            col,
-                            x,
-                            y,
-                            CELL_SIZE,
-                            mode
-                    );
-                }
-            }
-        }
+        BlockRenderer.drawCells((Graphics2D) graphics, shape, offsetX, offsetY,
+                CELL_SIZE, AppSettings.getInstance().getColorMode());
     }
 }

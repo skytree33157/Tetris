@@ -65,6 +65,7 @@ public class GameScreen extends JFrame {
     private final Thread gameThread;
     private final Timer renderTimer;
     private final BlockPreviewPanel blockPreviewPanel;
+    private final BlockPreviewPanel holdPreviewPanel;
     private final Difficulty difficulty;
     private final GameMode mode;
     private final int bestScore;
@@ -111,10 +112,17 @@ private JLabel scoreLabel;
             );
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
+        // 같은 시점의 게임 상태로 보드, NEXT, HOLD를 초기화
+        ActionController.ViewSnapshot initialFrame = actionController.getViewSnapshot();
+
         gamePanel = new GamePanel(board);
-        gamePanel.setCurrentBlock(actionController.getCurrentBlock());
+        gamePanel.setSnapshot(initialFrame);
         blockPreviewPanel = new BlockPreviewPanel();
-        blockPreviewPanel.setBlock(actionController.getNextBlock());
+        blockPreviewPanel.setSnapshot(initialFrame.nextBlock());
+
+        // FR-50: 홀드 블록 미리보기
+        holdPreviewPanel = new BlockPreviewPanel();
+        holdPreviewPanel.setSnapshot(initialFrame.heldBlock());
         gameController = new GameController(
             gameLoop, actionController, gameStateManager, scoreManager, appStateManager, 
                 () -> {
@@ -188,22 +196,22 @@ private JLabel scoreLabel;
         }
         lastTickMs = now;
 
-        gamePanel.setCurrentBlock(actionController.getCurrentBlock());
-        gamePanel.setClearingRows(actionController.getClearingRows());
-        gamePanel.setClearingCells(actionController.getClearingCells());
-        blockPreviewPanel.setBlock(actionController.getNextBlock());
-        updateHud();
-        gamePanel.repaint();
+        ActionController.ViewSnapshot frame = actionController.getViewSnapshot();
 
-        if (gameStateManager.isGameOver() && !gameOverHandled) {
+        gamePanel.setSnapshot(frame);
+        blockPreviewPanel.setSnapshot(frame.nextBlock());
+        holdPreviewPanel.setSnapshot(frame.heldBlock());
+        updateHud();
+
+        if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
             stopGame();
             dispose();
             GameOverScreen gameOverScreen = new GameOverScreen(
-                scoreManager.getScore(), difficulty.name(), mode.name(),
-                gameStateManager.getCurrentLevel(), gameStateManager.getTotalLinesCleared(), elapsedMs);
-                gameOverScreen.setVisible(true);
-            }
+                frame.score(), difficulty.name(), mode.name(),
+                frame.level(), frame.lines(), elapsedMs);
+            gameOverScreen.setVisible(true);
+        }
     }
 
     private void updateHud() {
@@ -247,6 +255,9 @@ private JLabel scoreLabel;
     
     private JPanel createLeftPanel() {
         JPanel col = column();
+
+        // FR-50: 홀드 블록 (디자인 시안의 왼쪽 맨 위)
+        addBlock(col, previewCard("HOLD", holdPreviewPanel));
 
         RoundedPanel scoreCard = card();
         scoreCard.add(caption("점수"));
@@ -306,16 +317,7 @@ private JLabel scoreLabel;
     private JPanel createRightPanel() {
         JPanel col = column();
 
-        RoundedPanel nextCard = card();
-        nextCard.add(caption("NEXT"));
-        nextCard.add(Box.createVerticalStrut(10));
-        JPanel previewWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        previewWrap.setOpaque(false);
-        previewWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
-        previewWrap.add(blockPreviewPanel);
-        fixHeight(previewWrap);
-        nextCard.add(previewWrap);
-        addBlock(col, nextCard);
+        addBlock(col, previewCard("NEXT", blockPreviewPanel));
 
         RoundedPanel infoCard = card();
         infoCard.add(row(text("모드", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED),
@@ -333,6 +335,7 @@ private JLabel scoreLabel;
         addKeyRow(keyCard, "회전", KeyAction.ROTATE, null);
         addKeyRow(keyCard, "소프트 드롭", KeyAction.MOVE_DOWN, null);
         addKeyRow(keyCard, "하드 드롭", null, "Space");
+        addKeyRow(keyCard, "홀드", KeyAction.HOLD, null);
         addKeyRow(keyCard, "일시정지", null, "P, ESC");
         addKeyRow(keyCard, "종료", null, "Esc hold");
         refreshKeyGuide();
@@ -340,6 +343,20 @@ private JLabel scoreLabel;
 
         col.add(Box.createVerticalGlue());
         return col;
+    }
+
+    // NEXT·HOLD처럼 제목과 블록 미리보기만 있는 카드
+    private static RoundedPanel previewCard(String title, BlockPreviewPanel preview) {
+        RoundedPanel card = card();
+        card.add(caption(title));
+        card.add(Box.createVerticalStrut(10));
+        JPanel previewWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        previewWrap.setOpaque(false);
+        previewWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        previewWrap.add(preview);
+        fixHeight(previewWrap);
+        card.add(previewWrap);
+        return card;
     }
 
     private void addKeyRow(JPanel card, String name, KeyAction action, String fixedKey) {

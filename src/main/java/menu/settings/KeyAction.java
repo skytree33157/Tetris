@@ -5,5 +5,6 @@ public enum KeyAction {
     MOVE_LEFT,
     MOVE_RIGHT,
     MOVE_DOWN,
-    ROTATE
+    ROTATE,
+    HOLD
 }
