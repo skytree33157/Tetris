@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -54,20 +55,28 @@ public class GameScreen extends JFrame {
     private final GameMode mode;
 
     private PauseScreen pauseScreen;
+    private P2PGameController p2pController;
+    private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
+    private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
 
     private JLabel levelLabel;
     private JLabel linesLabel;
     private JLabel scoreLabel;
     private JLabel difficultyLabel;
     private JLabel modeLabel;
-
+    private JLabel connectionStatusLabel;
     private boolean gameOverHandled = false;
     private boolean closed = false;
 
     public GameScreen(GameMode mode) {
+        this(mode, null);
+    }
+
+    public GameScreen(GameMode mode, P2PGameController p2pController) {
         super("TFSE");
         ui.AppIcon.apply(this);
         this.mode = mode;
+        this.p2pController = p2pController;
 
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -160,7 +169,13 @@ public class GameScreen extends JFrame {
             @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
-                gameThread.start();
+                // P2P 모드: onStarted() 콜백을 기다림
+                // 단일 플레이어 모드: 즉시 게임 시작
+                if (p2pController == null) {
+                    gameStartAllowed = true;
+                    gameThread.start();
+                }
+                // P2P 모드는 onStarted() 콜백 이후에 시작됨
             }
 
             @Override
@@ -192,11 +207,56 @@ public class GameScreen extends JFrame {
         linesLabel.setText("LINES: " + frame.lines());
         scoreLabel.setText("SCORE: " + frame.score());
 
+        // P2P 게임 상태 전송
+        if (p2pController != null && p2pController.isRoundActive()) {
+            try {
+                p2pController.sendGameStatus();
+            } catch (IOException exception) {
+                // 연결 끊김은 P2PGameSession의 리스너에서 처리
+                exception.printStackTrace();
+            }
+            
+            // 상대 플레이어 게임 오버 감지
+            network.GameStatus remoteStatus = p2pController.getRemoteStatus();
+            if (remoteStatus != null && remoteStatus.isGameOver() && !gameOverHandled) {
+                gameOverHandled = true;
+                stopGame();
+                dispose();
+                
+                // P2P 게임 오버 콜백 호출 (session 정리 등)
+                if (onGameOverCallback != null) {
+                    onGameOverCallback.run();
+                }
+                
+                GameOverScreen gameOverScreen = new GameOverScreen(
+                        frame.score(),
+                        difficulty.name(),
+                        mode.name());
+                gameOverScreen.setVisible(true);
+                return;
+            }
+        }
+
+        // 로컬 게임 오버 처리
         if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
 
+            // P2P 게임이면 게임 오버를 상대에게 통지
+            if (p2pController != null) {
+                try {
+                    p2pController.notifyGameOver();
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
+            }
+
             stopGame();
             dispose();
+
+            // P2P 게임 오버 콜백 호출 (session 정리 등)
+            if (onGameOverCallback != null) {
+                onGameOverCallback.run();
+            }
 
             GameOverScreen gameOverScreen = new GameOverScreen(
                     frame.score(),
@@ -272,7 +332,7 @@ public class GameScreen extends JFrame {
         return label;
     }
 
-    private void stopGame() {
+    public void stopGame() {
         closed = true;
         renderTimer.stop();
         gameController.shutdown();
@@ -283,6 +343,94 @@ public class GameScreen extends JFrame {
     private void refreshInputBindings() {
         gameController.installKeyBindings(getRootPane());
         requestFocusInWindow();
+    }
+    
+    // 연결 상태를 상단 바에 보여줌 (정상 제외)
+    public void showConnectionStatus(String message, boolean isWarning) {
+        if (connectionStatusLabel == null) {
+            connectionStatusLabel = new JLabel(message);
+            connectionStatusLabel.setFont(new Font("Courier", Font.BOLD, 14));
+            if (isWarning) {
+                connectionStatusLabel.setForeground(Color.YELLOW);
+            } else {
+                connectionStatusLabel.setForeground(Color.RED);
+            }
+            connectionStatusLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        } else {
+            connectionStatusLabel.setText(message);
+            if (isWarning) {
+                connectionStatusLabel.setForeground(Color.YELLOW);
+            } else {
+                connectionStatusLabel.setForeground(Color.RED);
+            }
+        }
+        
+        // 상단에 상태 레이블 추가 (이미 추가되었다면 업데이트만)
+        if (connectionStatusLabel.getParent() == null) {
+            add(connectionStatusLabel, BorderLayout.NORTH);
+            revalidate();
+            repaint();
+        }
+    }
+    
+    // 정상 상태로 복구 시 상단 바 제거
+    public void hideConnectionStatus() {
+        if (connectionStatusLabel != null && connectionStatusLabel.getParent() != null) {
+            remove(connectionStatusLabel);
+            revalidate();
+            repaint();
+        }
+    }
+
+//------------------------------------------------------------------
+    // 상대 플레이어의 게임 상태 업데이트
+    public void updateRemoteStatus(network.GameStatus status) {
+// 상대 플레이어 정보 표시
+// 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음
+        if (status != null) {
+// 현재는 게임 화면에 표시하지 않음
+// 필요시 별도 패널에 상대 플레이어 정보 추가
+        }
+    }
+//------------------------------------------------------------------
+
+    //P2P 게임 컨트롤러 설정
+    public void setP2PController(P2PGameController controller) {
+        this.p2pController = controller;
+    }
+
+    //게임 상태 관리자 접근
+    public GameStateManager getGameStateManager() {
+        return gameStateManager;
+    }
+
+    //행동 컨트롤러 접근
+    public ActionController getActionController() {
+        return actionController;
+    }
+
+    //점수 관리자 접근
+    public ScoreManager getScoreManager() {
+        return scoreManager;
+    }
+
+    //P2P 게임 오버 콜백 설정 - session 정리 등 필요한 작업 수행
+    public void setOnGameOverCallback(Runnable callback) {
+        this.onGameOverCallback = callback;
+    }
+
+    //P2P onStarted() 콜백: 게임 루프 시작 허용
+    public void allowGameStart() {
+        if (!gameStartAllowed && gameThread.getState() == Thread.State.NEW) {
+            gameStartAllowed = true;
+            gameThread.start();
+        }
+    }
+
+    //P2P 다음 라운드 준비: 게임 상태 리셋
+    public void resetForNextRound() {
+        gameOverHandled = false;
+        gameStartAllowed = false;
     }
 
     private void suppressEscapeUntilReleased() {
