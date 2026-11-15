@@ -156,16 +156,16 @@ public class ActionController {
         }
     }
 
+    boolean canHold() {
+        synchronized (stateLock) {
+            return !cannotAct() && !holdUsed
+                    && !(block instanceof WeightItem weightItem && weightItem.isLanded());
+        }
+    }
+
     public boolean holdAction() {
         synchronized (stateLock) {
-            if (cannotAct() || holdUsed) {
-                return false;
-            }
-
-            if (block instanceof WeightItem weightItem && weightItem.isLanded()) {
-                return false;
-            }
-
+            if (!canHold()) return false;
             Block outgoing = block;
 
             if (heldBlock == null) {
