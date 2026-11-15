@@ -1,108 +1,64 @@
 package menu;
 
-import java.io.IOException;
-import javax.swing.SwingUtilities;
+import java.util.List;
 
 import game.ActionController;
-import game.GameMode;
 import game.GameStateManager;
-import network.GameStatus;
-import network.P2PGameSession;
+import game.MatchLink;
 import score.ScoreManager;
+import network.GameStatus;
+import network.P2PMatchSession;
 
-//P2P 게임 화면과 P2PGameSession을 연결하는 컨트롤러
-public final class P2PGameController {
-    private final P2PGameSession session;
-    private final GameScreen gameScreen;
+// 로컬 게임 엔진과 N인 네트워크 매치 세션을 연결하는 어댑터
+public final class P2PGameController implements MatchLink {
+    private final P2PMatchSession session;
     private final GameStateManager gameStateManager;
     private final ActionController actionController;
     private final ScoreManager scoreManager;
-    private volatile boolean roundActive = false;
-    private volatile boolean ready = false;
 
     public P2PGameController(
-            P2PGameSession session,
-            GameScreen gameScreen,
+            P2PMatchSession session,
             GameStateManager gameStateManager,
             ActionController actionController,
             ScoreManager scoreManager) {
         this.session = session;
-        this.gameScreen = gameScreen;
         this.gameStateManager = gameStateManager;
         this.actionController = actionController;
         this.scoreManager = scoreManager;
     }
 
-    // P2P 세션 onStarted() 이벤트 처리
-    public void onSessionStarted() {
-        roundActive = true;
-        ready = false;
+    public void attach() {
+        actionController.attachMatchLink(this);
     }
 
-    // P2P 세션 onRemoteStatus() 이벤트 처리
-    public void onRemoteStatus(GameStatus status) {
-        // 상대 플레이어의 게임 상태 수신
-        SwingUtilities.invokeLater(() -> {
-            gameScreen.updateRemoteStatus(status);
-        });
+    @Override
+    public boolean isRunning() {
+        return session.isMatchRunning();
     }
 
-    // P2P 세션 onRoundFinished() 이벤트 처리
-    public void onRoundFinished() {
-        roundActive = false;
+    @Override
+    public void publishAttack(List<int[]> rows) {
+        session.requestAttack(rows);
     }
 
-    // 게임 준비 상태를 P2P 세션에 전달
-    public void notifyPlayerReady() throws IOException {
-        if (!ready) {
-            ready = true;
-            session.setReady();
-        }
+    @Override
+    public void reportGameOver() {
+        session.sendStatus(new GameStatus(
+                scoreManager.getScore(),
+                gameStateManager.getCurrentLevel(),
+                gameStateManager.getTotalLinesCleared(),
+                true));
     }
 
-    //게임 상태를 P2P 세션으로 전송
-    public void sendGameStatus() throws IOException {
-        if (!roundActive) {
+    // 진행 중인 게임의 현재 상태를 상대 플레이어들에게 전송
+    public void sendGameStatus() {
+        if (!session.isMatchRunning()) {
             return;
         }
-
-        // 현재 게임 상태 캡처
+        GameStatus status;
         synchronized (actionController) {
-            GameStatus status = GameStatus.capture(
-                    actionController,
-                    gameStateManager,
-                    scoreManager);
-            session.sendStatus(status);
+            status = GameStatus.capture(actionController, gameStateManager, scoreManager);
         }
-    }
-
-    // P2P 세션에 게임 종료 전달
-    public void notifyGameOver() throws IOException {
-        synchronized (actionController) {
-            GameStatus finalStatus = new GameStatus(
-                    scoreManager.getScore(),
-                    gameStateManager.getCurrentLevel(),
-                    gameStateManager.getTotalLinesCleared(),
-                    true); // gameOver = true
-            session.sendStatus(finalStatus);
-        }
-    }
-
-    // 라운드가 활성화되어있는지 확인
-    public boolean isRoundActive() {
-        return roundActive;
-    }
-
-    public boolean isReady() {
-        return ready;
-    }
-
-    public P2PGameSession getSession() {
-        return session;
-    }
-
-    // 상대방 마지막 상태 조회
-    public GameStatus getRemoteStatus() {
-        return session.getRemoteStatus();
+        session.sendStatus(status);
     }
 }
