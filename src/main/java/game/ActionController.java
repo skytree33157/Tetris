@@ -19,6 +19,8 @@ import item.types.WeightItem;
 import score.ScoreManager;
 import score.DropType;
 import ui.ItemAppearanceResolver;
+import java.util.function.Consumer;
+import sound.SoundEvent;
 
 // 블록 이동 클래스
 
@@ -112,6 +114,19 @@ public class ActionController {
     private long activeNanos;
     private long clockUpdatedNanos = System.nanoTime();
     private long pauseRevision;
+    private volatile Consumer<SoundEvent> soundListener = event -> {};
+
+    public void setSoundListener(Consumer<SoundEvent> listener) {
+        this.soundListener = listener == null ? event -> {} : listener;
+    }
+
+    private void emit(SoundEvent event) {
+        try {
+            soundListener.accept(event);
+        } catch (RuntimeException ignored) {
+            // 소리 문제로 게임이 멈추면 안 됨
+        }
+    }
 
     public ActionController(Board board, Block block, GameStateManager gameStateManager,
                             ScoreManager scoreManager, Difficulty difficulty, GameMode mode) {
@@ -184,6 +199,7 @@ public class ActionController {
             }
 
             holdUsed = true;
+            emit(SoundEvent.HOLD); 
             return true;
         }
     }
@@ -340,7 +356,9 @@ public class ActionController {
     }
 
     private void markGameOver() {
+        boolean alreadyOver = gameStateManager.isGameOver();
         gameStateManager.setGameOver(true);
+        if (!alreadyOver) emit(SoundEvent.GAME_OVER); 
         // 개인의 게임 오버를 보고하면 경기 관리자가 상대 승리와 양쪽 정지를 처리한다.
         if (battle != null) battle.reportGameOver(player);
     }
@@ -559,6 +577,7 @@ public class ActionController {
         int slowLinesCleared = clearedLines > 0 ? board.getLastClearedSlowLines() : 0;
 
         int previousTotalLines = gameStateManager.getTotalLinesCleared();
+        int previousLevel = gameStateManager.getCurrentLevel();
         gameStateManager.updateLevelUp(clearedLines);
         boolean shouldSpawnItem = mode == GameMode.ITEM
                 && gameStateManager.shouldSpawnItem(previousTotalLines);
@@ -571,6 +590,10 @@ public class ActionController {
         scoreManager.addLineClearScore(Math.min(clearedLines, 4), currentLevel, perfectClear);
         scoreManager.addBonusScore(bonusLinesCleared);
         gameStateManager.applySlowItem(slowLinesCleared);
+        if (clearedLines >= 4) emit(SoundEvent.TETRIS);
+        else if (clearedLines > 0) emit(SoundEvent.LINE_CLEAR);
+        else emit(SoundEvent.LOCK);
+        if (gameStateManager.getCurrentLevel() > previousLevel) emit(SoundEvent.LEVEL_UP);
 
         // 자신의 고정 결과가 이미 패배라면 공격/다음 블록을 더 처리하지 않는다.
         if (board.hasBlocksInHiddenRows()) {
@@ -621,6 +644,7 @@ public class ActionController {
             int targetX = block.getX() - 1;
             if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
                 block.moveLeft();
+                emit(SoundEvent.MOVE);
             }
         }
     }
@@ -633,6 +657,8 @@ public class ActionController {
             int targetX = block.getX() + 1;
             if (board.isValidPosition(block.getShape(), targetX, block.getY())) {
                 block.moveRight();
+                emit(SoundEvent.MOVE);
+
             }
         }
     }
@@ -661,6 +687,7 @@ public class ActionController {
                 if (board.isValidPosition(rotatedShape, targetX, block.getY())) {
                     block.rotate();
                     block.setX(targetX);
+                    emit(SoundEvent.ROTATE);
                     return;
                 }
             }
@@ -711,6 +738,7 @@ public class ActionController {
         }
         // 고정이 경기 종료를 확정하기 전에 마지막 이동 점수까지 반영한다.
         if (awardScore) scoreManager.addDropScore(dropDistance, DropType.HARD, gameStateManager.getCurrentLevel());
+        emit(SoundEvent.HARD_DROP);
         moveDownBlock(); // 블록을 고정하고 새로운 블록 생성
         return dropDistance;
     }

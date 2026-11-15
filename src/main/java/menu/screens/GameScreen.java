@@ -44,7 +44,7 @@ import score.ScoreManager;
 import storage.ScoreStorage;
 import ui.components.RoundedPanel;
 import ui.theme.Theme;
-
+import sound.SoundManager;
 
 
 // 게임 화면(보드 + 사이드 정보 패널)을 담는 창
@@ -110,6 +110,7 @@ private JLabel scoreLabel;
             mode,
             ActionController.CLEAR_ANIMATION_MS
             );
+        actionController.setSoundListener(SoundManager.getInstance()::play);
         gameLoop = new GameLoop(actionController, gameStateManager, scoreManager);
 
         // 같은 시점의 게임 상태로 보드, NEXT, HOLD를 초기화
@@ -171,6 +172,7 @@ private JLabel scoreLabel;
                 requestFocusInWindow();
                 lastTickMs = System.currentTimeMillis();
                 gameThread.start();
+                SoundManager.getInstance().startBgm();
             }
 
             @Override
@@ -195,6 +197,7 @@ private JLabel scoreLabel;
             elapsedMs += now - lastTickMs;
         }
         lastTickMs = now;
+        SoundManager.getInstance().setBgmPaused(gameLoop.isPaused());
 
         ActionController.ViewSnapshot frame = actionController.getViewSnapshot();
 
@@ -482,6 +485,7 @@ private JLabel scoreLabel;
         gameController.shutdown();
         actionController.shutdown();
         gameThread.interrupt();
+        SoundManager.getInstance().stopBgm();
     }
 
     private void refreshInputBindings() {

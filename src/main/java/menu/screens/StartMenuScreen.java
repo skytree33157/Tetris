@@ -11,6 +11,7 @@ import javax.swing.JFrame;
 
 import game.GameMode;
 import menu.views.StartMenuView;
+import sound.SoundManager;
 
 
 public class StartMenuScreen extends JFrame {
@@ -50,6 +51,7 @@ public class StartMenuScreen extends JFrame {
             @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
+                SoundManager.getInstance().ensureBgm();
             }
 
             @Override
