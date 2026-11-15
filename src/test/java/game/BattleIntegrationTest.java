@@ -171,6 +171,7 @@ class BattleIntegrationTest {
             battle.registerPlayer(BattleController.Player.ONE, one);
             battle.registerPlayer(BattleController.Player.TWO, two);
             battle.start();
+            battle.setPaused(true); // 대기 행 스냅샷 검증을 위해 일시정지 상태에서 공격을 받는다.
             one.receiveAttackRows(List.of(new int[10], new int[10]));
             var matchView = battle.getViewSnapshot();
             var view = matchView.players().get(BattleController.Player.ONE);
@@ -180,6 +181,8 @@ class BattleIntegrationTest {
             assertEquals(11, view.board()[22][0]);
             assertNotEquals(0, view.currentBlock().cells()[0][0]);
             assertEquals(0, view.pendingAttackRows().get(0)[0]);
+            assertThrows(UnsupportedOperationException.class, () -> matchView.players().clear());
+            battle.setPaused(false);
             one.moveLeftAction();
             assertEquals(3, view.currentBlock().x());
             assertEquals(2, one.getViewSnapshot().currentBlock().x());
@@ -212,10 +215,10 @@ class BattleIntegrationTest {
             long deadline = System.nanoTime() + 2_000_000_000L;
             while (one.isClearing() && System.nanoTime() < deadline) Thread.sleep(10);
             assertFalse(one.isClearing());
-            assertEquals(2, two.getPendingAttackCount());
+            assertEquals(0, two.getPendingAttackCount()); // 공격은 즉시 적용되어 대기열이 비어 있다.
+            assertNotEquals(0, Arrays.stream(two.getBoardSnapshot()[22]).sum());
             two.hardDropAction();
             assertEquals(0, two.getPendingAttackCount());
-            assertEquals(0, two.getCurrentBlock().getY());
         }
     }
 

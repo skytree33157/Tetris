@@ -173,13 +173,8 @@ class BattleAttackTest {
                 receiverBoard,new OBlock(),0);
         receiverBattle.start();
         assertEquals(2,receiverBattle.receiveAttack(BattleController.Player.TWO,rows));
-        assertEquals(2,receiver.getPendingAttackCount());
-        assertArrayEquals(new int[10],receiver.getPendingAttackRows().get(1));
-        assertEquals(1,receiverBoard.getBoard()[10][0]); // 수신 시에는 아직 밀리지 않는다.
-        receiver.hardDropAction();
-        assertEquals(0,receiver.getPendingAttackCount());
+        assertEquals(0,receiver.getPendingAttackCount()); // 수신 즉시 보드에 반영된다.
         assertEquals(1,receiverBoard.getBoard()[8][0]); // 빈 공격 행도 포함하여 두 칸 상승한다.
-        assertEquals(2,receiverBoard.getBoard()[19][3]); // 방금 고정한 O 블록도 함께 상승한다.
         assertArrayEquals(attackRow(3,4),receiverBoard.getBoard()[21]);
         assertArrayEquals(new int[10],receiverBoard.getBoard()[22]);
     }
@@ -281,6 +276,7 @@ class BattleAttackTest {
         battle.start();
         List<int[]> first=new ArrayList<>();
         for(int i=0;i<8;i++) first.add(attackRow(i));
+        action.setPaused(true); // 일시정지 중에는 공격이 보드에 적용되지 않고 대기열에 쌓인다.
         assertEquals(8,battle.receiveAttack(BattleController.Player.ONE,first));
         assertEquals(2,battle.receiveAttack(BattleController.Player.ONE,
                 List.of(attackRow(8),attackRow(9),attackRow(0),attackRow(1))));
@@ -294,20 +290,36 @@ class BattleAttackTest {
     }
 
     @Test
-    void incomingRowsWaitForLockAndAreInsertedBeforeNextSpawn() {
+    void incomingRowsAreInsertedImmediatelyAndLiftTheFallingBlock() {
         BattleController battle=battle();
         Board board=new Board();
         ActionController action=player(battle,BattleController.Player.ONE,board,new OBlock(),0);
         battle.start();
-        Block next=action.getNextBlock();
+        Block falling=action.getCurrentBlock();
+        int startY=falling.getY();
         battle.receiveAttack(BattleController.Player.ONE,List.of(attackRow(0),attackRow(1)));
-        assertEquals(0,board.getBoard()[22][9]);
-        action.hardDropAction();
-        assertEquals(2,board.getBoard()[19][3]);
+        assertEquals(0,action.getPendingAttackCount());
         assertArrayEquals(attackRow(0),board.getBoard()[21]);
         assertArrayEquals(attackRow(1),board.getBoard()[22]);
-        assertSame(next,action.getCurrentBlock());
+        assertEquals(startY-2,falling.getY());
+        assertSame(falling,action.getCurrentBlock());
+    }
+
+    @Test
+    void incomingRowsWaitWhilePausedAndApplyOnceResumed() {
+        BattleController battle=battle();
+        Board board=new Board();
+        ActionController action=player(battle,BattleController.Player.ONE,board,new OBlock(),0);
+        battle.start();
+        action.setPaused(true);
+        battle.receiveAttack(BattleController.Player.ONE,List.of(attackRow(0)));
+        assertEquals(1,action.getPendingAttackCount());
+        assertEquals(0,board.getBoard()[22][9]);
+        action.setPaused(false);
+        battle.receiveAttack(BattleController.Player.ONE,List.of(attackRow(1)));
         assertEquals(0,action.getPendingAttackCount());
+        assertArrayEquals(attackRow(0),board.getBoard()[21]);
+        assertArrayEquals(attackRow(1),board.getBoard()[22]);
     }
 
     @Test
@@ -333,7 +345,7 @@ class BattleAttackTest {
         ActionController one=player(battle,BattleController.Player.ONE,first,new OBlock(),0);
         ActionController two=player(battle,BattleController.Player.TWO,new Board(),new OBlock(),0);
         battle.start(); one.hardDropAction();
-        assertEquals(2,two.getPendingAttackCount());
+        assertEquals(0,two.getPendingAttackCount()); // 로컬 대전에서도 즉시 적용된다.
         assertTrue(battle.drainOutgoingAttacks().isEmpty());
     }
 

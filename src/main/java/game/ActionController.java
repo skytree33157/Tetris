@@ -27,6 +27,7 @@ public class ActionController {
     // 싱글에서는 자체 잠금, 대전 등록 후에는 양쪽이 경기 잠금을 공유한다.
     private volatile Object stateLock = this;
     private BattleController battle;
+    private MatchLink match;
     private BattleController.Player player;
     public static final int MAX_PENDING_ATTACK_ROWS = 10;
     // 상대에게 받은 행. 현재 블록의 처리가 끝날 때까지 보드는 바꾸지 않는다.
@@ -269,6 +270,24 @@ public class ActionController {
         stateLock = battle;
     }
 
+    // 네트워크 다인전 경기를 등록
+    public void attachMatchLink(MatchLink link) {
+        if (this.battle != null || this.match != null || stopped || clearing
+                || gameStateManager.getCountBlock() != 0
+                || block.getX() != startX || block.getY() != startY) {
+            throw new IllegalStateException("Register a fresh, unused player");
+        }
+        this.match = Objects.requireNonNull(link);
+    }
+
+    private boolean inMatch() {
+        return battle != null || match != null;
+    }
+
+    private boolean matchRunning() {
+        return match != null && match.isRunning();
+    }
+
     public boolean isStopped() {
         synchronized (stateLock) {
             return stopped;
@@ -307,12 +326,26 @@ public class ActionController {
     /** 공격을 대기열에만 저장하고 실제 수락한 행 수를 반환한다. */
     public int receiveAttackRows(List<int[]> rows) {
         synchronized (stateLock) {
-            if (battle == null || !battle.isRunning() || stopped || gameStateManager.isGameOver()) return 0;
+            boolean running = battle != null ? battle.isRunning() : matchRunning();
+            if (!running || stopped || gameStateManager.isGameOver()) return 0;
             List<int[]> copies = BattleController.copyAttackRows(rows);
             // 기존 대기 행을 먼저 유지한다. 8행 + 새 4행이면 새 행의 위쪽 2행만 받는다.
             int accepted = Math.min(MAX_PENDING_ATTACK_ROWS - pendingAttackRows.size(), copies.size());
             pendingAttackRows.addAll(copies.subList(0, accepted));
+            applyPendingAttackRowsNow();
             return accepted;
+        }
+    }
+
+    // 공격을 받는 즉시 보드를 올린다. 떨어지는 블록도 같은 칸만큼 올려 블록과 쌓인 블록의 위치 관계를 유지한다.
+    private void applyPendingAttackRowsNow() {
+        if (pendingAttackRows.isEmpty() || block == null || paused || clearing) return;
+        int count = pendingAttackRows.size();
+        boolean overflow = board.insertAttackRows(pendingAttackRows);
+        pendingAttackRows.clear();
+        block.setY(block.getY() - count);
+        if (overflow || board.hasBlocksInHiddenRows()) {
+            markGameOver();
         }
     }
 
@@ -320,7 +353,7 @@ public class ActionController {
     private void prepareAttackRows(List<Integer> rows) {
         preparedAttackRows = List.of();
         // 같은 블록에서 2행 이상 지운 경우만 공격한다. 이전 블록의 1행 삭제는 합산하지 않는다.
-        if (battle == null || rows.size() < 2) return;
+        if (!inMatch() || rows.size() < 2) return;
         List<int[]> attack = new ArrayList<>();
         int[][] shape = block.getShape();
         // L의 강제 삭제 행과 완성 행이 겹쳐도 한 번만 세고, 원래 위→아래 순서를 보존한다.
@@ -342,12 +375,17 @@ public class ActionController {
     private void markGameOver() {
         gameStateManager.setGameOver(true);
         // 개인의 게임 오버를 보고하면 경기 관리자가 상대 승리와 양쪽 정지를 처리한다.
-        if (battle != null) battle.reportGameOver(player);
+        if (battle != null) {
+            battle.reportGameOver(player);
+        } else if (match != null) {
+            match.reportGameOver();
+        }
     }
 
     private boolean cannotAct() {
         return gameStateManager.isGameOver() || clearing || paused || stopped
-                || (battle != null && !battle.isRunning());
+                || (battle != null && !battle.isRunning())
+                || (match != null && !match.isRunning());
     }
 
     public void setPaused(boolean paused) {
@@ -577,9 +615,13 @@ public class ActionController {
             markGameOver();
             return;
         }
-        if (battle != null) {
+        if (inMatch()) {
             // 실제 삭제가 끝났으므로 이번 공격을 확정한다. 취소된 삭제는 여기까지 오지 않는다.
-            battle.publishAttack(player, preparedAttackRows);
+            if (battle != null) {
+                battle.publishAttack(player, preparedAttackRows);
+            } else {
+                match.publishAttack(preparedAttackRows);
+            }
             preparedAttackRows = List.of();
             // 방금 고정한 블록을 포함한 기존 보드 전체가 수신 행 수만큼 위로 밀린다.
             // 떨어지는 중에는 삽입하지 않고, NEXT 배치 전에 한 번에 반영한다.
