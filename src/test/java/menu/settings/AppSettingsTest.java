@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -121,5 +123,53 @@ class AppSettingsTest {
         settings.load();
 
         assertEquals(KeyEvent.VK_K, settings.getKey(KeyAction.HOLD));
+    }
+
+    @Test // 소리 기본값: 켜짐, BGM 30, 효과음 40
+    void soundDefaults() {
+        assertAll(
+                () -> assertTrue(settings.isSoundEnabled()),
+                () -> assertEquals(30, settings.getBgmVolume()),
+                () -> assertEquals(40, settings.getSfxVolume())
+        );
+    }
+
+    @Test // 볼륨은 0~100으로 제한
+    void volumeIsClamped() {
+        settings.setBgmVolume(150);
+        settings.setSfxVolume(-5);
+        assertEquals(100, settings.getBgmVolume());
+        assertEquals(0, settings.getSfxVolume());
+    }
+
+    @Test // 소리 설정 저장 후 다시 불러와도 유지
+    void soundSettingsSaveAndLoad() {
+        settings.setSoundEnabled(false);
+        settings.setBgmVolume(70);
+        settings.setSfxVolume(15);
+        settings.save();
+
+        settings.resetToDefaults();
+        settings.load();
+
+        assertAll(
+                () -> assertFalse(settings.isSoundEnabled()),
+                () -> assertEquals(70, settings.getBgmVolume()),
+                () -> assertEquals(15, settings.getSfxVolume())
+        );
+    }
+
+    @Test // 이전 버전 파일처럼 sound 키가 없으면 기본값 유지
+    void missingSoundKeysKeepDefaults() throws IOException {
+        Files.createDirectories(SETTINGS_PATH.getParent());
+        Files.writeString(SETTINGS_PATH, "difficulty=HARD\n");
+
+        settings.load();
+
+        assertAll(
+                () -> assertTrue(settings.isSoundEnabled()),
+                () -> assertEquals(30, settings.getBgmVolume()),
+                () -> assertEquals(40, settings.getSfxVolume())
+        );
     }
 }

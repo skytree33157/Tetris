@@ -21,6 +21,10 @@ public class AppSettings {
     private ScreenSize screenSize;
     private ColorMode colorMode;
     private Difficulty difficulty;
+    private boolean soundEnabled;
+    private int bgmVolume;
+    private int sfxVolume;
+
     private final Map<KeyAction, Integer> keyBindings = new EnumMap<>(KeyAction.class);
 
     private AppSettings() {
@@ -65,6 +69,19 @@ public class AppSettings {
         this.difficulty = difficulty;
     }
 
+    public boolean isSoundEnabled() { return soundEnabled; }
+    public void setSoundEnabled(boolean soundEnabled) { this.soundEnabled = soundEnabled; }
+
+    public int getBgmVolume() { return bgmVolume; }
+    public void setBgmVolume(int volume) { this.bgmVolume = clampVolume(volume); }
+
+    public int getSfxVolume() { return sfxVolume; }
+    public void setSfxVolume(int volume) { this.sfxVolume = clampVolume(volume); }
+
+    private static int clampVolume(int volume) {
+        return Math.max(0, Math.min(100, volume));
+    }
+
     
     // 기본값으로 복원 
     public void resetToDefaults() {
@@ -76,6 +93,9 @@ public class AppSettings {
         keyBindings.put(KeyAction.MOVE_DOWN, KeyEvent.VK_DOWN);
         keyBindings.put(KeyAction.ROTATE, KeyEvent.VK_UP);
         keyBindings.put(KeyAction.HOLD, KeyEvent.VK_C);
+        soundEnabled = true;    
+        bgmVolume = 30;
+        sfxVolume = 40;
     }
 
     //FR-50
@@ -110,6 +130,9 @@ public class AppSettings {
         props.setProperty("screenSize", screenSize.name());
         props.setProperty("colorMode", colorMode.name());
         props.setProperty("difficulty", difficulty.name());
+        props.setProperty("sound.enabled", String.valueOf(soundEnabled));
+        props.setProperty("sound.bgmVolume", String.valueOf(bgmVolume));
+        props.setProperty("sound.sfxVolume", String.valueOf(sfxVolume));
         for (KeyAction action : KeyAction.values()) {
             props.setProperty("key." + action.name(), String.valueOf(keyBindings.get(action)));
         }
@@ -135,6 +158,13 @@ public class AppSettings {
             screenSize = ScreenSize.valueOf(props.getProperty("screenSize", screenSize.name()));
             colorMode = ColorMode.valueOf(props.getProperty("colorMode", colorMode.name()));
             difficulty = Difficulty.valueOf(props.getProperty("difficulty", difficulty.name()));
+            soundEnabled = Boolean.parseBoolean(
+                    props.getProperty("sound.enabled", String.valueOf(soundEnabled)));
+            bgmVolume = clampVolume(Integer.parseInt(
+                    props.getProperty("sound.bgmVolume", String.valueOf(bgmVolume))));
+            sfxVolume = clampVolume(Integer.parseInt(
+                    props.getProperty("sound.sfxVolume", String.valueOf(sfxVolume))));
+
             for (KeyAction action : KeyAction.values()) {
                 String value = props.getProperty("key." + action.name());
                 if (value != null) {

@@ -4,7 +4,7 @@ import javax.swing.SwingUtilities;
 
 import game.GameMode;
 import menu.P2PGameRunner;
-import menu.StartMenu;
+import menu.screens.StartMenuScreen;
 
 public class Main {
     public static void main(String[] args) {
@@ -13,7 +13,7 @@ public class Main {
             return;
         }
         SwingUtilities.invokeLater(() -> {
-            StartMenu menu = new StartMenu();
+            StartMenuScreen menu = new StartMenuScreen();
             menu.setVisible(true);
         });
     }

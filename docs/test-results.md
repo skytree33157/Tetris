@@ -9,12 +9,12 @@
 
 | 항목 | 실제 결과 | 판정                    |
 |---|---|-----------------------|
-| 테스트 클래스 | 23개 | 전체 실행                 |
-| 테스트 케이스 | 124개 성공 / 실패 0 / 오류 0 / 건너뜀 0 | 통과                    |
+| 테스트 클래스 | 26개 | 전체 실행                 |
+| 테스트 케이스 | 146개 성공 / 실패 0 / 오류 0 / 건너뜀 0 | 통과                    |
 | 블록 생성 분포 | 7개 분포 검사, 각 100,000회. 최대 상대오차 1.864% | 상대오차 5% 이내로 통과        |
-| 라인 커버리지 | 1,156 / 2,103줄, **54.97%** | 보고서 범위에서 중간 50% 이상 통과 |
+| 라인 커버리지 | 1,233 / 2,148줄, **57.40%** | 보고서 범위에서 중간 50% 이상 통과 |
 
-JUnit 테스트 메서드는 118개이며, 파라미터별 실행을 포함한 테스트 케이스는 124개입니다.
+JUnit 테스트 메서드는 140개이며, 파라미터별 실행을 포함한 테스트 케이스는 146개입니다.
 
 
 ## 블록 생성 확률 검증
@@ -66,12 +66,12 @@ JUnit 테스트 메서드는 118개이며, 파라미터별 실행을 포함한 �
 
 | 구분 | 줄 수 |
 |---|---:|
-| 테스트에서 실행된 줄 | 1,156 |
-| 실행되지 않은 줄 | 947 |
-| 보고서 전체 | 2,103 |
-| 실행 비율 | **54.97%** |
+| 테스트에서 실행된 줄 | 1,233 |
+| 실행되지 않은 줄 | 915 |
+| 보고서 전체 | 2,148 |
+| 실행 비율 | **57.40%** |
 
-[build.gradle](../build.gradle)의 HTML·XML 보고서는 `Main.class`와 `ui` 패키지를 제외합니다. 
+[build.gradle](../build.gradle)의 HTML·XML 보고서는 `Main.class`, `ui` 패키지, 화면 배치만 담당하는 `menu/views` 패키지를 제외합니다. 창 클래스(`menu/screens`)는 측정 대상이며, 창 없이 검사할 수 있는 계산은 [GameHud](../src/main/java/menu/screens/GameHud.java) 등으로 분리해 테스트합니다. 위 수치는 2026-11-07 로컬에서 JDK 24와 JaCoCo 0.8.13으로 측정했고, 같은 실행에서 `jacocoTestCoverageVerification`(최소 50%)도 통과했습니다. 
 ## 하강 속도와 레벨
 
 초기 1초, 블록·줄 기준 상승, 난이도별 하강 간격 감소량, Slow 상한, 최소 간격을 검사합니다.
@@ -159,20 +159,22 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 
 ## 색상 모드와 아이템 표시
 
-**BlockStyleTest 2개, BlockRendererTest 6개, ItemAppearanceResolverTest 4개 통과.** 색·패턴, 일반 칸과 아이템 칸, 저장 전후의 렌더링·문자 복원을 검사합니다. 
+**BlockStyleTest 3개, BlockRendererTest 7개, ItemAppearanceResolverTest 4개 통과.** 색·패턴, 일반 칸과 아이템 칸, 저장 전후의 렌더링·문자 복원을 검사합니다. 
 
 [스타일 테스트](../src/test/java/blocks/style/BlockStyleTest.java) · [렌더러 테스트](../src/test/java/ui/BlockRendererTest.java) · [저장·복원 테스트](../src/test/java/ui/ItemAppearanceResolverTest.java)
 
 | 확인할 내용 | 테스트 메서드 |
 |---|---|
 | 색상 모드별 7종 블록의 색·패턴 구분 | [BlockStyleTest.sevenBlocksHaveDistinctColorsAndPatternsInEveryMode()](../src/test/java/blocks/style/BlockStyleTest.java#L11) |
-| 색상 모드별 특수 아이템 전용 스타일 유지 | [BlockStyleTest.specialItemsKeepDedicatedStylesAcrossModes()](../src/test/java/blocks/style/BlockStyleTest.java#L29) |
-| 색상 모드·셀 크기별 일반 칸의 기존 렌더링 유지 | [BlockRendererTest.ordinaryCellsKeepLegacyRenderingInEveryModeAndSize()](../src/test/java/ui/BlockRendererTest.java#L46) |
-| 표시 칸의 문자와 나머지 칸의 원본 배경 유지 | [BlockRendererTest.attachedMarkersChangeOnlyMarkedCellAndKeepUnmarkedBackground()](../src/test/java/ui/BlockRendererTest.java#L58) |
-| 낙하 블록·보드 저장 칸의 외형 일치 | [BlockRendererTest.objectAndStoredCellMatchAndPreserveLegacyBorder()](../src/test/java/ui/BlockRendererTest.java#L71) |
-| 잘못된 인자·빈칸·범위 밖 칸은 그리지 않음 | [BlockRendererTest.invalidArgumentsEmptyAndOutOfBoundsCellsDrawNothing()](../src/test/java/ui/BlockRendererTest.java#L90) |
-| 보드 좌표에 맞춰 블록 표시·보드 위쪽 칸 제외 | [BlockRendererTest.wholeBlockUsesBoardCoordinatesAndSkipsCellsAboveBoard()](../src/test/java/ui/BlockRendererTest.java#L116) |
-| 렌더링 후 호출자의 Graphics 설정 유지 | [BlockRendererTest.renderingPreservesCallerGraphicsState()](../src/test/java/ui/BlockRendererTest.java#L127) |
+| TFSE 테마 7종 블록의 시안 색상 사용 | [BlockStyleTest.tfseModeUsesDesignPalette()](../src/test/java/blocks/style/BlockStyleTest.java#L29) |
+| 색상 모드별 특수 아이템 전용 스타일 유지 | [BlockStyleTest.specialItemsKeepDedicatedStylesAcrossModes()](../src/test/java/blocks/style/BlockStyleTest.java#L40) |
+| 색상 모드·셀 크기별 일반 칸의 기존 렌더링 유지 | [BlockRendererTest.ordinaryCellsKeepLegacyRenderingInEveryModeAndSize()](../src/test/java/ui/BlockRendererTest.java#L48) |
+| 표시 칸의 문자와 나머지 칸의 원본 배경 유지 | [BlockRendererTest.attachedMarkersChangeOnlyMarkedCellAndKeepUnmarkedBackground()](../src/test/java/ui/BlockRendererTest.java#L60) |
+| 낙하 블록·보드 저장 칸의 외형 일치 | [BlockRendererTest.objectAndStoredCellMatchAndPreserveLegacyBorder()](../src/test/java/ui/BlockRendererTest.java#L73) |
+| TFSE 테마 칸의 베벨 표시·패턴과 검정 테두리 없음 | [BlockRendererTest.tfseCellsUseBevelInsteadOfPatternAndBlackBorder()](../src/test/java/ui/BlockRendererTest.java#L92) |
+| 잘못된 인자·빈칸·범위 밖 칸은 그리지 않음 | [BlockRendererTest.invalidArgumentsEmptyAndOutOfBoundsCellsDrawNothing()](../src/test/java/ui/BlockRendererTest.java#L110) |
+| 보드 좌표에 맞춰 블록 표시·보드 위쪽 칸 제외 | [BlockRendererTest.wholeBlockUsesBoardCoordinatesAndSkipsCellsAboveBoard()](../src/test/java/ui/BlockRendererTest.java#L136) |
+| 렌더링 후 호출자의 Graphics 설정 유지 | [BlockRendererTest.renderingPreservesCallerGraphicsState()](../src/test/java/ui/BlockRendererTest.java#L147) |
 | 회전한 아이템의 타입·문자 저장과 복원 | [ItemAppearanceResolverTest.occupiedCellsRoundTripWithoutLosingTypeOrSymbolAfterRotation()](../src/test/java/ui/ItemAppearanceResolverTest.java#L13) |
 | 일반 칸의 기존 저장 값·부착 마커의 원본 스타일 유지 | [ItemAppearanceResolverTest.normalCellsKeepExistingValuesAndAttachedMarkersKeepSourceStyle()](../src/test/java/ui/ItemAppearanceResolverTest.java#L27) |
 | Slow 모양 마커를 보드 저장 값으로 변환·문자 복원 | [ItemAppearanceResolverTest.slowMarkerSurvivesStoredCellConversionWithoutUsingShapeMarkerValue()](../src/test/java/ui/ItemAppearanceResolverTest.java#L41) |
@@ -182,8 +184,9 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 
 | 확인 범위 | 테스트 코드 | 실제 결과 |
 |---|---|---|
-| 설정·저장 | [AppSettingsTest](../src/test/java/menu/settings/AppSettingsTest.java), [SettingsScreenTest](../src/test/java/menu/settings/SettingsScreenTest.java) | 각각 5·1개 통과 |
-| 기록 파일·종료 화면 | [ScoreStorageTest](../src/test/java/storage/ScoreStorageTest.java), [GameOverScreenTest](../src/test/java/menu/GameOverScreenTest.java) | 각각 6개 통과 |
+| 설정·저장 | [AppSettingsTest](../src/test/java/menu/settings/AppSettingsTest.java), [SettingsScreenTest](../src/test/java/menu/screens/SettingsScreenTest.java) | 각각 5·1개 통과 |
+| 게임 화면 정보 표시 | [GameHudTest](../src/test/java/menu/screens/GameHudTest.java) | 8개 통과 |
+| 기록 파일·종료 화면 | [ScoreStorageTest](../src/test/java/storage/ScoreStorageTest.java), [GameOverScreenTest](../src/test/java/menu/screens/GameOverScreenTest.java) | 각각 6·9개 통과 |
 
 [설정 안내](../README.md#설정과-접근성) · [기록 안내](../README.md#점수와-스코어보드) · 관련 PR [#65](https://github.com/skytree33157/Tetris/pull/65), [#75](https://github.com/skytree33157/Tetris/pull/75)
 
@@ -194,21 +197,32 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 | 각 난이도의 저장·복원 | [AppSettingsTest.everyDifficultyCanBeSavedAndLoaded()](../src/test/java/menu/settings/AppSettingsTest.java#L80) |
 | 저장 파일에 난이도가 없을 때 기본값 유지 | [AppSettingsTest.missingDifficultyKeyKeepsDefault()](../src/test/java/menu/settings/AppSettingsTest.java#L91) |
 | 잘못된 설정값을 읽으면 기본값 복원 | [AppSettingsTest.brokenValueFallsBackToDefaults()](../src/test/java/menu/settings/AppSettingsTest.java#L101) |
-| 난이도 선택 순환 | [SettingsScreenTest.difficultySelectionCyclesForwardAndBackwardAndWraps()](../src/test/java/menu/settings/SettingsScreenTest.java#L10) |
+| 난이도 선택 순환 | [SettingsScreenTest.difficultySelectionCyclesForwardAndBackwardAndWraps()](../src/test/java/menu/screens/SettingsScreenTest.java#L10) |
 | 한글 이름과 기록 정보 저장·복원 | [ScoreStorageTest.savesAndLoadsKoreanRecord()](../src/test/java/storage/ScoreStorageTest.java#L20) |
 | 여러 점수 기록 저장·복원 | [ScoreStorageTest.savesAndLoadsMultipleRecords()](../src/test/java/storage/ScoreStorageTest.java#L43) |
 | 저장된 점수 기록 초기화 | [ScoreStorageTest.clearsSavedRecords()](../src/test/java/storage/ScoreStorageTest.java#L69) |
 | 기존 기록을 유지하며 새 기록 추가 | [ScoreStorageTest.addsRecordWithoutLosingExistingRecords()](../src/test/java/storage/ScoreStorageTest.java#L87) |
 | 기록 파일이 없을 때 빈 목록 반환 | [ScoreStorageTest.loadsEmptyListWhenFileDoesNotExist()](../src/test/java/storage/ScoreStorageTest.java#L120) |
 | 잘못된 기록은 건너뛰고 유효한 기록 복원 | [ScoreStorageTest.skipsInvalidRecordsAndLoadsValidRecords()](../src/test/java/storage/ScoreStorageTest.java#L134) |
-| 기록이 10개 미만일 때 새 기록 진입 허용 | [GameOverScreenTest.acceptsRecordWhenFewerThanTenRecordsExist()](../src/test/java/menu/GameOverScreenTest.java#L24) |
-| 10위 점수에 따른 기록 진입 판정 (99·100·101점, 3회) | [GameOverScreenTest.checksScoreAgainstTenthPlace()](../src/test/java/menu/GameOverScreenTest.java#L43) |
-| 난이도·모드별 조회와 점수 내림차순 정렬 | [GameOverScreenTest.selectsMatchingCategoryAndSortsByScoreDescending()](../src/test/java/menu/GameOverScreenTest.java#L60) |
-| 해당 카테고리 상위 10위 유지·다른 카테고리 보존 | [GameOverScreenTest.keepsOnlyTopTenInTheSelectedCategoryAndPreservesOtherCategories()](../src/test/java/menu/GameOverScreenTest.java#L83) |
+| 기록이 10개 미만일 때 새 기록 진입 허용 | [GameOverScreenTest.acceptsRecordWhenFewerThanTenRecordsExist()](../src/test/java/menu/screens/GameOverScreenTest.java#L27) |
+| 10위 점수에 따른 기록 진입 판정 (99·100·101점, 3회) | [GameOverScreenTest.checksScoreAgainstTenthPlace()](../src/test/java/menu/screens/GameOverScreenTest.java#L46) |
+| 난이도·모드별 조회와 점수 내림차순 정렬 | [GameOverScreenTest.selectsMatchingCategoryAndSortsByScoreDescending()](../src/test/java/menu/screens/GameOverScreenTest.java#L63) |
+| 해당 카테고리 상위 10위 유지·다른 카테고리 보존 | [GameOverScreenTest.keepsOnlyTopTenInTheSelectedCategoryAndPreservesOtherCategories()](../src/test/java/menu/screens/GameOverScreenTest.java#L86) |
+| 이름 입력값 정리(빈 값·쉼표는 PLAYER, 최대 10자) | [GameOverScreenTest.normalizesPlayerName()](../src/test/java/menu/screens/GameOverScreenTest.java#L113) |
+| 기록 조회 난이도 순환·모드 전환 | [GameOverScreenTest.scoreViewDifficultyCyclesAndModeToggles()](../src/test/java/menu/screens/GameOverScreenTest.java#L122) |
+| 최고 기록 갱신 판정 | [GameOverScreenTest.newBestRequiresPositiveScoreAboveFirstPlace()](../src/test/java/menu/screens/GameOverScreenTest.java#L137) |
+| 경과 시간 mm:ss 표시 | [GameHudTest.formatsElapsedTimeAsMinutesAndSeconds()](../src/test/java/menu/screens/GameHudTest.java#L18) |
+| 다음 레벨 진행률(블록·줄 중 큰 쪽) | [GameHudTest.levelProgressFollowsWhicheverCounterIsCloserToLevelUp()](../src/test/java/menu/screens/GameHudTest.java#L28) |
+| 최고 레벨에서 진행률 100%·MAX 표시 | [GameHudTest.maxLevelShowsFullProgressAndMaxLabel()](../src/test/java/menu/screens/GameHudTest.java#L36) |
+| 다음 레벨까지 남은 블록·줄 표시 | [GameHudTest.nextLevelTextShowsRemainingBlocksAndLines()](../src/test/java/menu/screens/GameHudTest.java#L42) |
+| 콤보는 2연속부터 표시 | [GameHudTest.comboIsShownFromTwoInARow()](../src/test/java/menu/screens/GameHudTest.java#L48) |
+| 조작 키 이름(방향키는 화살표) | [GameHudTest.arrowKeysUseSymbolsAndOtherKeysUseTheirNames()](../src/test/java/menu/screens/GameHudTest.java#L56) |
+| 난이도 한글 표시 | [GameHudTest.difficultyLabelsAreKorean()](../src/test/java/menu/screens/GameHudTest.java#L65) |
+| 같은 난이도·모드 기록 중 최고 점수 | [GameHudTest.bestScoreOnlyCountsTheSameDifficultyAndMode()](../src/test/java/menu/screens/GameHudTest.java#L72) |
 
 ## 보드와 기본 조작
 
-**BoardTest 8개, GameControllerTest 9개, GameLoopTest 4개, GamePanelTest 4개 통과.** 보드·줄 삭제·조작·루프·패널 경로를 검사합니다. 고정·충돌 경로는 위 ActionControllerTest에서도 검사합니다.
+**BoardTest 8개, GameControllerTest 10개, GameLoopTest 4개, GamePanelTest 4개 통과.** 보드·줄 삭제·조작·루프·패널 경로를 검사합니다. 고정·충돌 경로는 위 ActionControllerTest에서도 검사합니다.
 
 [보드 테스트](../src/test/java/board/BoardTest.java) · [입력 테스트](../src/test/java/game/GameControllerTest.java) · [루프 테스트](../src/test/java/game/GameLoopTest.java) · [패널 테스트](../src/test/java/game/GamePanelTest.java)
 
@@ -224,15 +238,16 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 | 완성 행 삭제·위쪽 행 하강 | [BoardTest.clearsOneFullLineAndShiftsRowsAboveItDown()](../src/test/java/board/BoardTest.java#L89) |
 | 행 삭제마다 아이템 마커 집계 초기화 | [BoardTest.clearRowsResetsItemMarkerCounts()](../src/test/java/board/BoardTest.java#L100) |
 | 폭발로 비워진 행 압축·위쪽 행 하강 | [BoardTest.bombAreaClearCollapsesRowsEmptiedByTheBlast()](../src/test/java/board/BoardTest.java#L110) |
-| ESC 설정 진입 중 일시정지·설정 종료 후 재개 | [GameControllerTest.escPausesWhileSettingsOpenAndResumesAfter()](../src/test/java/game/GameControllerTest.java#L88) |
-| 설정 중 게임 종료 시 루프 재개 방지 | [GameControllerTest.doesNotResumeWhenShutdownDuringSettings()](../src/test/java/game/GameControllerTest.java#L99) |
-| 일시정지 중 설정을 닫아도 정지 상태 유지 | [GameControllerTest.escWhilePausedKeepsPausedAfterSettings()](../src/test/java/game/GameControllerTest.java#L113) |
-| P 입력으로 일시정지·재개 | [GameControllerTest.pTogglesPause()](../src/test/java/game/GameControllerTest.java#L123) |
-| 일시정지 중 이동 입력 무시 | [GameControllerTest.movementIgnoredWhilePaused()](../src/test/java/game/GameControllerTest.java#L137) |
-| 키 입력 즉시 반영·250ms 응답 제한 | [GameControllerTest.movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget()](../src/test/java/game/GameControllerTest.java#L147) |
-| 하드드롭 키 입력 시 실제 이동 거리만큼 점수 지급 | [GameControllerTest.hardDropKeyAddsPointsForTheActualDropDistance()](../src/test/java/game/GameControllerTest.java#L158) |
-| 게임 오버 후 ESC·P 입력 무시 | [GameControllerTest.escAndPIgnoredAfterGameOver()](../src/test/java/game/GameControllerTest.java#L168) |
-| ESC 길게 누르기로 종료 동작 호출 | [GameControllerTest.holdingEscapeExitsInsteadOfOpeningSettings()](../src/test/java/game/GameControllerTest.java#L180) |
+| 설정 진입 중 일시정지·설정 종료 후 재개 | [GameControllerTest.openSettingsPausesWhileOpenAndResumesAfter()](../src/test/java/game/GameControllerTest.java#L84) |
+| 설정 중 게임 종료 시 루프 재개 방지 | [GameControllerTest.doesNotResumeWhenShutdownDuringSettings()](../src/test/java/game/GameControllerTest.java#L95) |
+| 일시정지 중 설정을 닫아도 정지 상태 유지 | [GameControllerTest.settingsFromPauseMenuKeepsPaused()](../src/test/java/game/GameControllerTest.java#L106) |
+| ESC 짧게 입력으로 일시정지 메뉴 열기·닫기 | [GameControllerTest.shortEscapeTogglesPauseMenu()](../src/test/java/game/GameControllerTest.java#L116) |
+| P 입력으로 일시정지·재개 | [GameControllerTest.pTogglesPause()](../src/test/java/game/GameControllerTest.java#L131) |
+| 일시정지 중 이동 입력 무시 | [GameControllerTest.movementIgnoredWhilePaused()](../src/test/java/game/GameControllerTest.java#L145) |
+| 키 입력 즉시 반영·250ms 응답 제한 | [GameControllerTest.movementKeyTakesEffectImmediatelyWithinTheInputResponseBudget()](../src/test/java/game/GameControllerTest.java#L155) |
+| 하드드롭 키 입력 시 실제 이동 거리만큼 점수 지급 | [GameControllerTest.hardDropKeyAddsPointsForTheActualDropDistance()](../src/test/java/game/GameControllerTest.java#L166) |
+| 게임 오버 후 ESC·P 입력 무시 | [GameControllerTest.escAndPIgnoredAfterGameOver()](../src/test/java/game/GameControllerTest.java#L176) |
+| ESC 길게 누르기로 종료 동작 호출 | [GameControllerTest.holdingEscapeExitsInsteadOfPausing()](../src/test/java/game/GameControllerTest.java#L188) |
 | 게임 루프 초기 상태·일시정지 전환 | [GameLoopTest.startsUnpausedAndCanTogglePause()](../src/test/java/game/GameLoopTest.java#L29) |
 | 스레드 인터럽트 시 게임 루프 종료 | [GameLoopTest.runStopsWhenItsThreadIsInterrupted()](../src/test/java/game/GameLoopTest.java#L41) |
 | 설정된 1초 주기 자동 하강 | [GameLoopTest.automaticallyDropsAtTheConfiguredOneSecondInterval()](../src/test/java/game/GameLoopTest.java#L54) |

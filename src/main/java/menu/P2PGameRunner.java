@@ -6,6 +6,8 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import game.GameMode;
+import menu.screens.GameScreen;
+import menu.screens.StartMenuScreen;
 import network.P2PGameSession;
 
 public final class P2PGameRunner {
@@ -45,7 +47,7 @@ public final class P2PGameRunner {
                 null,
                 "P2P 연결을 시작하지 못했습니다.\n" + exception.getMessage(),
                 "P2P 연결 오류", JOptionPane.ERROR_MESSAGE);
-        new StartMenu().setVisible(true);
+        new StartMenuScreen().setVisible(true);
     }
 
     // P2P 게임 루프 클래스
@@ -178,7 +180,7 @@ public final class P2PGameRunner {
                         "P2P 연결 오류",
                         JOptionPane.ERROR_MESSAGE);
                 // P2P 초기 화면으로 복귀
-                new StartMenu().setVisible(true);
+                new StartMenuScreen().setVisible(true);
             });
         }
     }

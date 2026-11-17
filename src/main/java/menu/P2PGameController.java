@@ -6,6 +6,7 @@ import javax.swing.SwingUtilities;
 import game.ActionController;
 import game.GameMode;
 import game.GameStateManager;
+import menu.screens.GameScreen;
 import network.GameStatus;
 import network.P2PGameSession;
 import score.ScoreManager;

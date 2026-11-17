@@ -16,10 +16,12 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import blocks.core.Block;
 import blocks.core.BlockType;
+import blocks.style.BlockStyle;
 import blocks.style.ColorMode;
 import blocks.tetromino.IBlock;
 import blocks.tetromino.JBlock;
@@ -105,6 +107,24 @@ class BlockRendererTest {
                     if(x<15 || y<15 || x>=15+size || y>=15+size) assertEquals(background.getRGB(x,y),actual.getRGB(x,y), block.getClass().getSimpleName()+" size="+size+" x="+x+" y="+y);
             }
     }
+    @Test // TFSE 테마: 패턴·검정 테두리 대신 좌상 밝게 / 우하 어둡게 베벨
+    void tfseCellsUseBevelInsteadOfPatternAndBlackBorder() {
+        BufferedImage image = image(); Graphics2D g = image.createGraphics();
+        try { BlockRenderer.drawCell(g,15,15,30,BlockType.T,ColorMode.TFSE); } finally { g.dispose(); }
+        Color fill = BlockStyle.of(BlockType.T, ColorMode.TFSE).getColor();
+
+        Color topLeft = new Color(image.getRGB(16,16), true);
+        Color bottomRight = new Color(image.getRGB(43,43), true);
+        assertTrue(topLeft.getRed() > fill.getRed() && topLeft.getBlue() > fill.getBlue());
+        assertTrue(bottomRight.getRed() < fill.getRed() && bottomRight.getBlue() < fill.getBlue());
+        // 가장자리에 검정 테두리 없음
+        assertFalse(image.getRGB(15,30) == Color.BLACK.getRGB());
+        assertFalse(image.getRGB(44,30) == Color.BLACK.getRGB());
+        // 베벨 안쪽은 무늬 없이 단색
+        for (int x = 19; x <= 40; x++) for (int y = 19; y <= 40; y++)
+            assertEquals(fill.getRGB(), image.getRGB(x,y), "x="+x+" y="+y);
+    }
+
     @Test
     void invalidArgumentsEmptyAndOutOfBoundsCellsDrawNothing() {
         BufferedImage image=image(); Graphics2D g=image.createGraphics(); OBlock block=new OBlock();
