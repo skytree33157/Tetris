@@ -87,6 +87,10 @@ public final class SoundManager {
         if (!bgmPlaying) startBgm();
     }
 
+    public synchronized boolean isBgmPlaying() {
+        return bgmPlaying;
+    }
+
     // 여러 번 호출돼도 안전 (매 프레임 호출 가능)
     public synchronized void setBgmPaused(boolean paused) {
         if (!available || !bgmPlaying) return;
