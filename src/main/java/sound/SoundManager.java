@@ -107,6 +107,22 @@ public final class SoundManager {
         bgm.stop();
         bgm.setFramePosition(0);
     }
+    
+    // 설정 화면에서 바꾼 값을 바로 반영 (끄면 BGM 정지, 켜거나 볼륨을 바꾸면 즉시 적용)
+    public synchronized void applySettings() {
+        AppSettings settings = AppSettings.getInstance();
+        if (!settings.isSoundEnabled()) {
+            stopBgm();
+            return;
+        }
+        if (!available) return;
+        if (bgmPlaying) {
+            applyVolume(bgm, settings.getBgmVolume());
+        } else {
+            startBgm();
+        }
+    }
+
 
     // 0~100 → dB
     static float toDecibel(int volume, float min, float max) {

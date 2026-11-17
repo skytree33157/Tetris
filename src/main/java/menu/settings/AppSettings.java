@@ -92,6 +92,7 @@ public class AppSettings {
         keyBindings.put(KeyAction.MOVE_RIGHT, KeyEvent.VK_RIGHT);
         keyBindings.put(KeyAction.MOVE_DOWN, KeyEvent.VK_DOWN);
         keyBindings.put(KeyAction.ROTATE, KeyEvent.VK_UP);
+        keyBindings.put(KeyAction.HARD_DROP, KeyEvent.VK_SPACE);
         keyBindings.put(KeyAction.HOLD, KeyEvent.VK_C);
         soundEnabled = true;    
         bgmVolume = 30;
