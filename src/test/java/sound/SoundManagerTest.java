@@ -86,4 +86,16 @@ class SoundManagerTest {
         assertEquals(-6.02f, SoundManager.toDecibel(50, -80f, 6f), 0.01);
         assertEquals(-10f, SoundManager.toDecibel(1, -10f, 6f)); // -40dB → 최소값으로 제한
     }
+
+    @Test // 설정 화면에서 켜고 끄면 BGM 상태가 따라간다 (장치 없으면 계속 정지)
+    void applySettingsFollowsSoundToggle() {
+        settings.setSoundEnabled(false);
+        assertDoesNotThrow(sound::applySettings);
+        assertFalse(sound.isBgmPlaying());
+
+        settings.setSoundEnabled(true);
+        assertDoesNotThrow(sound::applySettings);
+        assertEquals(sound.isAvailable(), sound.isBgmPlaying());
+    }
+
 }

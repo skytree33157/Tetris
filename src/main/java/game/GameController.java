@@ -77,7 +77,7 @@ public class GameController extends KeyAdapter {
                     settings.getKey(KeyAction.MOVE_RIGHT),
                     settings.getKey(KeyAction.MOVE_DOWN),
                     settings.getKey(KeyAction.ROTATE),
-                    KeyEvent.VK_SPACE,
+                    settings.getKey(KeyAction.HARD_DROP),
                     settings.getKey(KeyAction.HOLD)
             );
         }

@@ -393,7 +393,7 @@ private JLabel scoreLabel;
         addKeyRow(keyCard, "오른쪽 이동", KeyAction.MOVE_RIGHT, null);
         addKeyRow(keyCard, "회전", KeyAction.ROTATE, null);
         addKeyRow(keyCard, "소프트 드롭", KeyAction.MOVE_DOWN, null);
-        addKeyRow(keyCard, "하드 드롭", null, "Space");
+        addKeyRow(keyCard, "하드 드롭", KeyAction.HARD_DROP, null);
         addKeyRow(keyCard, "홀드", KeyAction.HOLD, null);
         addKeyRow(keyCard, "일시정지", null, "P, ESC");
         addKeyRow(keyCard, "종료", null, "Esc hold");

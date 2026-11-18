@@ -54,7 +54,8 @@ class AppSettingsTest {
                 () -> assertEquals(KeyEvent.VK_LEFT, settings.getKey(KeyAction.MOVE_LEFT)),
                 () -> assertEquals(KeyEvent.VK_RIGHT, settings.getKey(KeyAction.MOVE_RIGHT)),
                 () -> assertEquals(KeyEvent.VK_DOWN, settings.getKey(KeyAction.MOVE_DOWN)),
-                () -> assertEquals(KeyEvent.VK_UP, settings.getKey(KeyAction.ROTATE))
+                () -> assertEquals(KeyEvent.VK_UP, settings.getKey(KeyAction.ROTATE)),
+                () -> assertEquals(KeyEvent.VK_SPACE, settings.getKey(KeyAction.HARD_DROP))
         );
     }
 
