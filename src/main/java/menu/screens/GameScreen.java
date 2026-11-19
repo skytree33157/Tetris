@@ -357,7 +357,7 @@ private JLabel scoreLabel;
 
         col.add(Box.createVerticalGlue());
 
-        RoundedPanel comboCard = new RoundedPanel(Theme.CARD, Theme.PRIMARY, Theme.RADIUS);
+        RoundedPanel comboCard = new RoundedPanel(Theme.CARD, Theme.OUTLINE, Theme.RADIUS);
         comboCard.setLayout(new BoxLayout(comboCard, BoxLayout.Y_AXIS));
         comboCard.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
         comboCard.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -409,8 +409,12 @@ private JLabel scoreLabel;
         RoundedPanel card = card();
         card.add(caption(title));
         card.add(Box.createVerticalStrut(10));
+        // 보드처럼 검은 상자 + 테두리 안에 미리보기
         JPanel previewWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        previewWrap.setOpaque(false);
+        previewWrap.setBackground(Theme.BOARD_BG);
+        previewWrap.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.OUTLINE, 1),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)));
         previewWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
         previewWrap.add(preview);
         fixHeight(previewWrap);
@@ -528,9 +532,9 @@ private JLabel scoreLabel;
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(Theme.TRACK);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+            g2.fillRect(0, 0, getWidth(), getHeight());
             g2.setColor(Theme.ACCENT);
-            g2.fillRoundRect(0, 0, (int) (getWidth() * ratio), getHeight(), 6, 6);
+            g2.fillRect(0, 0, (int) (getWidth() * ratio), getHeight());
             g2.dispose();
         }
     }

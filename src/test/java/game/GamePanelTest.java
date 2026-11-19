@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import blocks.tetromino.OBlock;
 import board.Board;
 import blocks.style.ColorMode;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -16,6 +15,7 @@ import menu.settings.ScreenSize;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ui.theme.Theme;
 
 class GamePanelTest {
     @Test
@@ -33,7 +33,7 @@ class GamePanelTest {
                 board.getBoard()[8][2] = 0;
                 BufferedImage after = paint(panel);
                 assertEquals(before.getRGB(65, 245), after.getRGB(65, 245));
-                assertTrue(hasNonBlackPixel(after, 61, 241, 28, 28));
+                assertTrue(hasNonBackgroundPixel(after, 61, 241, 28, 28));
             } finally { action.shutdown(); }
         });
     }
@@ -86,13 +86,13 @@ class GamePanelTest {
         settings.setColorMode(originalColorMode);
     }
 
-    @Test // 보드의 크기와 검은색 배경을 사용하는지 테스트
-    void constructorUsesBoardDimensionsAndBlackBackground() {
+    @Test // 보드의 크기와 LCD 배경을 사용하는지 테스트
+    void constructorUsesBoardDimensionsAndLcdBackground() {
         Board board = new Board();
         GamePanel panel = new GamePanel(board);
 
         assertEquals(new Dimension(300, 690), panel.getPreferredSize());
-        assertEquals(Color.BLACK, panel.getBackground());
+        assertEquals(Theme.BOARD_BG, panel.getBackground());
     }
 
     @Test // 고정된 셀, 현재 블록, 격자선이 올바르게 그려지는지 테스트
@@ -107,11 +107,11 @@ class GamePanelTest {
 
         BufferedImage image = paint(panel);
 
-        assertTrue(hasNonBlackPixel(image, 61, 91, 28, 28));
-        assertTrue(hasNonBlackPixel(image, 151, 211, 28, 28));
-        assertEquals(Color.DARK_GRAY.getRGB(), image.getRGB(30, 105));
-        assertEquals(Color.DARK_GRAY.getRGB(), image.getRGB(15, 90));
-        assertEquals(Color.BLACK.getRGB(), image.getRGB(5, 5));
+        assertTrue(hasNonBackgroundPixel(image, 61, 91, 28, 28));
+        assertTrue(hasNonBackgroundPixel(image, 151, 211, 28, 28));
+        assertEquals(Theme.GRID_LINE.getRGB(), image.getRGB(30, 105));
+        assertEquals(Theme.GRID_LINE.getRGB(), image.getRGB(15, 90));
+        assertEquals(Theme.BOARD_BG.getRGB(), image.getRGB(5, 5));
     }
 
     @Test // 행을 지우는 효과와 정상 렌더링으로 돌아가는지 테스트
@@ -126,8 +126,8 @@ class GamePanelTest {
 
         while ((!sawFlash || !sawNormalFrame) && System.nanoTime() < deadline) {
             int pixel = paint(panel).getRGB(sampleX, sampleY);
-            sawFlash |= pixel != Color.BLACK.getRGB();
-            sawNormalFrame |= pixel == Color.BLACK.getRGB();
+            sawFlash |= pixel != Theme.BOARD_BG.getRGB();
+            sawNormalFrame |= pixel == Theme.BOARD_BG.getRGB();
             if (!sawFlash || !sawNormalFrame) {
                 Thread.sleep(10);
             }
@@ -160,10 +160,10 @@ class GamePanelTest {
         return image;
     }
 
-    private static boolean hasNonBlackPixel(BufferedImage image, int x, int y, int width, int height) {
+    private static boolean hasNonBackgroundPixel(BufferedImage image, int x, int y, int width, int height) {
         for (int row = y; row < y + height; row++) {
             for (int col = x; col < x + width; col++) {
-                if (image.getRGB(col, row) != Color.BLACK.getRGB()) {
+                if (image.getRGB(col, row) != Theme.BOARD_BG.getRGB()) {
                     return true;
                 }
             }

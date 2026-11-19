@@ -73,7 +73,7 @@ public class VolumeSlider extends JComponent {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         int w = getWidth();
         int h = getHeight();
-        int r = Theme.RADIUS * 2;
+        int r = 0;   // 직사각형
 
         g2.setColor(Theme.BG);
         g2.fillRoundRect(0, 0, w - 1, h - 1, r, r);
@@ -86,11 +86,11 @@ public class VolumeSlider extends JComponent {
         int trackWidth = w - INSET * 2;
         int trackY = (h - TRACK_HEIGHT) / 2;
         g2.setColor(Theme.TRACK);
-        g2.fillRoundRect(INSET, trackY, trackWidth, TRACK_HEIGHT, TRACK_HEIGHT, TRACK_HEIGHT);
+        g2.fillRect(INSET, trackY, trackWidth, TRACK_HEIGHT);
 
         int filled = trackWidth * value / 100;
-        g2.setColor(isEnabled() ? Theme.PRIMARY : Theme.OUTLINE);
-        g2.fillRoundRect(INSET, trackY, filled, TRACK_HEIGHT, TRACK_HEIGHT, TRACK_HEIGHT);
+        g2.setColor(isEnabled() ? Theme.ACCENT : Theme.OUTLINE);
+        g2.fillRect(INSET, trackY, filled, TRACK_HEIGHT);
 
         g2.setColor(isEnabled() ? Theme.TEXT : Theme.TEXT_MUTED);
         g2.fillOval(INSET + filled - KNOB / 2, (h - KNOB) / 2, KNOB, KNOB);

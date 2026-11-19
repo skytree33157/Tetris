@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
 $appName = "TFSE"
-$appVersion = "0.2.2"
+$appVersion = "1.0.0"
 $iconIco = "packaging\TFSE.ico"
 
 # JDK bin 폴더 찾기 (JAVA_HOME 우선, 없으면 Program Files\Java에서 최신 버전)

@@ -23,7 +23,7 @@ public final class RecentPeerStore {
         this(DataPaths.dataDir().toPath().resolve("recent-p2p-addresses.txt"));
     }
 
-    RecentPeerStore(Path file) {
+    public RecentPeerStore(Path file) {
         this.file = Objects.requireNonNull(file, "file");
     }
 

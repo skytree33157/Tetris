@@ -47,7 +47,7 @@ public class GamePanel extends JPanel{
     public GamePanel(Board board) {
         this.board = board;
         this.cellSize = AppSettings.getInstance().getScreenSize().getCellSize();
-        setBackground(Color.BLACK);
+        setBackground(Theme.BOARD_BG);
         setPreferredSize(new Dimension(board.getWidth() * cellSize, (board.getHeight() + board.getHiddenRows()) * cellSize));
     }
 
@@ -70,11 +70,6 @@ public class GamePanel extends JPanel{
         Graphics2D g2 = (Graphics2D) g;
         ColorMode colormode = AppSettings.getInstance().getColorMode();
 
-        if (colormode == ColorMode.TFSE) {
-            g2.setColor(Theme.BOARD_BG);
-            g2.fillRect(0, 0, getWidth(), getHeight());
-        }
-
         ActionController.ViewSnapshot frame = snapshot;
         if (frame != null) {
             int[][] boardCells = frame.board();
@@ -95,7 +90,7 @@ public class GamePanel extends JPanel{
                         falling.y() * cellSize, cellSize, colormode);
             }
             drawClearingTargets(g2, frame.clearingRows(), frame.clearingCells(), frame.animationElapsedMs());
-            drawGridLines(g2, colormode);
+            drawGridLines(g2);
             return;
         }
 
@@ -108,7 +103,7 @@ public class GamePanel extends JPanel{
 
         drawCurrentBlock(g2, colormode);
         drawClearingTargets(g2);
-        drawGridLines(g2, colormode);
+        drawGridLines(g2);
     }
 
     private void drawGhostBlock(
@@ -187,8 +182,8 @@ public class GamePanel extends JPanel{
         BlockRenderer.drawBlock(g2, block, 0, 0, cellSize, colorMode);
     }
 
-    private void drawGridLines(Graphics2D g2, ColorMode colorMode) {
-        g2.setColor(colorMode == ColorMode.TFSE ? Theme.GRID_LINE : Color.DARK_GRAY);
+    private void drawGridLines(Graphics2D g2) {
+        g2.setColor(Theme.GRID_LINE);
         int width = board.getWidth() * cellSize;
         int top = board.getHiddenRows() * cellSize;
         int bottom = (board.getHiddenRows() + board.getHeight()) * cellSize;
