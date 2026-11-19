@@ -19,8 +19,8 @@ public class BlockPreviewPanel extends JPanel {
 
     public BlockPreviewPanel() {
         setPreferredSize(new Dimension(PREVIEW_WIDTH, PREVIEW_HEIGHT));
-        // NEXT·HOLD 카드와 같은 색이라 블록만 보임
-        setBackground(Theme.CARD);
+        // 게임 보드와 같은 검정 바탕
+        setBackground(Theme.BOARD_BG);
     }
 
     public void setBlock(Block block) {

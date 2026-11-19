@@ -1,51 +1,191 @@
 package menu;
 
 import java.io.IOException;
+import java.net.BindException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import game.GameMode;
+import menu.screens.BattleMenuScreen;
 import menu.screens.GameScreen;
 import menu.screens.StartMenuScreen;
 import network.P2PGameSession;
+import network.RecentPeerStore;
 
 public final class P2PGameRunner {
     private P2PGameRunner() {}
-    
-    // 서버 시작
-    public static void startServer(GameMode mode) {
-        // 서버 연결을 기다리는 동안 UI가 멈추지 않도록 별도 스레드에서 실행
-        Thread serverThread = new Thread(() -> {
-            try (P2PGameSession.HostInvitation invitation =
-                            P2PGameSession.HostInvitation.open(mode)) {
-                P2PGameSession session = invitation.accept();
-                SwingUtilities.invokeLater(() -> new P2PGameRunnerLoop(session).start());
-            } catch (IOException exception) {
-                SwingUtilities.invokeLater(() -> showConnectionFailure(exception));
-            }
-        }, "p2p-server");
-        serverThread.start();
+
+    // 연결 결과를 화면(방 만들기/참여 화면)에 알리는 리스너. 모두 EDT에서 호출된다.
+    public interface ConnectListener {
+        // 연결 성공 직후, 게임 화면을 띄우기 전에 호출 (로비 창 정리용)
+        void onConnected();
+        // 연결 실패. 사용자가 취소한 경우에는 호출되지 않는다.
+        void onFailure(IOException exception);
     }
 
-    // 서버 참여
+    // 방 만들기 대기를 취소할 수 있는 핸들
+    public static final class HostHandle {
+        private final P2PGameSession.HostInvitation invitation;
+        private volatile boolean cancelled;
+
+        private HostHandle(P2PGameSession.HostInvitation invitation) {
+            this.invitation = invitation;
+        }
+
+        // 대기 중인 서버 소켓을 닫아 accept()를 끝낸다. 포트도 바로 해제된다.
+        public void cancel() {
+            cancelled = true;
+            try {
+                invitation.close();
+            } catch (IOException ignored) {
+                // 이미 닫혔으면 할 일 없음
+            }
+        }
+
+        public boolean isCancelled() {
+            return cancelled;
+        }
+    }
+
+    // 명령줄(--p2p-server)용: 실패하면 팝업을 띄우고 시작 메뉴로 돌아간다.
+    public static void startServer(GameMode mode) {
+        try {
+            startServer(mode, commandLineListener());
+        } catch (IOException exception) {
+            showConnectionFailure(exception);
+        }
+    }
+
+    // 명령줄(--p2p-client)용
     public static void joinServer(String address) {
+        joinServer(address, commandLineListener());
+    }
+
+    /**
+     * 방을 열고 별도 스레드에서 상대를 기다린다. 포트를 열지 못하면 바로 IOException.
+     *
+     * @return 대기를 취소할 수 있는 핸들
+     */
+    public static HostHandle startServer(GameMode mode, ConnectListener listener) throws IOException {
+        return startServer(mode, listener, P2PGameRunner::launchGame);
+    }
+
+    // 상대 주소로 접속한다. 성공하면 최근 접속 주소에 저장한다.
+    public static void joinServer(String address, ConnectListener listener) {
+        joinServer(address, listener, new RecentPeerStore(), P2PGameRunner::launchGame);
+    }
+
+    // 테스트에서 게임 화면 대신 다른 동작을 넣을 수 있도록 분리
+    static HostHandle startServer(GameMode mode, ConnectListener listener,
+            Consumer<P2PGameSession> launcher) throws IOException {
+        Objects.requireNonNull(listener, "listener");
+        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(mode);
+        HostHandle handle = new HostHandle(invitation);
+
+        // 서버 연결을 기다리는 동안 UI가 멈추지 않도록 별도 스레드에서 실행
+        Thread serverThread = new Thread(() -> {
+            try (P2PGameSession.HostInvitation owned = invitation) {
+                P2PGameSession session = owned.accept();
+                if (handle.isCancelled()) {
+                    // 취소와 접속이 거의 동시에 일어난 경우: 연결을 닫고 아무 화면도 띄우지 않는다
+                    closeQuietly(session);
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    listener.onConnected();
+                    launcher.accept(session);
+                });
+            } catch (IOException exception) {
+                if (!handle.isCancelled()) {
+                    SwingUtilities.invokeLater(() -> listener.onFailure(exception));
+                }
+            }
+        }, "p2p-server");
+        serverThread.setDaemon(true);
+        serverThread.start();
+        return handle;
+    }
+
+    static void joinServer(String address, ConnectListener listener, RecentPeerStore recentPeers,
+            Consumer<P2PGameSession> launcher) {
+        Objects.requireNonNull(listener, "listener");
         Thread clientThread = new Thread(() -> {
             try {
                 P2PGameSession session = P2PGameSession.connect(address);
-                SwingUtilities.invokeLater(() -> new P2PGameRunnerLoop(session).start());
+                rememberQuietly(recentPeers, address);
+                SwingUtilities.invokeLater(() -> {
+                    listener.onConnected();
+                    launcher.accept(session);
+                });
             } catch (IOException exception) {
-                SwingUtilities.invokeLater(() -> showConnectionFailure(exception));
+                SwingUtilities.invokeLater(() -> listener.onFailure(exception));
             }
         }, "p2p-client");
+        clientThread.setDaemon(true);
         clientThread.start();
     }
 
-    // 연결 실패 시 메시지 표시
+    // 사용자에게 보여줄 연결 실패 문구
+    public static String describeFailure(IOException exception) {
+        if (exception instanceof BindException) {
+            return "포트 " + P2PGameSession.DEFAULT_PORT + "이(가) 이미 사용 중이에요. 다른 TFSE 창이 방을 열고 있지 않은지 확인해 주세요.";
+        }
+        if (exception instanceof UnknownHostException) {
+            return "주소를 찾을 수 없어요. IP를 다시 확인해 주세요.";
+        }
+        if (exception instanceof SocketTimeoutException) {
+            return "응답이 없어요. 상대가 방을 열었는지, 같은 네트워크인지 확인해 주세요.";
+        }
+        if (exception instanceof ConnectException) {
+            return "연결이 거부됐어요. 상대가 방을 열어 둔 상태인지 확인해 주세요.";
+        }
+        String message = exception.getMessage();
+        return "연결하지 못했어요." + (message == null || message.isBlank() ? "" : " (" + message + ")");
+    }
+
+    private static void launchGame(P2PGameSession session) {
+        new P2PGameRunnerLoop(session).start();
+    }
+
+    private static ConnectListener commandLineListener() {
+        return new ConnectListener() {
+            @Override
+            public void onConnected() {
+            }
+
+            @Override
+            public void onFailure(IOException exception) {
+                showConnectionFailure(exception);
+            }
+        };
+    }
+
+    private static void rememberQuietly(RecentPeerStore recentPeers, String address) {
+        try {
+            recentPeers.remember(address);
+        } catch (IOException | IllegalArgumentException ignored) {
+            // 주소 저장 실패는 대전 진행에 영향 없음
+        }
+    }
+
+    private static void closeQuietly(P2PGameSession session) {
+        try {
+            session.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    // 연결 실패 시 메시지 표시 (명령줄 실행용)
     private static void showConnectionFailure(IOException exception) {
         JOptionPane.showMessageDialog(
                 null,
-                "P2P 연결을 시작하지 못했습니다.\n" + exception.getMessage(),
+                "P2P 연결을 시작하지 못했습니다.\n" + describeFailure(exception),
                 "P2P 연결 오류", JOptionPane.ERROR_MESSAGE);
         new StartMenuScreen().setVisible(true);
     }
@@ -179,8 +319,8 @@ public final class P2PGameRunner {
                         message,
                         "P2P 연결 오류",
                         JOptionPane.ERROR_MESSAGE);
-                // P2P 초기 화면으로 복귀
-                new StartMenuScreen().setVisible(true);
+                // P2P 초기 화면(대전 메뉴)으로 복귀
+                new BattleMenuScreen().setVisible(true);
             });
         }
     }

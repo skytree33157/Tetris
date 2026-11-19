@@ -329,7 +329,7 @@ public class SettingsScreen extends JDialog {
     }
 
     private static RoundedPanel card() {
-        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.CARD_BORDER, 12);
+        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.CARD_BORDER, Theme.RADIUS);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         return card;
@@ -484,7 +484,6 @@ public class SettingsScreen extends JDialog {
             case PROTANOPIA -> "적색맹";
             case DEUTERANOPIA -> "녹색맹";
             case TRITANOPIA -> "청황색맹";
-            case TFSE -> "TFSE";
         };
     }
 
