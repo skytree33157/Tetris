@@ -2,6 +2,8 @@ package network;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import game.GameMode;
@@ -31,14 +33,14 @@ class P2PGameSessionTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         // 테스트 내부의 로컬 호스트를 이용해 실제 TCP 핸드셰이크와 양방향 메시지를 검증한다.
-        try (P2PGameSession.HostInvitation invitation =
-                        P2PGameSession.HostInvitation.open(GameMode.ITEM)) {
+        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open()) {
             // accept()는 클라이언트 접속을 기다리므로 별도 스레드에서 실행한다.
             var accepted = executor.submit(invitation::accept);
             try (P2PGameSession client = P2PGameSession.connect("127.0.0.1");
                     P2PGameSession server = accepted.get(5, TimeUnit.SECONDS)) {
-                // 클라이언트는 연결 시 호스트가 선택한 모드를 받아야 한다.
-                assertEquals(GameMode.ITEM, client.getMode());
+                // 모드는 시작 시점에 호스트가 보낸다. 연결 직후에는 아직 정해지지 않는다.
+                assertNull(client.getMode());
+                server.setMode(GameMode.ITEM);
 
                 // 첫 시작과 다음 라운드 시작을 각각 확인할 수 있도록 시작 횟수를 구분한다.
                 server.setListener(new P2PGameSession.Listener() {
@@ -90,6 +92,9 @@ class P2PGameSessionTest {
                 server.setReady();
                 assertTrue(serverStarted.await(5, TimeUnit.SECONDS));
                 assertTrue(clientStarted.await(5, TimeUnit.SECONDS));
+                // 시작 메시지로 전달된 모드가 클라이언트에도 적용되고, 시작 후에는 모드를 바꿀 수 없다.
+                assertEquals(GameMode.ITEM, client.getMode());
+                assertThrows(IllegalStateException.class, () -> server.setMode(GameMode.NORMAL));
 
                 // 각 피어가 보낸 점수 상태가 반대편 세션의 리스너에 전달되는지 확인한다.
                 server.sendStatus(status(42, false));
@@ -119,8 +124,7 @@ class P2PGameSessionTest {
     @Test
     void hostInvitationCanBeClosedWhileWaitingForAClient() throws Exception {
         // 접속을 기다리는 서버 소켓을 닫으면 accept()가 예외로 종료되어야 한다.
-        P2PGameSession.HostInvitation invitation =
-                P2PGameSession.HostInvitation.open(GameMode.NORMAL);
+        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open();
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             var accepting = executor.submit(() -> {

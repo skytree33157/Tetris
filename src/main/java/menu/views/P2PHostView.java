@@ -85,7 +85,7 @@ public class P2PHostView extends JPanel {
         backButton.addActionListener(e -> onBack.run());
         col.add(LobbyParts.buttonRow(primaryButton, backButton));
         col.add(Box.createVerticalStrut(16));
-        col.add(label("← → 방식 선택   Enter 방 열기/취소   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+        col.add(label("← → 방식 선택   Enter 방 열기/게임 시작/취소   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
 
         for (Component c : col.getComponents()) {
             if (c instanceof javax.swing.JComponent jc) {
@@ -116,10 +116,13 @@ public class P2PHostView extends JPanel {
         modeControl.setSelectedIndex(index);
     }
 
-    // 대기 중에는 방식 변경을 막고 버튼을 '대기 취소'로 바꾼다
-    public void setWaiting(boolean waiting) {
-        modeControl.setEnabled(!waiting);
-        primaryButton.setText(waiting ? "대기 취소" : "방 열기");
+    public void setModeEnabled(boolean enabled) {
+        modeControl.setEnabled(enabled);
+    }
+
+    public void setPrimary(String text, boolean enabled) {
+        primaryButton.setText(text);
+        primaryButton.setEnabled(enabled);
         repaint();
     }
 
