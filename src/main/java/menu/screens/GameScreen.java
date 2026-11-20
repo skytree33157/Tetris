@@ -77,7 +77,6 @@ public class GameScreen extends JFrame {
     private PauseView PauseView;
     private P2PGameController p2pController;
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
-    private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
     private JLabel connectionStatusLabel;
 
 private JLabel scoreLabel;
@@ -228,24 +227,19 @@ private JLabel scoreLabel;
                 // 연결 끊김은 P2PGameSession의 리스너에서 처리
                 exception.printStackTrace();
             }
-
-            // 상대 플레이어 게임 오버 감지
-            GameStatus remoteStatus = p2pController.getRemoteStatus();
-            if (remoteStatus != null && remoteStatus.isGameOver() && !gameOverHandled) {
-                showGameOver(frame);
-                return;
-            }
         }
 
         // 로컬 게임 오버 처리
         if (frame.gameOver() && !gameOverHandled) {
-            // P2P 게임이면 게임 오버를 상대에게 통지
+            gameOverHandled = true;
+            // P2P 게임은 게임 오버를 상대에게 통지하고, 승패 결과는 라운드 종료 시 P2PGameRunner에서 표시
             if (p2pController != null) {
                 try {
                     p2pController.notifyGameOver();
                 } catch (IOException exception) {
                     exception.printStackTrace();
                 }
+                return;
             }
             showGameOver(frame);
         }
@@ -255,11 +249,6 @@ private JLabel scoreLabel;
         gameOverHandled = true;
         stopGame();
         dispose();
-
-        // P2P 게임 오버 콜백 호출 (session 정리 등)
-        if (onGameOverCallback != null) {
-            onGameOverCallback.run();
-        }
 
         GameOverScreen gameOverScreen = new GameOverScreen(
             frame.score(), difficulty.name(), mode.name(),
@@ -560,10 +549,10 @@ private JLabel scoreLabel;
         connectionStatusLabel.setForeground(isWarning ? Theme.BRONZE : CONNECTION_LOST_COLOR);
 
         // 상단에 상태 레이블 추가 (이미 추가되었다면 업데이트만)
+        // 창 크기를 다시 맞추지 않으면 고정 크기 창에서 보드 영역이 잘리므로 pack()으로 크기를 갱신한다.
         if (connectionStatusLabel.getParent() == null) {
             getContentPane().add(connectionStatusLabel, BorderLayout.NORTH);
-            revalidate();
-            repaint();
+            pack();
         }
     }
 
@@ -571,8 +560,7 @@ private JLabel scoreLabel;
     public void hideConnectionStatus() {
         if (connectionStatusLabel != null && connectionStatusLabel.getParent() != null) {
             getContentPane().remove(connectionStatusLabel);
-            revalidate();
-            repaint();
+            pack();
         }
     }
 
@@ -601,23 +589,12 @@ private JLabel scoreLabel;
         return scoreManager;
     }
 
-    // P2P 게임 오버 콜백 설정 - session 정리 등 필요한 작업 수행
-    public void setOnGameOverCallback(Runnable callback) {
-        this.onGameOverCallback = callback;
-    }
-
     // P2P onStarted() 콜백: 게임 루프 시작 허용
     public void allowGameStart() {
         if (!gameStartAllowed && gameThread.getState() == Thread.State.NEW) {
             gameStartAllowed = true;
             startGameLoop();
         }
-    }
-
-    // P2P 다음 라운드 준비: 게임 상태 리셋
-    public void resetForNextRound() {
-        gameOverHandled = false;
-        gameStartAllowed = false;
     }
 
     private void refreshInputBindings() {

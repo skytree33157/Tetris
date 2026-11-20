@@ -279,6 +279,7 @@ public final class P2PGameRunner {
         private volatile GameScreen gameScreen;
         private volatile P2PGameController p2pController;
         private volatile boolean monitoringDisconnection = false;
+        private volatile boolean gameFinished = false;
 
         private P2PGameRunnerLoop(P2PGameSession session) {
             this.session = session;
@@ -304,16 +305,6 @@ public final class P2PGameRunner {
             // 게임 화면에 P2P 컨트롤러 설정
             gameScreen.setP2PController(p2pController);
             
-            // 게임 오버 콜백 설정 - session을 정리
-            gameScreen.setOnGameOverCallback(() -> {
-                try {
-                    session.close();
-                } catch (IOException e) {
-                    // 연결 이미 끊어졌을 가능성 - 무시
-                }
-                monitoringDisconnection = false;
-            });
-            
             // 통합 리스너: Runner와 Controller 모두에 event 전달
             session.setListener(new P2PGameSession.Listener() {
                 @Override
@@ -332,10 +323,12 @@ public final class P2PGameRunner {
                 
                 @Override
                 public void onRoundFinished() {
-                    // Controller에 전달
+                    // 승패 판정: 먼저 게임 오버된 쪽이 패배한다
+                    boolean won = !p2pController.isLocalGameOver();
                     p2pController.onRoundFinished();
-                    // 다음 라운드 준비
-                    SwingUtilities.invokeLater(() -> gameScreen.resetForNextRound());
+                    // 플래그를 먼저 세워 뒤따르는 연결 종료 이벤트를 무시하게 한다
+                    gameFinished = true;
+                    SwingUtilities.invokeLater(() -> showGameResult(won));
                 }
                 
                 @Override
@@ -375,8 +368,41 @@ public final class P2PGameRunner {
             }
         }
 
+        // 한 쪽이 게임 오버되면 승패 결과를 띄우고 P2P 초기 화면으로 복귀
+        private void showGameResult(boolean won) {
+            monitoringDisconnection = false;
+            if (gameScreen != null) {
+                gameScreen.stopGame();
+                gameScreen.dispose();
+            }
+
+            String message = won ? "승리했습니다!" : "패배했습니다.";
+            JOptionPane.showMessageDialog(
+                    null,
+                    message,
+                    "대전 결과",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            try {
+                session.close();
+            } catch (IOException ignored) {
+                // 상대가 이미 연결을 끊은 경우
+            }
+            new BattleMenuScreen().setVisible(true);
+        }
+
         // 연결 종료 처리 - P2P 초기 화면으로 복귀
         private void handleDisconnect(IOException exception) {
+            if (gameFinished) {
+                // 승패가 이미 결정된 뒤의 연결 종료는 정상 흐름(상대가 결과 확인 후 닫음)
+                try {
+                    session.close();
+                } catch (IOException ignored) {
+                    // 이미 닫힘
+                }
+                monitoringDisconnection = false;
+                return;
+            }
             try {
                 session.close();
             } catch (IOException closeException) {

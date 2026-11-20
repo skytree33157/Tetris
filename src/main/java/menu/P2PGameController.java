@@ -20,6 +20,7 @@ public final class P2PGameController {
     private final ScoreManager scoreManager;
     private volatile boolean roundActive = false;
     private volatile boolean ready = false;
+    private volatile boolean localGameOver = false;
 
     public P2PGameController(
             P2PGameSession session,
@@ -79,6 +80,7 @@ public final class P2PGameController {
 
     // P2P 세션에 게임 종료 전달
     public void notifyGameOver() throws IOException {
+        localGameOver = true;
         synchronized (actionController) {
             GameStatus finalStatus = new GameStatus(
                     scoreManager.getScore(),
@@ -92,6 +94,11 @@ public final class P2PGameController {
     // 라운드가 활성화되어있는지 확인
     public boolean isRoundActive() {
         return roundActive;
+    }
+
+    // 이 화면의 플레이어가 먼저 게임 오버되었는지 확인 (패배 판정용)
+    public boolean isLocalGameOver() {
+        return localGameOver;
     }
 
     public boolean isReady() {
