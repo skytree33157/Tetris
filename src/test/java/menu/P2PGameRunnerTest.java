@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import game.GameMode;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ConnectException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -16,38 +14,29 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.SwingUtilities;
 import network.P2PGameSession;
-import network.RecentPeerStore;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-// 대전 메뉴의 방 만들기/참여 화면이 쓰는 연결 흐름 (게임 화면 대신 launcher로 세션을 받는다)
+// 대전 메뉴의 방 만들기/참여 화면이 쓰는 연결 흐름 (게임 화면 대신 로비 리스너로 세션을 받는다)
 class P2PGameRunnerTest {
-    @TempDir
-    Path temporaryDirectory;
-
     @Test // 방 만들기 → 참여: 양쪽 모두 연결되고, 참여한 쪽은 주소를 최근 접속에 저장
     void hostAndJoinConnectAndJoinerRemembersAddress() throws Exception {
         RecentingListener host = new RecentingListener();
         RecentingListener joiner = new RecentingListener();
-        AtomicReference<P2PGameSession> hostSession = new AtomicReference<>();
-        AtomicReference<P2PGameSession> joinSession = new AtomicReference<>();
-        RecentPeerStore store = new RecentPeerStore(temporaryDirectory.resolve("recent.txt"));
 
-        P2PGameRunner.startServer(GameMode.ITEM, host, hostSession::set);
-        P2PGameRunner.joinServer("127.0.0.1", joiner, store, joinSession::set);
+        P2PGameRunner.HostHandle handle = P2PGameRunner.startServer(host);
+        P2PGameRunner.joinServer("127.0.0.1", joiner);
 
         try {
             assertTrue(host.connected.await(5, TimeUnit.SECONDS), "host should connect");
             assertTrue(joiner.connected.await(5, TimeUnit.SECONDS), "joiner should connect");
             flushEdt();
-            assertEquals(GameMode.ITEM, joinSession.get().getMode());
-            assertTrue(hostSession.get().isServer());
-            assertEquals(List.of("127.0.0.1"), store.load());
+            assertTrue(host.session.get().isServer());
             assertEquals(List.of(), host.failures);
             assertEquals(List.of(), joiner.failures);
         } finally {
-            closeQuietly(joinSession.get());
-            closeQuietly(hostSession.get());
+            closeQuietly(joiner.session.get());
+            closeQuietly(host.session.get());
+            handle.cancel();
         }
     }
 
@@ -55,8 +44,7 @@ class P2PGameRunnerTest {
     void cancellingHostDoesNotReportFailureAndReleasesPort() throws Exception {
         RecentingListener host = new RecentingListener();
 
-        P2PGameRunner.HostHandle handle =
-                P2PGameRunner.startServer(GameMode.NORMAL, host, session -> { });
+        P2PGameRunner.HostHandle handle = P2PGameRunner.startServer(host);
         handle.cancel();
 
         Thread.sleep(200);
@@ -65,16 +53,15 @@ class P2PGameRunnerTest {
         assertEquals(List.of(), host.failures);
         assertEquals(1, host.connected.getCount());
         // 같은 포트로 다시 열 수 있어야 한다
-        P2PGameSession.HostInvitation.open(GameMode.NORMAL).close();
+        P2PGameSession.HostInvitation.open().close();
     }
 
     @Test // 이미 방을 열고 있으면 같은 포트로 또 열 수 없음
     void openingSecondRoomFailsWithBindException() throws Exception {
-        P2PGameRunner.HostHandle first =
-                P2PGameRunner.startServer(GameMode.NORMAL, new RecentingListener(), session -> { });
+        P2PGameRunner.HostHandle first = P2PGameRunner.startServer(new RecentingListener());
         try {
-            IOException failure = assertThrows(IOException.class, () -> P2PGameRunner.startServer(
-                    GameMode.NORMAL, new RecentingListener(), session -> { }));
+            IOException failure = assertThrows(IOException.class,
+                    () -> P2PGameRunner.startServer(new RecentingListener()));
             assertTrue(failure instanceof BindException);
             assertTrue(P2PGameRunner.describeFailure(failure).contains(
                     String.valueOf(P2PGameSession.DEFAULT_PORT)));
@@ -83,16 +70,14 @@ class P2PGameRunnerTest {
         }
     }
 
-    @Test // 열린 방이 없으면 실패를 알리고 주소는 저장하지 않음
-    void joinWithoutHostReportsFailureAndDoesNotRemember() throws Exception {
+    @Test // 열린 방이 없으면 실패를 알림
+    void joinWithoutHostReportsFailure() throws Exception {
         RecentingListener joiner = new RecentingListener();
-        RecentPeerStore store = new RecentPeerStore(temporaryDirectory.resolve("recent.txt"));
 
-        P2PGameRunner.joinServer("127.0.0.1", joiner, store, session -> { });
+        P2PGameRunner.joinServer("127.0.0.1", joiner);
 
         assertTrue(joiner.failed.await(10, TimeUnit.SECONDS), "join should fail");
         assertEquals(1, joiner.connected.getCount());
-        assertEquals(List.of(), store.load());
     }
 
     @Test // 실패 원인별 안내 문구
@@ -121,10 +106,25 @@ class P2PGameRunnerTest {
         final CountDownLatch connected = new CountDownLatch(1);
         final CountDownLatch failed = new CountDownLatch(1);
         final List<IOException> failures = new CopyOnWriteArrayList<>();
+        final AtomicReference<P2PGameSession> session = new AtomicReference<>();
 
         @Override
-        public void onConnected() {
+        public void onConnected(P2PGameSession connectedSession) {
+            session.set(connectedSession);
             connected.countDown();
+        }
+
+        @Override
+        public void onRemoteReady(boolean ready) {
+        }
+
+        @Override
+        public void onGameStarting() {
+        }
+
+        @Override
+        public void onLobbyDisconnected(IOException exception) {
+            failures.add(exception);
         }
 
         @Override

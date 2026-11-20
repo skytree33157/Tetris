@@ -4,7 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import game.ActionController;
+import game.BattleController;
 import game.GameStateManager;
 import score.ScoreManager;
 
@@ -34,9 +34,9 @@ public final class GameStatus {
         this.gameOver = gameOver;
     }
 
-    // 현재 상태 복사, 잠금
-    public static GameStatus capture(ActionController actionController, GameStateManager gameStateManager, ScoreManager scoreManager) {
-        synchronized (actionController) {
+    // 현재 상태 복사. 게임 상태는 경기 객체의 잠금으로 보호되므로 호출자는 경기 잠금을 잡은 뒤 호출해야 한다.
+    public static GameStatus capture(BattleController battle, GameStateManager gameStateManager, ScoreManager scoreManager) {
+        synchronized (battle) {
             return new GameStatus(
                     scoreManager.getScore(),
                     gameStateManager.getCurrentLevel(),

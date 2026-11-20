@@ -31,6 +31,10 @@ import ui.theme.Theme;
 // 온라인 참여하기 화면 레이아웃. 동작은 P2PJoinScreen이 담당
 public class P2PJoinView extends JPanel {
 
+    private static final String CONNECT_TEXT = "접속";
+    private static final String START_TEXT = "게임 시작";
+    private static final String WAITING_TEXT = "대기 중";
+
     private final JTextField addressField = new JTextField();
     private final JPanel recentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final List<ThemedButton> recentButtons = new ArrayList<>();
@@ -100,7 +104,7 @@ public class P2PJoinView extends JPanel {
         backButton.addActionListener(e -> onBack.run());
         col.add(LobbyParts.buttonRow(connectButton, backButton));
         col.add(Box.createVerticalStrut(16));
-        col.add(label("Enter 접속   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+        col.add(label("Enter 접속/게임 시작   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
 
         for (Component c : col.getComponents()) {
             if (c instanceof JComponent jc) {
@@ -159,11 +163,25 @@ public class P2PJoinView extends JPanel {
     // 연결 시도 중에는 입력과 버튼을 막는다
     public void setConnecting(boolean connecting) {
         addressField.setEnabled(!connecting);
+        connectButton.setText(CONNECT_TEXT);
         connectButton.setEnabled(!connecting);
-        for (ThemedButton b : recentButtons) {
-            b.setEnabled(!connecting);
-        }
+        setRecentEnabled(!connecting);
         repaint();
+    }
+
+    // 방에 접속한 뒤: waiting=false면 "게임 시작" 버튼, waiting=true면 게임 시작 요청 후 "대기 중"
+    public void setLobby(boolean waiting) {
+        addressField.setEnabled(false);
+        setRecentEnabled(false);
+        connectButton.setText(waiting ? WAITING_TEXT : START_TEXT);
+        connectButton.setEnabled(!waiting);
+        repaint();
+    }
+
+    private void setRecentEnabled(boolean enabled) {
+        for (ThemedButton b : recentButtons) {
+            b.setEnabled(enabled);
+        }
     }
 
     public void setStatus(String text, boolean warning) {

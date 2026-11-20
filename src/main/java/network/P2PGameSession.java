@@ -11,6 +11,7 @@ import java.net.SocketException;
 import java.util.Objects;
 
 import game.GameMode;
+import blocks.core.BlockType;
 
 // TCP 연결, 대전 관리
 public final class P2PGameSession implements AutoCloseable {
@@ -26,6 +27,10 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_STATUS = 3;
     private static final int MESSAGE_CLOSE = 4;
     private static final int MESSAGE_KEEP_ALIVE = 5;
+    private static final int MESSAGE_ATTACK = 6;
+    // 한 번에 전송 가능한 방해 줄 수 (로컬 대전의 대기열 상한과 동일)
+    private static final int MAX_ATTACK_ROWS = 10;
+    private static final int BOARD_WIDTH = 10;
 
 
     // 세션 이벤트 리스너 인터페이스
@@ -36,6 +41,8 @@ public final class P2PGameSession implements AutoCloseable {
         default void onStarted() {}
         // 상대 플레이어 상태 수신 시 호출
         default void onRemoteStatus(GameStatus status) {}
+
+        default void onRemoteAttack(java.util.List<int[]> rows) {}
         // 라운드 종료 시 호출
         default void onRoundFinished() {}
         // 연결 끊김 또는 프로토콜 오류 시 호출
@@ -48,33 +55,28 @@ public final class P2PGameSession implements AutoCloseable {
 
     // 호스트 초대 클래스
     public static final class HostInvitation implements AutoCloseable {
-        private final GameMode mode;
         // 클라이언트 연결을 기다리는 서버 소켓
         private final ServerSocket serverSocket;
         // accept()가 이미 호출되어 초대를 소비했는지 나타낸다. -> accept()는 한 번만 호출 가능
         private boolean consumed;
 
-        private HostInvitation(GameMode mode, ServerSocket serverSocket) {
-            this.mode = mode;
+        private HostInvitation(ServerSocket serverSocket) {
             this.serverSocket = serverSocket;
         }
 
         /**
          * 기본 포트에서 클라이언트 연결을 기다릴 호스트 초대를 만든다.
+         * 게임 모드는 연결 후 {@link P2PGameSession#setMode}로 정한다.
          *
-         * @param mode 호스트가 선택한 게임 모드
          * @return 연결을 수락할 수 있는 호스트 초대
          * @throws IOException 포트를 열지 못한 경우
          */
-        public static HostInvitation open(GameMode mode) throws IOException {
-            Objects.requireNonNull(mode, "mode");
+        public static HostInvitation open() throws IOException {
             ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT);
-            return new HostInvitation(mode, serverSocket);
+            return new HostInvitation(serverSocket);
         }
 
-        
-        // 클라이언트 한 명을 수락하고 초기 프로토콜 핸드셰이크를 수행한다.
-        // 핸드셰이크에서 프로토콜 식별값을 확인한 뒤 호스트의 게임 모드를 전송한다.
+        // 클라이언트 한 명을 수락하고 초기 프로토콜 핸드셰이크(프로토콜 식별값 확인)를 수행한다.
         public P2PGameSession accept() throws IOException {
             synchronized (this) {
                 if (consumed) {
@@ -94,12 +96,9 @@ public final class P2PGameSession implements AutoCloseable {
                     if (input.readInt() != PROTOCOL_MAGIC) {
                         throw new IOException("Client uses an incompatible multiplayer protocol");
                     }
-                    // 클라이언트가 호스트와 동일한 규칙으로 플레이하도록 호스트 모드를 알린다.
-                    output.writeInt(mode.ordinal());
-                    output.flush();
                     // 핸드셰이크가 끝난 뒤에는 세션 종료까지 계속 메시지를 수신한다.
                     socket.setSoTimeout(0);
-                    return new P2PGameSession(socket, input, output, mode, true);
+                    return new P2PGameSession(socket, input, output, null, true);
                 } catch (IOException | RuntimeException exception) {
                     // 세션 생성에 실패한 소켓도 누수되지 않도록 닫고, 닫기 실패는 원래 오류에 첨부한다.
                     try {
@@ -122,13 +121,16 @@ public final class P2PGameSession implements AutoCloseable {
     private final Socket socket;
     private final DataInputStream input;
     private final DataOutputStream output;
-    private final GameMode mode;
+    // 게임 모드. 호스트는 시작 전에 정하고, 클라이언트는 시작 메시지로 받는다. 시작 전에는 null.
+    private volatile GameMode mode;
     private final boolean server;
     private volatile Listener listener = new Listener() {};
     private boolean closed;
     private boolean localReady;
     private boolean remoteReady;
     private boolean roundActive;
+    // 첫 라운드가 시작되면 모드를 바꿀 수 없다.
+    private boolean started;
     private boolean localGameOver;
     private GameStatus remoteStatus;
     private ConnectionMonitor connectionMonitor=new ConnectionMonitor();
@@ -190,7 +192,7 @@ public final class P2PGameSession implements AutoCloseable {
     }
 
     /**
-     * 서버 주소의 기본 포트에 접속하고 호스트로부터 게임 모드를 받는다.
+     * 서버 주소의 기본 포트에 접속한다. 게임 모드는 호스트가 시작할 때 전달된다.
      * 초기 핸드셰이크에 실패하면 연결 소켓을 닫은 뒤 원래 오류를 호출자에게 전달한다.
      *
      * @param host 접속할 호스트 이름 또는 IP 주소
@@ -204,20 +206,15 @@ public final class P2PGameSession implements AutoCloseable {
         try {
             socket.connect(new InetSocketAddress(host.trim(), DEFAULT_PORT), CONNECT_TIMEOUT_MS);
             socket.setTcpNoDelay(true);
-            // 초기 모드 응답이 오지 않는 경우 연결 설정 단계에서 빠져나오도록 제한한다.
+            // 핸드셰이크 응답이 오지 않는 경우 연결 설정 단계에서 빠져나오도록 제한한다.
             socket.setSoTimeout(CONNECT_TIMEOUT_MS);
             DataInputStream input = new DataInputStream(socket.getInputStream());
             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
             output.writeInt(PROTOCOL_MAGIC);
             output.flush();
-            int modeOrdinal = input.readInt();
-            GameMode[] modes = GameMode.values();
-            if (modeOrdinal < 0 || modeOrdinal >= modes.length) {
-                throw new IOException("Server selected an unsupported game mode");
-            }
             // 핸드셰이크 이후에는 지속적인 상태 수신을 위해 읽기 제한 시간을 해제한다.
             socket.setSoTimeout(0);
-            return new P2PGameSession(socket, input, output, modes[modeOrdinal], false);
+            return new P2PGameSession(socket, input, output, null, false);
         } catch (IOException | RuntimeException exception) {
             // 연결 중 오류가 발생해도 열린 소켓을 남기지 않는다.
             try {
@@ -229,8 +226,25 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    // 시작 전에는 null일 수 있다.
     public GameMode getMode() {
         return mode;
+    }
+
+    /**
+     * 호스트가 게임 모드를 정한다. 첫 라운드가 시작되기 전까지만 바꿀 수 있다.
+     *
+     * @param mode 선택한 게임 모드
+     */
+    public synchronized void setMode(GameMode mode) {
+        Objects.requireNonNull(mode, "mode");
+        if (!server) {
+            throw new IllegalStateException("Only the host can choose the game mode");
+        }
+        if (started) {
+            throw new IllegalStateException("Game mode cannot change after the match started");
+        }
+        this.mode = mode;
     }
 
     public boolean isServer() {
@@ -253,12 +267,15 @@ public final class P2PGameSession implements AutoCloseable {
         this.listener = Objects.requireNonNull(listener, "listener");
     }
 
-    //로컬 플레이어의 준비 상태 알림
+    //로컬 플레이어의 준비 상태 알림. 호스트는 모드를 정한 뒤에만 준비할 수 있다.
     public void setReady() throws IOException {
         synchronized (this) {
             ensureConnected();
             if (roundActive || localReady) {
                 return;
+            }
+            if (server && mode == null) {
+                throw new IllegalStateException("Host must choose a game mode before starting");
             }
             localReady = true;
             writeMessage(MESSAGE_READY, true, null);
@@ -283,6 +300,68 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    // 로컬 플레이어가 지운 줄만큼 상대에게 보낼 방해 줄을 전송한다. 라운드가 활성화되지 않았으면 보내지 않는다.
+    public void sendAttack(java.util.List<int[]> rows) throws IOException {
+        Objects.requireNonNull(rows, "rows");
+        if (rows.isEmpty()) {
+            return;
+        }
+        if (rows.size() > MAX_ATTACK_ROWS) {
+            throw new IllegalArgumentException("Too many attack rows: " + rows.size());
+        }
+        synchronized (this) {
+            ensureConnected();
+            if (!roundActive) {
+                return;
+            }
+            // 헤더를 쓰기 전에 모든 줄을 검증해야 잘못된 입력이 스트림을 망가뜨리지 않는다.
+            for (int[] row : rows) {
+                if (row == null || row.length != BOARD_WIDTH) {
+                    throw new IllegalArgumentException("Attack row must have " + BOARD_WIDTH + " cells");
+                }
+            }
+            output.writeByte(MESSAGE_ATTACK);
+            output.writeByte(rows.size());
+            for (int[] row : rows) {
+                for (int cell : row) {
+                    output.writeByte(cell);
+                }
+            }
+            output.flush();
+        }
+    }
+
+    // 상대가 보낸 방해 줄을 읽는다. 각 칸은 빈 칸(0)이거나 공격 블록(ATTACK)이어야 한다.
+    private java.util.List<int[]> readAttackRows() throws IOException {
+        int count = input.readUnsignedByte();
+        if (count < 1 || count > MAX_ATTACK_ROWS) {
+            throw new IOException("Invalid attack row count: " + count);
+        }
+        java.util.List<int[]> rows = new java.util.ArrayList<>(count);
+        for (int r = 0; r < count; r++) {
+            int[] row = new int[BOARD_WIDTH];
+            for (int c = 0; c < BOARD_WIDTH; c++) {
+                int cell = input.readUnsignedByte();
+                if (cell != 0 && cell != BlockType.ATTACK.getValue()) {
+                    throw new IOException("Invalid attack cell value: " + cell);
+                }
+                row[c] = cell;
+            }
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    // 상대 공격을 리스너에 전달한다. 라운드가 활성화되지 않은 상태의 공격은 거부한다.
+    private void receiveAttack(java.util.List<int[]> rows) throws IOException {
+        synchronized (this) {
+            if (!roundActive) {
+                throw new IOException("Attack received outside an active round");
+            }
+            listener.onRemoteAttack(rows);
+        }
+    }
+
     // 소켓 입력을 계속 읽어 메시지별 처리기로 전달한다.
     // 상대의 정상 종료 통지, 예기치 않은 연결 종료, 알 수 없는 메시지를 구분해 리스너에 알린다.
     private void readMessages() {
@@ -295,8 +374,9 @@ public final class P2PGameSession implements AutoCloseable {
                 // 메시지 식별자에 따라 필요한 데이터만 읽고 해당 상태 전이 처리기에 전달한다.
                 switch (message) {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
-                    case MESSAGE_START -> receiveStart();
+                    case MESSAGE_START -> receiveStart(input.readUnsignedByte());
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
+                    case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
                     case MESSAGE_KEEP_ALIVE -> {
                         // Keep-alive 메시지는 처리 없음 - recordMessageReceived()에서 활동으로 기록됨
                     }
@@ -336,12 +416,19 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
-    // 클라이언트가 호스트의 시작 메시지를 받았을 때 유효한 상태인지 확인하고 라운드를 연다.
-    private void receiveStart() throws IOException {
+    // 클라이언트가 호스트의 시작 메시지를 받았을 때 유효한 상태인지 확인하고, 호스트가 정한 모드를 적용한 뒤 라운드를 연다.
+    private void receiveStart(int modeOrdinal) throws IOException {
         synchronized (this) {
-            if (server || roundActive || !localReady || !remoteReady) {
+            GameMode[] modes = GameMode.values();
+            if (server || roundActive || !localReady || !remoteReady
+                    || modeOrdinal < 0 || modeOrdinal >= modes.length) {
                 throw new IOException("Unexpected multiplayer start message");
             }
+            GameMode startMode = modes[modeOrdinal];
+            if (mode != null && mode != startMode) {
+                throw new IOException("Game mode changed after the match started");
+            }
+            mode = startMode;
             beginRound();
         }
     }
@@ -369,6 +456,7 @@ public final class P2PGameSession implements AutoCloseable {
 
     private void beginRound() {
         // 연결은 유지하고, 이전 라운드에 한정된 준비/게임 오버/상대 상태만 초기화한다.
+        started = true;
         localReady = false;
         remoteReady = false;
         localGameOver = false;
@@ -392,11 +480,13 @@ public final class P2PGameSession implements AutoCloseable {
     }
 
     // 메시지를 프로토콜 형식에 맞춰 직렬화하고 즉시 전송한다.
-    // READY는 boolean 하나를, STATUS는 GameStatus 필드들을 추가로 기록한다.
+    // READY는 boolean 하나를, START는 게임 모드 번호 하나를, STATUS는 GameStatus 필드들을 추가로 기록한다.
     private void writeMessage(int message, boolean ready, GameStatus status) throws IOException {
         output.writeByte(message);
         if (message == MESSAGE_READY) {
             output.writeBoolean(ready);
+        } else if (message == MESSAGE_START) {
+            output.writeByte(mode.ordinal());
         } else if (message == MESSAGE_STATUS) {
             status.writeTo(output);
         }

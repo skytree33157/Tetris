@@ -30,7 +30,7 @@ public class ActionController {
     private volatile Object stateLock = this;
     private BattleController battle;
     private BattleController.Player player;
-    public static final int MAX_PENDING_ATTACK_ROWS = 10;
+    public static final int MAX_PENDING_ATTACK_ROWS = 2;
     // 상대에게 받은 행. 현재 블록의 처리가 끝날 때까지 보드는 바꾸지 않는다.
     private final List<int[]> pendingAttackRows = new ArrayList<>();
     // 이번 블록으로 보낼 행의 삭제 전 모습. 애니메이션 완료 전에는 전달하지 않는다.
