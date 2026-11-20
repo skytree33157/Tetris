@@ -74,6 +74,10 @@ public final class P2PGameController {
                     actionController,
                     gameStateManager,
                     scoreManager);
+            // 상태 전송 시 라운드가 즉시 끝날 수 있으므로, 패배 판정 플래그를 먼저 세운다
+            if (status.isGameOver()) {
+                localGameOver = true;
+            }
             session.sendStatus(status);
         }
     }

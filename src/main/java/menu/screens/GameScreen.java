@@ -572,6 +572,8 @@ private JLabel scoreLabel;
     // P2P 게임 컨트롤러 설정
     public void setP2PController(P2PGameController controller) {
         this.p2pController = controller;
+        // 네트워크 대전에서는 상대 보드가 멈추지 않도록 일시정지를 비활성화
+        gameController.setPauseEnabled(controller == null);
     }
 
     // 게임 상태 관리자 접근
