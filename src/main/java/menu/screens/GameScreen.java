@@ -57,7 +57,7 @@ public class GameScreen extends JFrame {
     private static final long serialVersionUID = 1L;
     private static final int RENDER_INTERVAL_MS = 50;
     private static final int SIDE_WIDTH = 210;
-    private static final Color CONNECTION_LOST_COLOR = new Color(0xF26B6B);
+    private static final Color CONNECTION_NORMAL_COLOR = new Color(0x4CD964);
 
   private final GameStateManager gameStateManager;
     private final AppStateManager appStateManager;
@@ -537,8 +537,17 @@ private JLabel scoreLabel;
         SoundManager.getInstance().stopBgm();
     }
 
-    // 연결 상태를 상단 바에 보여줌 (정상 제외)
-    public void showConnectionStatus(String message, boolean isWarning) {
+    // 정상 연결 상태를 초록색 글씨로 상단 바에 표시
+    public void showConnectionNormal() {
+        showConnectionStatus("연결 정상", CONNECTION_NORMAL_COLOR);
+    }
+
+    // 연결 지연 상태를 상단 바에 경고 색으로 표시
+    public void showConnectionLatency() {
+        showConnectionStatus("연결 지연 중...", Theme.BRONZE);
+    }
+
+    private void showConnectionStatus(String message, Color color) {
         if (connectionStatusLabel == null) {
             connectionStatusLabel = new JLabel(message);
             connectionStatusLabel.setFont(Theme.body(14, Font.BOLD));
@@ -546,20 +555,12 @@ private JLabel scoreLabel;
         } else {
             connectionStatusLabel.setText(message);
         }
-        connectionStatusLabel.setForeground(isWarning ? Theme.BRONZE : CONNECTION_LOST_COLOR);
+        connectionStatusLabel.setForeground(color);
 
         // 상단에 상태 레이블 추가 (이미 추가되었다면 업데이트만)
         // 창 크기를 다시 맞추지 않으면 고정 크기 창에서 보드 영역이 잘리므로 pack()으로 크기를 갱신한다.
         if (connectionStatusLabel.getParent() == null) {
             getContentPane().add(connectionStatusLabel, BorderLayout.NORTH);
-            pack();
-        }
-    }
-
-    // 정상 상태로 복구 시 상단 바 제거
-    public void hideConnectionStatus() {
-        if (connectionStatusLabel != null && connectionStatusLabel.getParent() != null) {
-            getContentPane().remove(connectionStatusLabel);
             pack();
         }
     }

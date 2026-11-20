@@ -334,17 +334,13 @@ public final class P2PGameRunner {
                 @Override
                 public void onConnectionLatency() {
                     // 지연 상태를 UI에 표시
-                    SwingUtilities.invokeLater(() -> {
-                        gameScreen.showConnectionStatus("연결 지연 중...", true);
-                    });
+                    SwingUtilities.invokeLater(() -> gameScreen.showConnectionLatency());
                 }
                 
                 @Override
                 public void onConnectionRecovered() {
-                    // 연결 정상화 시 상태 메시지 제거
-                    SwingUtilities.invokeLater(() -> {
-                        gameScreen.hideConnectionStatus();
-                    });
+                    // 연결 정상화 시 초록색 정상 표시로 전환
+                    SwingUtilities.invokeLater(() -> gameScreen.showConnectionNormal());
                 }
                 
                 @Override
@@ -355,6 +351,8 @@ public final class P2PGameRunner {
             });
             
             gameScreen.setVisible(true);
+            // 시작 시점부터 정상 연결 상태를 초록색으로 표시
+            gameScreen.showConnectionNormal();
             monitoringDisconnection = true;
 
             // 로비에서 이미 라운드가 시작됐다면(게임 화면 생성 전 START 수신) 현재 상태를 반영한다.
