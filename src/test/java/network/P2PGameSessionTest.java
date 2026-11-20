@@ -1,5 +1,6 @@
 package network;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -8,10 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import game.GameMode;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class P2PGameSessionTest {
@@ -117,6 +120,57 @@ class P2PGameSessionTest {
             }
         } finally {
             // 테스트 실패 여부와 관계없이 대기 스레드가 남지 않게 정리한다.
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void deliversAttackRowsToRemotePeerAndRejectsMalformedRows() throws Exception {
+        CountDownLatch serverStarted = new CountDownLatch(1);
+        CountDownLatch clientStarted = new CountDownLatch(1);
+        CountDownLatch attackReceived = new CountDownLatch(1);
+        AtomicReference<List<int[]>> receivedRows = new AtomicReference<>();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open()) {
+            var accepted = executor.submit(invitation::accept);
+            try (P2PGameSession client = P2PGameSession.connect("127.0.0.1");
+                    P2PGameSession server = accepted.get(5, TimeUnit.SECONDS)) {
+                server.setMode(GameMode.NORMAL);
+                server.setListener(new P2PGameSession.Listener() {
+                    @Override
+                    public void onStarted() {
+                        serverStarted.countDown();
+                    }
+                });
+                client.setListener(new P2PGameSession.Listener() {
+                    @Override
+                    public void onStarted() {
+                        clientStarted.countDown();
+                    }
+
+                    @Override
+                    public void onRemoteAttack(List<int[]> rows) {
+                        receivedRows.set(rows);
+                        attackReceived.countDown();
+                    }
+                });
+                client.setReady();
+                server.setReady();
+                assertTrue(serverStarted.await(5, TimeUnit.SECONDS));
+                assertTrue(clientStarted.await(5, TimeUnit.SECONDS));
+
+                // 빈 칸 4개와 공격 블록 칸 6개로 이루어진 방해 줄을 상대에게 보낸다.
+                int[] row = {0, 0, 0, 0, 11, 11, 11, 11, 11, 11};
+                server.sendAttack(List.of(row));
+                assertTrue(attackReceived.await(5, TimeUnit.SECONDS));
+                assertArrayEquals(row, receivedRows.get().get(0));
+
+                // 길이가 맞지 않는 줄은 헤더를 쓰기 전에 거부되어야 한다.
+                assertThrows(IllegalArgumentException.class,
+                        () -> server.sendAttack(List.of(new int[9])));
+            }
+        } finally {
             executor.shutdownNow();
         }
     }

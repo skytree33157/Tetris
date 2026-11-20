@@ -11,6 +11,7 @@ import java.net.SocketException;
 import java.util.Objects;
 
 import game.GameMode;
+import blocks.core.BlockType;
 
 // TCP 연결, 대전 관리
 public final class P2PGameSession implements AutoCloseable {
@@ -26,6 +27,10 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_STATUS = 3;
     private static final int MESSAGE_CLOSE = 4;
     private static final int MESSAGE_KEEP_ALIVE = 5;
+    private static final int MESSAGE_ATTACK = 6;
+    // 한 번에 전송 가능한 방해 줄 수 (로컬 대전의 대기열 상한과 동일)
+    private static final int MAX_ATTACK_ROWS = 10;
+    private static final int BOARD_WIDTH = 10;
 
 
     // 세션 이벤트 리스너 인터페이스
@@ -36,6 +41,8 @@ public final class P2PGameSession implements AutoCloseable {
         default void onStarted() {}
         // 상대 플레이어 상태 수신 시 호출
         default void onRemoteStatus(GameStatus status) {}
+
+        default void onRemoteAttack(java.util.List<int[]> rows) {}
         // 라운드 종료 시 호출
         default void onRoundFinished() {}
         // 연결 끊김 또는 프로토콜 오류 시 호출
@@ -293,6 +300,68 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    // 로컬 플레이어가 지운 줄만큼 상대에게 보낼 방해 줄을 전송한다. 라운드가 활성화되지 않았으면 보내지 않는다.
+    public void sendAttack(java.util.List<int[]> rows) throws IOException {
+        Objects.requireNonNull(rows, "rows");
+        if (rows.isEmpty()) {
+            return;
+        }
+        if (rows.size() > MAX_ATTACK_ROWS) {
+            throw new IllegalArgumentException("Too many attack rows: " + rows.size());
+        }
+        synchronized (this) {
+            ensureConnected();
+            if (!roundActive) {
+                return;
+            }
+            // 헤더를 쓰기 전에 모든 줄을 검증해야 잘못된 입력이 스트림을 망가뜨리지 않는다.
+            for (int[] row : rows) {
+                if (row == null || row.length != BOARD_WIDTH) {
+                    throw new IllegalArgumentException("Attack row must have " + BOARD_WIDTH + " cells");
+                }
+            }
+            output.writeByte(MESSAGE_ATTACK);
+            output.writeByte(rows.size());
+            for (int[] row : rows) {
+                for (int cell : row) {
+                    output.writeByte(cell);
+                }
+            }
+            output.flush();
+        }
+    }
+
+    // 상대가 보낸 방해 줄을 읽는다. 각 칸은 빈 칸(0)이거나 공격 블록(ATTACK)이어야 한다.
+    private java.util.List<int[]> readAttackRows() throws IOException {
+        int count = input.readUnsignedByte();
+        if (count < 1 || count > MAX_ATTACK_ROWS) {
+            throw new IOException("Invalid attack row count: " + count);
+        }
+        java.util.List<int[]> rows = new java.util.ArrayList<>(count);
+        for (int r = 0; r < count; r++) {
+            int[] row = new int[BOARD_WIDTH];
+            for (int c = 0; c < BOARD_WIDTH; c++) {
+                int cell = input.readUnsignedByte();
+                if (cell != 0 && cell != BlockType.ATTACK.getValue()) {
+                    throw new IOException("Invalid attack cell value: " + cell);
+                }
+                row[c] = cell;
+            }
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    // 상대 공격을 리스너에 전달한다. 라운드가 활성화되지 않은 상태의 공격은 거부한다.
+    private void receiveAttack(java.util.List<int[]> rows) throws IOException {
+        synchronized (this) {
+            if (!roundActive) {
+                throw new IOException("Attack received outside an active round");
+            }
+            listener.onRemoteAttack(rows);
+        }
+    }
+
     // 소켓 입력을 계속 읽어 메시지별 처리기로 전달한다.
     // 상대의 정상 종료 통지, 예기치 않은 연결 종료, 알 수 없는 메시지를 구분해 리스너에 알린다.
     private void readMessages() {
@@ -307,6 +376,7 @@ public final class P2PGameSession implements AutoCloseable {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
                     case MESSAGE_START -> receiveStart(input.readUnsignedByte());
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
+                    case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
                     case MESSAGE_KEEP_ALIVE -> {
                         // Keep-alive 메시지는 처리 없음 - recordMessageReceived()에서 활동으로 기록됨
                     }

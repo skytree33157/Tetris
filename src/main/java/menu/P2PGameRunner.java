@@ -10,6 +10,7 @@ import java.util.Objects;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import game.BattleController;
 import game.GameMode;
 import menu.screens.BattleMenuScreen;
 import menu.screens.GameScreen;
@@ -292,14 +293,23 @@ public final class P2PGameRunner {
         private void showGame() {
             // 게임 화면 생성
             gameScreen = new GameScreen(session.getMode());
-            
+
+            // 로컬 대전과 같은 경기 규칙을 쓰되, 결과 확정은 P2P 서버 측 판단을 따르도록 클라이언트 모드로 만든다.
+            // 호스트는 Player.ONE, 클라이언트는 Player.TWO를 로컬 플레이어로 사용한다.
+            BattleController battle = new BattleController(false);
+            BattleController.Player localPlayer = session.isServer()
+                    ? BattleController.Player.ONE
+                    : BattleController.Player.TWO;
+            battle.registerPlayer(localPlayer, gameScreen.getActionController());
+
             // P2P 게임 컨트롤러 생성 - 게임 화면과 P2P 세션 연결
             p2pController = new P2PGameController(
                     session,
                     gameScreen,
                     gameScreen.getGameStateManager(),
-                    gameScreen.getActionController(),
-                    gameScreen.getScoreManager()
+                    gameScreen.getScoreManager(),
+                    battle,
+                    localPlayer
             );
 
             // 게임 화면에 P2P 컨트롤러 설정
@@ -319,6 +329,12 @@ public final class P2PGameRunner {
                 public void onRemoteStatus(network.GameStatus status) {
                     // Controller에 전달
                     p2pController.onRemoteStatus(status);
+                }
+
+                @Override
+                public void onRemoteAttack(java.util.List<int[]> rows) {
+                    // 상대가 지운 줄만큼 방해 줄을 받는다
+                    p2pController.onRemoteAttack(rows);
                 }
                 
                 @Override
