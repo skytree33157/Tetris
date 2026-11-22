@@ -15,6 +15,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
@@ -24,6 +25,8 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
 
 import app.AppState;
@@ -39,7 +42,7 @@ import game.GameLoop;
 import game.GameMode;
 import game.GamePanel;
 import game.GameStateManager;
-import menu.P2PGameController;
+import menu.RoomGameController;
 import menu.views.PauseView;
 import menu.settings.AppSettings;
 import network.GameStatus;
@@ -57,6 +60,7 @@ public class GameScreen extends JFrame {
     private static final long serialVersionUID = 1L;
     private static final int RENDER_INTERVAL_MS = 50;
     private static final int SIDE_WIDTH = 210;
+    private static final int PLAYER_LIST_HEIGHT = 160;
     private static final Color CONNECTION_NORMAL_COLOR = new Color(0x4CD964);
 
   private final GameStateManager gameStateManager;
@@ -75,7 +79,9 @@ public class GameScreen extends JFrame {
     private final GameMode mode;
     private final int bestScore;
     private PauseView PauseView;
-    private P2PGameController p2pController;
+    private final RoomGameController roomController;
+    private RoundedPanel playerCard;
+    private JPanel playerListPanel;
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
     private JLabel connectionStatusLabel;
 
@@ -98,11 +104,11 @@ private JLabel scoreLabel;
         this(mode, null);
     }
 
-    public GameScreen(GameMode mode, P2PGameController p2pController) {
+    public GameScreen(GameMode mode, RoomGameController roomController) {
         super("TFSE");
         ui.AppIcon.apply(this);
         this.mode = mode;
-        this.p2pController = p2pController;
+        this.roomController = roomController;
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         Board board = new Board();
@@ -161,6 +167,8 @@ private JLabel scoreLabel;
                 this::exitApplication
         );
 
+        // 네트워크 대전에서는 상대가 기다리지 않도록 일시정지를 비활성화
+        gameController.setPauseEnabled(roomController == null);
         boardHolder = createBoardHolder();
 
         JPanel root = new JPanel(new BorderLayout(24, 0));
@@ -183,7 +191,7 @@ private JLabel scoreLabel;
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
                 // 싱글 모드는 바로 시작, P2P 모드는 onStarted() 이후 allowGameStart()에서 시작
-                if (GameScreen.this.p2pController == null) {
+                if (GameScreen.this.roomController == null) {
                     startGameLoop();
                 }
             }
@@ -219,28 +227,19 @@ private JLabel scoreLabel;
         holdPreviewPanel.setSnapshot(frame.heldBlock());
         updateHud();
 
-        // P2P 게임 상태 전송
-        if (p2pController != null && p2pController.isRoundActive()) {
-            try {
-                p2pController.sendGameStatus();
-            } catch (IOException exception) {
-                // 연결 끊김은 P2PGameSession의 리스너에서 처리
-                exception.printStackTrace();
+        // 네트워크 대전: 상태 전송. 방 전체 순위는 서버가 정하므로 로컬 결과 창은 띄우지 않는다.
+        if (roomController != null) {
+            roomController.sendGameStatus();
+            if (frame.gameOver() && !gameOverHandled) {
+                gameOverHandled = true;
+                roomController.notifyLocalGameOver();
             }
+            return;
         }
 
         // 로컬 게임 오버 처리
         if (frame.gameOver() && !gameOverHandled) {
             gameOverHandled = true;
-            // P2P 게임은 게임 오버를 상대에게 통지하고, 승패 결과는 라운드 종료 시 P2PGameRunner에서 표시
-            if (p2pController != null) {
-                try {
-                    p2pController.notifyGameOver();
-                } catch (IOException exception) {
-                    exception.printStackTrace();
-                }
-                return;
-            }
             showGameOver(frame);
         }
     }
@@ -374,6 +373,26 @@ private JLabel scoreLabel;
         infoCard.add(row(text("난이도", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED),
                 text(GameHud.difficultyLabel(difficulty), Theme.body(13, Font.BOLD), Theme.TEXT)));
         addBlock(col, infoCard);
+
+        if (roomController != null) {
+            playerCard = card();
+            playerCard.add(caption("플레이어"));
+            playerCard.add(Box.createVerticalStrut(8));
+            playerListPanel = new JPanel();
+            playerListPanel.setLayout(new BoxLayout(playerListPanel, BoxLayout.Y_AXIS));
+            playerListPanel.setOpaque(false);
+            // 참가자가 많아도 NEXT 미리보기가 밀려 나가지 않도록 높이를 고정하고 스크롤
+            JScrollPane playerScroll = new JScrollPane(playerListPanel);
+            playerScroll.setOpaque(false);
+            playerScroll.getViewport().setOpaque(false);
+            playerScroll.setBorder(BorderFactory.createEmptyBorder());
+            playerScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            playerScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+            playerScroll.setPreferredSize(new Dimension(SIDE_WIDTH, PLAYER_LIST_HEIGHT));
+            playerScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, PLAYER_LIST_HEIGHT));
+            playerCard.add(playerScroll);
+            addBlock(col, playerCard);
+        }
 
         RoundedPanel keyCard = card();
         keyCard.add(caption("조작"));
@@ -567,14 +586,24 @@ private JLabel scoreLabel;
 
     // 상대 플레이어의 게임 상태 업데이트
     // 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음 (현재는 화면에 표시하지 않음)
-    public void updateRemoteStatus(GameStatus status) {
+    // 네트워크 대전 참가자 목록 갱신 (EDT에서 호출)
+    public void setPlayerLines(List<String> lines) {
+        if (playerListPanel == null) {
+            return;
+        }
+        playerListPanel.removeAll();
+        for (String line : lines) {
+            JLabel label = text(line, Theme.body(13, Font.PLAIN), line.contains("[탈락]") ? Theme.TEXT_MUTED : Theme.TEXT);
+            label.setAlignmentX(Component.LEFT_ALIGNMENT);
+            playerListPanel.add(label);
+        }
+        playerListPanel.revalidate();
+        playerListPanel.repaint();
     }
 
-    // P2P 게임 컨트롤러 설정
-    public void setP2PController(P2PGameController controller) {
-        this.p2pController = controller;
-        // 네트워크 대전에서는 상대 보드가 멈추지 않도록 일시정지를 비활성화
-        gameController.setPauseEnabled(controller == null);
+    // 로컬 탈락 등 안내 문구를 상단 바 아래 연결 상태 레이블에 표시
+    public void showNotice(String message) {
+        showConnectionStatus(message, Theme.BRONZE);
     }
 
     // 게임 상태 관리자 접근

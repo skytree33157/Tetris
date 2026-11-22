@@ -3,13 +3,17 @@ package menu.views;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 
+import network.RoomMember;
+import network.RoomProtocol;
 import ui.components.RoundedPanel;
 import ui.components.ThemedButton;
 import ui.theme.Theme;
@@ -17,6 +21,8 @@ import ui.theme.Theme;
 // P2P 방 만들기 / 참여 화면이 같이 쓰는 레이아웃 조각
 final class LobbyParts {
     static final int COLUMN_WIDTH = 560;
+    // 참가자 목록 영역 높이. 인원이 많아도 아래 버튼이 밀리지 않도록 고정하고 스크롤한다
+    static final int ROSTER_HEIGHT = 120;
 
     private LobbyParts() {}
 
@@ -70,5 +76,43 @@ final class LobbyParts {
         status.setText(text == null || text.isEmpty() ? " " : text);
         status.setForeground(warning ? Theme.BRONZE : Theme.TEXT_SOFT);
         status.setFont(Theme.body(14, warning ? Font.BOLD : Font.PLAIN));
+    }
+
+    // 참가자 목록을 고정 높이 스크롤 영역에 담는다
+    static JScrollPane rosterScroll(JPanel list) {
+        list.setOpaque(false);
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(12);
+        scroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        Dimension size = new Dimension(COLUMN_WIDTH - 40, ROSTER_HEIGHT);
+        scroll.setPreferredSize(size);
+        scroll.setMaximumSize(size);
+        return scroll;
+    }
+
+    // 참가자 목록을 다시 채운다. mySlot 위치에는 "(나)", 방장에는 "[방장]"을 붙인다.
+    static void fillRoster(JPanel list, List<RoomMember> members, int mySlot) {
+        list.removeAll();
+        list.add(label(members.size() + " / " + RoomProtocol.MAX_PARTICIPANTS + "명",
+                Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+        for (int i = 0; i < members.size(); i++) {
+            RoomMember member = members.get(i);
+            StringBuilder text = new StringBuilder((i + 1) + ". " + member.name());
+            if (i == mySlot) {
+                text.append(" (나)");
+            }
+            if (member.host()) {
+                text.append(" [방장]");
+            }
+            text.append(member.ready() ? "  준비 완료" : "  대기 중");
+            list.add(label(text.toString(), Theme.body(14, Font.PLAIN), Theme.TEXT));
+        }
+        list.revalidate();
+        list.repaint();
     }
 }

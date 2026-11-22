@@ -18,17 +18,19 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import network.RoomMember;
 import ui.components.RoundedPanel;
 import ui.components.SegmentedControl;
 import ui.components.ThemedButton;
 import ui.components.ThemedButton.Kind;
 import ui.theme.Theme;
 
-// 온라인 방 만들기 화면 레이아웃. 동작은 P2PHostScreen이 담당
+// 온라인 방 만들기 화면 레이아웃. 동작은 RoomHostScreen이 담당
 public class P2PHostView extends JPanel {
 
     private final SegmentedControl modeControl;
     private final JPanel addressList = new JPanel();
+    private final JPanel rosterList = new JPanel();
     private final JLabel status = label(" ", Theme.body(14, Font.PLAIN), Theme.TEXT_SOFT);
     private final ThemedButton primaryButton = new ThemedButton("방 열기", Kind.PRIMARY);
     private final ThemedButton backButton = new ThemedButton("뒤로", Kind.SECONDARY);
@@ -78,7 +80,15 @@ public class P2PHostView extends JPanel {
         col.add(addressCard);
         col.add(Box.createVerticalStrut(16));
 
-        col.add(status);
+        // 참가자 목록 (호스트 포함)
+        RoundedPanel rosterCard = card();
+        rosterCard.add(label("참가자", Theme.body(15, Font.BOLD), Theme.TEXT));
+        rosterCard.add(Box.createVerticalStrut(8));
+        // 참가자가 많아도 버튼이 밀리지 않도록 목록 영역은 고정 높이 + 스크롤
+        rosterCard.add(LobbyParts.rosterScroll(rosterList));
+        col.add(fixHeight(rosterCard));
+        col.add(Box.createVerticalStrut(16));
+
         col.add(Box.createVerticalStrut(12));
 
         primaryButton.addActionListener(e -> onPrimary.run());
@@ -114,6 +124,11 @@ public class P2PHostView extends JPanel {
 
     public void setModeIndex(int index) {
         modeControl.setSelectedIndex(index);
+    }
+
+    // 참가자 목록을 갱신한다. mySlot 위치에는 "(나)"를 붙인다.
+    public void setRoster(List<RoomMember> members, int mySlot) {
+        LobbyParts.fillRoster(rosterList, members, mySlot);
     }
 
     public void setModeEnabled(boolean enabled) {
