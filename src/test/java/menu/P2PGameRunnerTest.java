@@ -1,9 +1,11 @@
 package menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import game.GameMode;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ConnectException;
@@ -31,6 +33,37 @@ class P2PGameRunnerTest {
             assertTrue(joiner.connected.await(5, TimeUnit.SECONDS), "joiner should connect");
             flushEdt();
             assertTrue(host.session.get().isServer());
+            assertEquals(List.of(), host.failures);
+            assertEquals(List.of(), joiner.failures);
+        } finally {
+            closeQuietly(joiner.session.get());
+            closeQuietly(host.session.get());
+            handle.cancel();
+        }
+    }
+
+    @Test // 방 만들기 → 참여 → 호스트 모드 선택 → 참여자 준비: 호스트가 준비 상태를 받지만 아직 시작되지는 않음
+    void joinerReadinessReachesHostWithoutStartingRound() throws Exception {
+        RecentingListener host = new RecentingListener();
+        RecentingListener joiner = new RecentingListener();
+
+        P2PGameRunner.HostHandle handle = P2PGameRunner.startServer(host);
+        P2PGameRunner.joinServer("127.0.0.1", joiner);
+
+        try {
+            assertTrue(host.connected.await(5, TimeUnit.SECONDS), "host should connect");
+            assertTrue(joiner.connected.await(5, TimeUnit.SECONDS), "joiner should connect");
+            P2PGameSession hostSession = host.session.get();
+            P2PGameSession joinerSession = joiner.session.get();
+
+            hostSession.setMode(GameMode.NORMAL);
+            joinerSession.setReady();
+
+            assertTrue(host.remoteReady.await(5, TimeUnit.SECONDS), "host should see joiner ready");
+            flushEdt();
+            // 게임 시작은 양쪽이 모두 준비된 뒤 호스트가 준비할 때 일어나며, 이 테스트에서는 게임 창을 띄우지 않도록 여기서 멈춘다.
+            assertFalse(hostSession.isRoundActive());
+            assertFalse(joinerSession.isRoundActive());
             assertEquals(List.of(), host.failures);
             assertEquals(List.of(), joiner.failures);
         } finally {
@@ -105,6 +138,7 @@ class P2PGameRunnerTest {
     private static final class RecentingListener implements P2PGameRunner.ConnectListener {
         final CountDownLatch connected = new CountDownLatch(1);
         final CountDownLatch failed = new CountDownLatch(1);
+        final CountDownLatch remoteReady = new CountDownLatch(1);
         final List<IOException> failures = new CopyOnWriteArrayList<>();
         final AtomicReference<P2PGameSession> session = new AtomicReference<>();
 
@@ -116,6 +150,9 @@ class P2PGameRunnerTest {
 
         @Override
         public void onRemoteReady(boolean ready) {
+            if (ready) {
+                remoteReady.countDown();
+            }
         }
 
         @Override
