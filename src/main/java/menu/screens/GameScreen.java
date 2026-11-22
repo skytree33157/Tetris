@@ -34,6 +34,7 @@ import board.Board;
 import difficulty.Difficulty;
 import game.ActionController;
 import game.BlockPreviewPanel;
+import game.RemoteBoardPanel;
 import game.GameController;
 import game.GameLoop;
 import game.GameMode;
@@ -79,6 +80,13 @@ public class GameScreen extends JFrame {
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
     private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
     private JLabel connectionStatusLabel;
+    private JPanel rightPanel;
+
+    // P2P 대전: 상대 보드와 점수 (setP2PController 이후에만 생성)
+    private RemoteBoardPanel remoteBoardPanel;
+    private JLabel opponentScoreLabel;
+    private JLabel opponentLevelLabel;
+    private JLabel opponentLinesLabel;
 
 private JLabel scoreLabel;
     private JLabel bestLabel;
@@ -169,8 +177,12 @@ private JLabel scoreLabel;
         root.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         root.add(createLeftPanel(), BorderLayout.WEST);
         root.add(boardHolder, BorderLayout.CENTER);
-        root.add(createRightPanel(), BorderLayout.EAST);
+        rightPanel = createRightPanel();
+        root.add(rightPanel, BorderLayout.EAST);
         setContentPane(root);
+        if (p2pController != null) {
+            installOpponentColumn();
+        }
         updateHud();
 
         pack();
@@ -577,13 +589,71 @@ private JLabel scoreLabel;
     }
 
     // 상대 플레이어의 게임 상태 업데이트
-    // 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음 (현재는 화면에 표시하지 않음)
+    // 상대 보드와 점수·레벨·줄 수를 오른쪽 '상대' 열에 표시 (EDT에서 호출)
     public void updateRemoteStatus(GameStatus status) {
+        if (status == null || remoteBoardPanel == null) {
+            return;
+        }
+        remoteBoardPanel.setStatus(status);
+        opponentScoreLabel.setText(String.format("%,d", status.getScore()));
+        opponentLevelLabel.setText(String.valueOf(status.getLevel()));
+        opponentLinesLabel.setText(String.valueOf(status.getLines()));
     }
 
-    // P2P 게임 컨트롤러 설정
+    // P2P 게임 컨트롤러 설정. 처음 연결되면 상대 열을 붙이고 창 크기를 다시 맞춘다.
     public void setP2PController(P2PGameController controller) {
         this.p2pController = controller;
+        if (controller != null && remoteBoardPanel == null) {
+            installOpponentColumn();
+            pack();
+            setLocationRelativeTo(null);
+        }
+    }
+
+    // 오른쪽 패널 옆에 '상대' 열 추가: 상대 보드(작게) + 점수·레벨·줄 수
+    private void installOpponentColumn() {
+        remoteBoardPanel = new RemoteBoardPanel();
+        opponentScoreLabel = text("0", Theme.display(22), Theme.TEXT);
+        opponentLevelLabel = text("1", Theme.body(13, Font.BOLD), Theme.TEXT);
+        opponentLinesLabel = text("0", Theme.body(13, Font.BOLD), Theme.TEXT);
+
+        JPanel col = column();
+
+        RoundedPanel boardCard = card();
+        boardCard.add(caption("상대"));
+        boardCard.add(Box.createVerticalStrut(10));
+        JPanel boardWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        boardWrap.setBackground(Theme.BOARD_BG);
+        boardWrap.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.OUTLINE, 1),
+                BorderFactory.createEmptyBorder(4, 4, 4, 4)));
+        boardWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        boardWrap.add(remoteBoardPanel);
+        fixHeight(boardWrap);
+        boardCard.add(boardWrap);
+        addBlock(col, boardCard);
+
+        RoundedPanel scoreCard = card();
+        scoreCard.add(caption("상대 점수"));
+        scoreCard.add(Box.createVerticalStrut(4));
+        scoreCard.add(opponentScoreLabel);
+        scoreCard.add(Box.createVerticalStrut(8));
+        scoreCard.add(row(text("레벨", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), opponentLevelLabel));
+        scoreCard.add(Box.createVerticalStrut(6));
+        scoreCard.add(row(text("줄", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), opponentLinesLabel));
+        addBlock(col, scoreCard);
+        col.add(Box.createVerticalGlue());
+
+        // 기존 오른쪽 패널과 상대 열을 나란히 둔다
+        JPanel east = new JPanel();
+        east.setOpaque(false);
+        east.setLayout(new BoxLayout(east, BoxLayout.X_AXIS));
+        getContentPane().remove(rightPanel);
+        east.add(rightPanel);
+        east.add(Box.createHorizontalStrut(24));
+        east.add(col);
+        getContentPane().add(east, BorderLayout.EAST);
+        getContentPane().revalidate();
     }
 
     // 게임 상태 관리자 접근

@@ -1,5 +1,6 @@
 package menu;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ConnectException;
@@ -141,6 +142,13 @@ public final class P2PGameRunner {
         }
         if (exception instanceof SocketTimeoutException) {
             return "응답이 없어요. 상대가 방을 열었는지, 같은 네트워크인지 확인해 주세요.";
+        }
+        if (exception instanceof EOFException) {
+            return "연결이 바로 끊겼어요. 두 사람의 TFSE 버전이 같은지 확인해 주세요.";
+        }
+        String detail = exception.getMessage();
+        if (detail != null && detail.contains("incompatible")) {
+            return "다른 버전의 TFSE가 접속했어요. 두 사람 모두 같은 버전으로 실행해 주세요.";
         }
         if (exception instanceof ConnectException) {
             return "연결이 거부됐어요. 상대가 방을 열어 둔 상태인지 확인해 주세요.";

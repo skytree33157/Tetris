@@ -17,7 +17,8 @@ public final class P2PGameSession implements AutoCloseable {
     // TCP 포트
     public static final int DEFAULT_PORT = 57823;
     // handshake용 프로토콜 식별값
-    private static final int PROTOCOL_MAGIC = 0x54465345;
+    // 상태 메시지에 상대 보드가 추가되면서 버전 2("TFS2")로 올림. 이전 버전과는 연결을 거부한다.
+    private static final int PROTOCOL_MAGIC = 0x54465332;
     // handshake 완료를 기다리는 최대 시간
     private static final int CONNECT_TIMEOUT_MS = 5_000;
     // 메시지 종류별 식별자. 각 메시지의 실제 필드 형식은 writeMessage/readMessages에서 처리한다.

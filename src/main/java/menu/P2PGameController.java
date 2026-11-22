@@ -80,11 +80,14 @@ public final class P2PGameController {
     // P2P 세션에 게임 종료 전달
     public void notifyGameOver() throws IOException {
         synchronized (actionController) {
+            // 마지막 보드도 함께 보내 상대 화면에 끝난 모습이 남도록 한다
+            GameStatus current = GameStatus.capture(actionController, gameStateManager, scoreManager);
             GameStatus finalStatus = new GameStatus(
-                    scoreManager.getScore(),
-                    gameStateManager.getCurrentLevel(),
-                    gameStateManager.getTotalLinesCleared(),
-                    true); // gameOver = true
+                    current.getScore(),
+                    current.getLevel(),
+                    current.getLines(),
+                    true, // gameOver = true
+                    current.getCells());
             session.sendStatus(finalStatus);
         }
     }
