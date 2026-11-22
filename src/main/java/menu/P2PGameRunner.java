@@ -308,6 +308,12 @@ public final class P2PGameRunner {
             monitoringDisconnection = false;
             
             SwingUtilities.invokeLater(() -> {
+                // 승부가 이미 났으면(내가 끝났거나 상대가 게임 오버를 보낸 뒤 종료 메시지가 온 경우)
+                // 연결 오류가 아니라 정상 종료: 결과 화면으로 넘어가고 오류 창은 띄우지 않는다
+                if (gameScreen != null && gameScreen.finishBattleIfEnded()) {
+                    return;
+                }
+
                 // 게임 화면 정리 - 렌더링 타이머와 게임 루프 스레드 중지
                 if (gameScreen != null) {
                     gameScreen.stopGame();

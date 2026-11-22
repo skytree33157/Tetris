@@ -40,6 +40,7 @@ import game.GameLoop;
 import game.GameMode;
 import game.GamePanel;
 import game.GameStateManager;
+import menu.BattleResult;
 import menu.P2PGameController;
 import menu.views.PauseView;
 import menu.settings.AppSettings;
@@ -101,6 +102,8 @@ private JLabel scoreLabel;
     private long elapsedMs = 0;
     private long lastTickMs = System.currentTimeMillis();
     private boolean gameOverHandled = false;
+    // 결과 화면으로 넘어갔는지. 라운드 종료(resetForNextRound)에도 되돌리지 않는다.
+    private boolean resultShown = false;
     private boolean closed = false;
 
     public GameScreen(GameMode mode) {
@@ -263,14 +266,44 @@ private JLabel scoreLabel;
         }
     }
 
+    /**
+     * 대전 연결이 끊겼을 때 호출(EDT). 이미 끝난 게임이거나 상대가 게임 오버를 보낸 뒤라면
+     * 연결 오류가 아니라 정상 종료이므로 결과 화면으로 넘어가고 true를 돌려준다.
+     */
+    public boolean finishBattleIfEnded() {
+        if (resultShown || gameOverHandled) {
+            return true;
+        }
+        GameStatus remote = p2pController == null ? null : p2pController.getRemoteStatus();
+        if (remote != null && remote.isGameOver()) {
+            showGameOver(actionController.getViewSnapshot());
+            return true;
+        }
+        return false;
+    }
+
     private void showGameOver(ActionController.ViewSnapshot frame) {
         gameOverHandled = true;
+        resultShown = true;
+        // 대전이면 게임을 멈추기 전에 양쪽 마지막 상태를 잡아 둔다
+        BattleResult battleResult = p2pController == null ? null
+                : BattleResult.fromP2P(
+                        GameStatus.capture(actionController, gameStateManager, scoreManager),
+                        p2pController.getRemoteStatus(),
+                        mode == GameMode.ITEM ? "아이템 모드" : "일반 모드",
+                        elapsedMs);
         stopGame();
         dispose();
 
         // P2P 게임 오버 콜백 호출 (session 정리 등)
         if (onGameOverCallback != null) {
             onGameOverCallback.run();
+        }
+
+        // 대전: 승패 결과 화면 (혼자 하는 게임의 기록 등록 화면 대신)
+        if (battleResult != null) {
+            new BattleResultScreen(battleResult).setVisible(true);
+            return;
         }
 
         GameOverScreen gameOverScreen = new GameOverScreen(
