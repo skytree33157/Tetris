@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import game.BattleSettings;
 import game.GameMode;
 import menu.screens.BattleMenuScreen;
 import menu.screens.GameScreen;
@@ -74,7 +75,14 @@ public final class P2PGameRunner {
      * @return 대기를 취소할 수 있는 핸들
      */
     public static HostHandle startServer(GameMode mode, ConnectListener listener) throws IOException {
-        return startServer(mode, listener, P2PGameRunner::launchGame);
+        return startServer(mode, 0, listener, P2PGameRunner::launchGame);
+    }
+
+    /** 방 만들기 화면용: 일반·아이템·시간 제한 중 고른 대전 방식으로 방을 연다. */
+    public static HostHandle startServer(BattleSettings settings, ConnectListener listener) throws IOException {
+        Objects.requireNonNull(settings, "settings");
+        return startServer(settings.getGameMode(), settings.getTimeLimitSeconds(), listener,
+                P2PGameRunner::launchGame);
     }
 
     // 상대 주소로 접속한다. 성공하면 최근 접속 주소에 저장한다.
@@ -85,8 +93,14 @@ public final class P2PGameRunner {
     // 테스트에서 게임 화면 대신 다른 동작을 넣을 수 있도록 분리
     static HostHandle startServer(GameMode mode, ConnectListener listener,
             Consumer<P2PGameSession> launcher) throws IOException {
+        return startServer(mode, 0, listener, launcher);
+    }
+
+    static HostHandle startServer(GameMode mode, int timeLimitSeconds, ConnectListener listener,
+            Consumer<P2PGameSession> launcher) throws IOException {
         Objects.requireNonNull(listener, "listener");
-        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(mode);
+        P2PGameSession.HostInvitation invitation =
+                P2PGameSession.HostInvitation.open(mode, timeLimitSeconds);
         HostHandle handle = new HostHandle(invitation);
 
         // 서버 연결을 기다리는 동안 UI가 멈추지 않도록 별도 스레드에서 실행
@@ -263,6 +277,17 @@ public final class P2PGameRunner {
                     SwingUtilities.invokeLater(() -> gameScreen.resetForNextRound());
                 }
                 
+                @Override
+                public void onAttack(java.util.List<int[]> rows) {
+                    // 네트워크 스레드에서 바로 대기열에 넣는다 (경기 잠금으로 보호됨)
+                    p2pController.onRemoteAttack(rows);
+                }
+
+                @Override
+                public void onTimeUp(int hostScore, int clientScore) {
+                    SwingUtilities.invokeLater(() -> gameScreen.finishByTime(hostScore, clientScore));
+                }
+
                 @Override
                 public void onConnectionLatency() {
                     // 지연 상태를 UI에 표시

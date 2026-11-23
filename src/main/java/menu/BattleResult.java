@@ -8,9 +8,15 @@ import network.GameStatus;
  * 로컬 2인 대전에서는 "1P 승리" 형식으로 쓴다.
  */
 public record BattleResult(Side left, Side right, Outcome outcome, boolean personal,
-                           String modeLabel, long elapsedMs) {
+                           String modeLabel, long elapsedMs, boolean timeUp) {
 
     public enum Outcome { LEFT_WINS, RIGHT_WINS, DRAW }
+
+    /** 블록이 천장에 닿아 끝난 경기 */
+    public BattleResult(Side left, Side right, Outcome outcome, boolean personal,
+                        String modeLabel, long elapsedMs) {
+        this(left, right, outcome, personal, modeLabel, elapsedMs, false);
+    }
 
     /** 한 플레이어의 최종 기록과 마지막 보드(보이는 줄). */
     public record Side(String name, int score, int level, int lines, boolean toppedOut, int[][] cells) {
@@ -42,6 +48,32 @@ public record BattleResult(Side left, Side right, Outcome outcome, boolean perso
                 true, modeLabel, elapsedMs);
     }
 
+    /**
+     * P2P 시간 제한 대전 결과. 시간이 끝나면 점수가 높은 쪽이 이긴다.
+     * 점수는 호스트가 확정한 값을 쓴다 (화면의 마지막 상태와 몇 ms 차이가 날 수 있어서).
+     */
+    public static BattleResult fromP2PTimeUp(GameStatus mine, GameStatus remote,
+            int myScore, int remoteScore, String modeLabel, long elapsedMs) {
+        Side me = withScore(side("나", mine), myScore);
+        Side opponent = withScore(side("상대", remote), remoteScore);
+        return new BattleResult(me, opponent, judgeScore(myScore, remoteScore),
+                true, modeLabel, elapsedMs, true);
+    }
+
+    /** 로컬 2인 대전 결과. 왼쪽 = 1P, 오른쪽 = 2P. */
+    public static BattleResult fromLocal(Side one, Side two, Outcome outcome, boolean timeUp,
+            String modeLabel, long elapsedMs) {
+        return new BattleResult(one, two, outcome, false, modeLabel, elapsedMs, timeUp);
+    }
+
+    // 점수가 높은 쪽이 이긴다
+    static Outcome judgeScore(int leftScore, int rightScore) {
+        if (leftScore == rightScore) {
+            return Outcome.DRAW;
+        }
+        return leftScore > rightScore ? Outcome.LEFT_WINS : Outcome.RIGHT_WINS;
+    }
+
     // 왼쪽이 끝났는지, 오른쪽이 끝났는지로 승패를 정한다
     static Outcome judge(boolean leftToppedOut, boolean rightToppedOut) {
         if (leftToppedOut == rightToppedOut) {
@@ -71,6 +103,15 @@ public record BattleResult(Side left, Side right, Outcome outcome, boolean perso
 
     /** 제목 아래 한 줄 설명. */
     public String reason() {
+        if (timeUp) {
+            if (outcome == Outcome.DRAW) {
+                return "시간 종료 · 점수가 같아요";
+            }
+            if (personal) {
+                return leftWon() ? "시간 종료 · 내 점수가 더 높아요" : "시간 종료 · 상대 점수가 더 높아요";
+            }
+            return "시간 종료 · " + (leftWon() ? left.name() : right.name()) + " 점수가 더 높아요";
+        }
         if (outcome == Outcome.DRAW) {
             return left.toppedOut() ? "두 사람이 동시에 끝났어요" : "아직 승부가 나지 않았어요";
         }
@@ -87,6 +128,11 @@ public record BattleResult(Side left, Side right, Outcome outcome, boolean perso
         }
         return new Side(name, status.getScore(), status.getLevel(), status.getLines(),
                 status.isGameOver(), status.getCells());
+    }
+
+    private static Side withScore(Side side, int score) {
+        return new Side(side.name(), Math.max(0, score), side.level(), side.lines(),
+                side.toppedOut(), side.cells());
     }
 
     private static int[][] copy(int[][] source) {

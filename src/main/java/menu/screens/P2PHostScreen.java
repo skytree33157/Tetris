@@ -9,7 +9,7 @@ import java.io.IOException;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 
-import game.GameMode;
+import menu.BattleModes;
 import menu.P2PGameRunner;
 import menu.views.P2PHostView;
 import network.LocalAddresses;
@@ -20,8 +20,6 @@ public class P2PHostScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
 
-    private static final GameMode[] MODES = {GameMode.NORMAL, GameMode.ITEM};
-    private static final String[] MODE_LABELS = {"일반", "아이템"};
     private static final String WAITING_TEXT = "상대를 기다리는 중";
 
     private final P2PHostView view;
@@ -35,10 +33,11 @@ public class P2PHostScreen extends JFrame {
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
-        view = new P2PHostView(MODE_LABELS, P2PGameSession.DEFAULT_PORT,
+        view = new P2PHostView(BattleModes.labels(), P2PGameSession.DEFAULT_PORT,
                 this::pickMode, this::togglePrimary, this::back);
         view.setAddresses(LocalAddresses.siteLocalIPv4());
         view.setModeIndex(modeIndex);
+        view.setModeDescription(BattleModes.description(modeIndex));
         setContentPane(view);
         setResizable(false);
         pack();
@@ -54,8 +53,8 @@ public class P2PHostScreen extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_LEFT -> pickMode(Math.floorMod(modeIndex - 1, MODES.length));
-                    case KeyEvent.VK_RIGHT -> pickMode(Math.floorMod(modeIndex + 1, MODES.length));
+                    case KeyEvent.VK_LEFT -> pickMode(Math.floorMod(modeIndex - 1, BattleModes.count()));
+                    case KeyEvent.VK_RIGHT -> pickMode(Math.floorMod(modeIndex + 1, BattleModes.count()));
                     case KeyEvent.VK_ENTER -> togglePrimary();
                     case KeyEvent.VK_ESCAPE -> back();
                     default -> { }
@@ -86,6 +85,7 @@ public class P2PHostScreen extends JFrame {
         }
         modeIndex = index;
         view.setModeIndex(index);
+        view.setModeDescription(BattleModes.description(index));
         requestFocusInWindow();
     }
 
@@ -101,7 +101,7 @@ public class P2PHostScreen extends JFrame {
 
     private void openRoom() {
         try {
-            hostHandle = P2PGameRunner.startServer(MODES[modeIndex], new P2PGameRunner.ConnectListener() {
+            hostHandle = P2PGameRunner.startServer(BattleModes.settings(modeIndex), new P2PGameRunner.ConnectListener() {
                 @Override
                 public void onConnected() {
                     dotsTimer.stop();

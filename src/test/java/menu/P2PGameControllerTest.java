@@ -73,6 +73,13 @@ class P2PGameControllerTest {
                 assertTrue(clientStarted.await(5, TimeUnit.SECONDS), "round should start on client");
                 controller.onSessionStarted();
 
+                // 상대가 보낸 공격 줄은 다음 블록이 고정될 때까지 대기열에 남는다 (공격 대기 미리보기 대상)
+                int a = blocks.core.BlockType.ATTACK.getValue();
+                int[] attackRow = {a, a, a, a, 0, a, a, a, a, a};
+                controller.onRemoteAttack(java.util.List.of(attackRow, attackRow.clone()));
+                assertEquals(2, action.getPendingAttackCount());
+                assertEquals(2, action.getViewSnapshot().pendingAttackRows().size());
+
                 controller.notifyGameOver();
 
                 assertTrue(received.await(5, TimeUnit.SECONDS), "host should receive final status");

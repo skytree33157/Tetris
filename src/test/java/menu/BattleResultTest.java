@@ -71,6 +71,40 @@ class BattleResultTest {
         assertEquals("2P의 블록이 먼저 천장에 닿았어요", result.reason());
     }
 
+    @Test // FR-40: 시간 제한 P2P 대전은 호스트가 확정한 점수로 승패를 정한다
+    void timeUpUsesConfirmedScores() {
+        // 화면의 마지막 상태(300)보다 호스트가 확정한 점수(1500)를 쓴다
+        BattleResult win = BattleResult.fromP2PTimeUp(
+                new GameStatus(300, 2, 5, false, BOARD), new GameStatus(800, 3, 9, false),
+                1500, 900, "시간 제한 모드", 180_000);
+        assertTrue(win.timeUp());
+        assertEquals(BattleResult.Outcome.LEFT_WINS, win.outcome());
+        assertEquals(1500, win.left().score());
+        assertEquals(900, win.right().score());
+        assertEquals("승리", win.headline());
+        assertEquals("시간 종료 · 내 점수가 더 높아요", win.reason());
+
+        BattleResult lose = BattleResult.fromP2PTimeUp(null, null, 100, 200, "시간 제한 모드", 0);
+        assertEquals("패배", lose.headline());
+        assertEquals("시간 종료 · 상대 점수가 더 높아요", lose.reason());
+
+        BattleResult draw = BattleResult.fromP2PTimeUp(null, null, 500, 500, "시간 제한 모드", 0);
+        assertEquals("무승부", draw.headline());
+        assertEquals("시간 종료 · 점수가 같아요", draw.reason());
+    }
+
+    @Test // 로컬 시간 제한 대전 결과 문구
+    void localTimeUpNamesTheWinner() {
+        BattleResult.Side one = new BattleResult.Side("1P", 200, 1, 2, false, BOARD);
+        BattleResult.Side two = new BattleResult.Side("2P", 700, 2, 6, false, BOARD);
+        BattleResult result = BattleResult.fromLocal(one, two, BattleResult.Outcome.RIGHT_WINS, true,
+                "시간 제한 모드", 180_000);
+
+        assertFalse(result.personal());
+        assertEquals("2P 승리", result.headline());
+        assertEquals("시간 종료 · 2P 점수가 더 높아요", result.reason());
+    }
+
     @Test // 결과 보드 칸은 복사본이라 바깥에서 바꿔도 영향 없음, 보드 패널용 상태로 바꿀 수 있음
     void sideCellsAreCopiedAndConvertibleToStatus() {
         int[][] cells = {{1, 0}};

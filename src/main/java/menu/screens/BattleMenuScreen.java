@@ -23,14 +23,14 @@ public class BattleMenuScreen extends JFrame {
     static final int BACK_INDEX = 3;
 
     private static final String[] MENU_ITEMS = {
-        "로컬 대전 (준비 중)",
+        "로컬 대전",
         "온라인 방 만들기",
         "온라인 참여하기",
         "뒤로"
     };
 
-    // 로컬 2인 대전 화면이 생기면 true로 바꾼다
-    private static final boolean LOCAL_BATTLE_AVAILABLE = false;
+    // 로컬 2인 대전 화면 사용 여부
+    private static final boolean LOCAL_BATTLE_AVAILABLE = true;
 
     private final StartMenuView view;
     private final AppStateManager stateManager = new AppStateManager(AppState.BATTLE_MENU);
@@ -107,6 +107,7 @@ public class BattleMenuScreen extends JFrame {
             return;
         }
         switch (selectedIndex) {
+            case LOCAL_INDEX -> open(new LocalBattleSetupScreen());
             case HOST_INDEX -> open(new P2PHostScreen());
             case JOIN_INDEX -> open(new P2PJoinScreen());
             case BACK_INDEX -> backToStart();
