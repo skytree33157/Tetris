@@ -15,6 +15,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ui.theme.Theme;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -94,7 +95,7 @@ class GamePanelGhostTest {
         assertTrue(hasInteriorDrawing(image, 3, 21, cellSize));
 
         assertEquals(
-                Color.BLACK.getRGB(),
+                Theme.BOARD_BG.getRGB(),
                 image.getRGB(
                         3 * cellSize + cellSize / 2,
                         21 * cellSize + cellSize / 2
@@ -246,7 +247,7 @@ class GamePanelGhostTest {
 
         for (int y = startY + 1; y < startY + cellSize - 1; y++) {
             for (int x = startX + 1; x < startX + cellSize - 1; x++) {
-                if (image.getRGB(x, y) != Color.BLACK.getRGB()) {
+                if (image.getRGB(x, y) != Theme.BOARD_BG.getRGB()) {
                     return true;
                 }
             }

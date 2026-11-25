@@ -36,7 +36,7 @@ class BlockPreviewPanelTest {
 
     private final AppSettings settings = AppSettings.getInstance();
     private ColorMode originalColorMode;
-    private static final Color BG = Theme.CARD;
+    private static final Color BG = Theme.BOARD_BG;
 
 
     @BeforeEach

@@ -27,7 +27,7 @@ public class ScoreBoardPanel extends RoundedPanel {
     private static final long serialVersionUID = 1L;
     private static final int ROW_COUNT = 10;
     private static final int ROW_HEIGHT = 36;
-    private static final Color HIGHLIGHT = new Color(80, 150, 230, 46);
+    private static final Color HIGHLIGHT = new Color(Theme.ACCENT.getRed(), Theme.ACCENT.getGreen(), Theme.ACCENT.getBlue(), 40);
 
     private static final String[] DIFFICULTIES = {"EASY", "NORMAL", "HARD"};
     private static final String[] MODES = {"NORMAL", "ITEM"};
