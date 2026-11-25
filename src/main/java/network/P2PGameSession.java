@@ -14,6 +14,7 @@ import java.util.Objects;
 
 import blocks.core.BlockType;
 import game.GameMode;
+import blocks.core.BlockType;
 
 // TCP 연결, 대전 관리
 public final class P2PGameSession implements AutoCloseable {
@@ -38,6 +39,7 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_KEEP_ALIVE = 5;
     private static final int MESSAGE_ATTACK = 6;
     private static final int MESSAGE_TIME_UP = 7;
+    private static final int BOARD_WIDTH = 10;
 
 
     // 세션 이벤트 리스너 인터페이스
@@ -48,8 +50,12 @@ public final class P2PGameSession implements AutoCloseable {
         default void onStarted() {}
         // 상대 플레이어 상태 수신 시 호출
         default void onRemoteStatus(GameStatus status) {}
+
+        default void onRemoteAttack(java.util.List<int[]> rows) {}
         // 라운드 종료 시 호출
         default void onRoundFinished() {}
+        // 게임 오버(어느 한쪽이 탑아웃)로 승패가 정해졌을 때 호출. 시간 제한 종료에는 호출되지 않는다
+        default void onGameDecided() {}
         // 연결 끊김 또는 프로토콜 오류 시 호출
         default void onDisconnected(IOException exception) {}
         // 연결 지연 상태로 전환 시 호출
@@ -79,8 +85,8 @@ public final class P2PGameSession implements AutoCloseable {
 
         /**
          * 기본 포트에서 클라이언트 연결을 기다릴 호스트 초대를 만든다.
+         * 게임 모드는 연결 후 {@link P2PGameSession#setMode}로 정한다.
          *
-         * @param mode 호스트가 선택한 게임 모드
          * @return 연결을 수락할 수 있는 호스트 초대
          * @throws IOException 포트를 열지 못한 경우
          */
@@ -98,9 +104,7 @@ public final class P2PGameSession implements AutoCloseable {
             return new HostInvitation(mode, timeLimitSeconds, serverSocket);
         }
 
-        
-        // 클라이언트 한 명을 수락하고 초기 프로토콜 핸드셰이크를 수행한다.
-        // 핸드셰이크에서 프로토콜 식별값을 확인한 뒤 호스트의 게임 모드를 전송한다.
+        // 클라이언트 한 명을 수락하고 초기 프로토콜 핸드셰이크(프로토콜 식별값 확인)를 수행한다.
         public P2PGameSession accept() throws IOException {
             synchronized (this) {
                 if (consumed) {
@@ -149,14 +153,17 @@ public final class P2PGameSession implements AutoCloseable {
     private final Socket socket;
     private final DataInputStream input;
     private final DataOutputStream output;
-    private final GameMode mode;
     private final int timeLimitSeconds;
+    // 게임 모드. 호스트는 시작 전에 정하고, 클라이언트는 시작 메시지로 받는다. 시작 전에는 null.
+    private volatile GameMode mode;
     private final boolean server;
     private volatile Listener listener = new Listener() {};
     private boolean closed;
     private boolean localReady;
     private boolean remoteReady;
     private boolean roundActive;
+    // 첫 라운드가 시작되면 모드를 바꿀 수 없다.
+    private boolean started;
     private boolean localGameOver;
     private GameStatus remoteStatus;
     private ConnectionMonitor connectionMonitor=new ConnectionMonitor();
@@ -220,7 +227,7 @@ public final class P2PGameSession implements AutoCloseable {
     }
 
     /**
-     * 서버 주소의 기본 포트에 접속하고 호스트로부터 게임 모드를 받는다.
+     * 서버 주소의 기본 포트에 접속한다. 게임 모드는 호스트가 시작할 때 전달된다.
      * 초기 핸드셰이크에 실패하면 연결 소켓을 닫은 뒤 원래 오류를 호출자에게 전달한다.
      *
      * @param host 접속할 호스트 이름 또는 IP 주소
@@ -234,7 +241,7 @@ public final class P2PGameSession implements AutoCloseable {
         try {
             socket.connect(new InetSocketAddress(host.trim(), DEFAULT_PORT), CONNECT_TIMEOUT_MS);
             socket.setTcpNoDelay(true);
-            // 초기 모드 응답이 오지 않는 경우 연결 설정 단계에서 빠져나오도록 제한한다.
+            // 핸드셰이크 응답이 오지 않는 경우 연결 설정 단계에서 빠져나오도록 제한한다.
             socket.setSoTimeout(CONNECT_TIMEOUT_MS);
             DataInputStream input = new DataInputStream(socket.getInputStream());
             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
@@ -263,6 +270,7 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    // 시작 전에는 null일 수 있다.
     public GameMode getMode() {
         return mode;
     }
@@ -280,6 +288,22 @@ public final class P2PGameSession implements AutoCloseable {
         if (seconds < 0 || seconds > MAX_TIME_LIMIT_SECONDS) {
             throw new IllegalArgumentException("제한 시간은 0~" + MAX_TIME_LIMIT_SECONDS + "초여야 합니다.");
         }
+    }
+
+    /**
+     * 호스트가 게임 모드를 정한다. 첫 라운드가 시작되기 전까지만 바꿀 수 있다.
+     *
+     * @param mode 선택한 게임 모드
+     */
+    public synchronized void setMode(GameMode mode) {
+        Objects.requireNonNull(mode, "mode");
+        if (!server) {
+            throw new IllegalStateException("Only the host can choose the game mode");
+        }
+        if (started) {
+            throw new IllegalStateException("Game mode cannot change after the match started");
+        }
+        this.mode = mode;
     }
 
     public boolean isServer() {
@@ -302,12 +326,15 @@ public final class P2PGameSession implements AutoCloseable {
         this.listener = Objects.requireNonNull(listener, "listener");
     }
 
-    //로컬 플레이어의 준비 상태 알림
+    //로컬 플레이어의 준비 상태 알림. 호스트는 모드를 정한 뒤에만 준비할 수 있다.
     public void setReady() throws IOException {
         synchronized (this) {
             ensureConnected();
             if (roundActive || localReady) {
                 return;
+            }
+            if (server && mode == null) {
+                throw new IllegalStateException("Host must choose a game mode before starting");
             }
             localReady = true;
             writeMessage(MESSAGE_READY, true, null);
@@ -397,7 +424,7 @@ public final class P2PGameSession implements AutoCloseable {
                 // 메시지 식별자에 따라 필요한 데이터만 읽고 해당 상태 전이 처리기에 전달한다.
                 switch (message) {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
-                    case MESSAGE_START -> receiveStart();
+                    case MESSAGE_START -> receiveStart(input.readUnsignedByte());
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
                     case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
                     case MESSAGE_TIME_UP -> receiveTimeUp(input.readInt(), input.readInt());
@@ -440,12 +467,19 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
-    // 클라이언트가 호스트의 시작 메시지를 받았을 때 유효한 상태인지 확인하고 라운드를 연다.
-    private void receiveStart() throws IOException {
+    // 클라이언트가 호스트의 시작 메시지를 받았을 때 유효한 상태인지 확인하고, 호스트가 정한 모드를 적용한 뒤 라운드를 연다.
+    private void receiveStart(int modeOrdinal) throws IOException {
         synchronized (this) {
-            if (server || roundActive || !localReady || !remoteReady) {
+            GameMode[] modes = GameMode.values();
+            if (server || roundActive || !localReady || !remoteReady
+                    || modeOrdinal < 0 || modeOrdinal >= modes.length) {
                 throw new IOException("Unexpected multiplayer start message");
             }
+            GameMode startMode = modes[modeOrdinal];
+            if (mode != null && mode != startMode) {
+                throw new IOException("Game mode changed after the match started");
+            }
+            mode = startMode;
             beginRound();
         }
     }
@@ -515,6 +549,7 @@ public final class P2PGameSession implements AutoCloseable {
 
     private void beginRound() {
         // 연결은 유지하고, 이전 라운드에 한정된 준비/게임 오버/상대 상태만 초기화한다.
+        started = true;
         localReady = false;
         remoteReady = false;
         localGameOver = false;
@@ -531,6 +566,7 @@ public final class P2PGameSession implements AutoCloseable {
                 || (!localGameOver && (remoteStatus == null || !remoteStatus.isGameOver()))) {
             return;
         }
+        listener.onGameDecided();
         endRound();
     }
 
@@ -542,11 +578,13 @@ public final class P2PGameSession implements AutoCloseable {
     }
 
     // 메시지를 프로토콜 형식에 맞춰 직렬화하고 즉시 전송한다.
-    // READY는 boolean 하나를, STATUS는 GameStatus 필드들을 추가로 기록한다.
+    // READY는 boolean 하나를, START는 게임 모드 번호 하나를, STATUS는 GameStatus 필드들을 추가로 기록한다.
     private void writeMessage(int message, boolean ready, GameStatus status) throws IOException {
         output.writeByte(message);
         if (message == MESSAGE_READY) {
             output.writeBoolean(ready);
+        } else if (message == MESSAGE_START) {
+            output.writeByte(mode.ordinal());
         } else if (message == MESSAGE_STATUS) {
             status.writeTo(output);
         }
