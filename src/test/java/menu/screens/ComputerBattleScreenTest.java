@@ -1,5 +1,8 @@
 package menu.screens;
 
+import static game.BattleController.Player.ONE;
+import static game.BattleController.Player.TWO;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,7 +18,9 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -33,6 +38,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import game.LocalBattleSession;
+import sound.SoundEvent;
 
 class ComputerBattleScreenTest {
 
@@ -63,6 +71,66 @@ class ComputerBattleScreenTest {
     void menuOpensSelectedModeAgainstSelectedOpponent(
             String route, String option, String mode, String opponent) throws Exception {
         SwingUtilities.invokeAndWait(() -> assertBattle(openMatch(route, option), mode, opponent));
+    }
+
+    @Test
+    void arrowKeysControlOnlyPlayerOneInComputerBattle() throws Exception {
+        SwingUtilities.invokeAndWait(() -> openMatch("컴퓨터 대전", "일반 모드"));
+        SwingUtilities.invokeAndWait(() -> {
+            LocalBattleScreen game = showing(LocalBattleScreen.class);
+            LocalBattleSession session = sessionOf(game);
+            var battle = session.getBattleController();
+            synchronized (battle) {
+                assertTrue(battle.isRunning());
+                var one = session.getPlayer(ONE).action();
+                var two = session.getPlayer(TWO).action();
+                var beforeOne = one.getViewSnapshot().currentBlock();
+                var beforeTwo = two.getViewSnapshot().currentBlock();
+
+                pressKey(game, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED);
+                assertEquals(beforeOne.x() - 1, one.getViewSnapshot().currentBlock().x());
+                pressKey(game, KeyEvent.VK_D, 'd');
+                assertEquals(beforeOne.x() - 1, one.getViewSnapshot().currentBlock().x());
+                pressKey(game, KeyEvent.VK_RIGHT, KeyEvent.CHAR_UNDEFINED);
+                assertEquals(beforeOne.x(), one.getViewSnapshot().currentBlock().x());
+                pressKey(game, KeyEvent.VK_DOWN, KeyEvent.CHAR_UNDEFINED);
+                assertEquals(beforeOne.y() + 1, one.getViewSnapshot().currentBlock().y());
+
+                List<SoundEvent> events = new ArrayList<>();
+                one.setSoundListener(events::add);
+                pressKey(game, KeyEvent.VK_UP, KeyEvent.CHAR_UNDEFINED);
+                assertEquals(List.of(SoundEvent.ROTATE), events);
+
+                var afterTwo = two.getViewSnapshot().currentBlock();
+                assertEquals(beforeTwo.x(), afterTwo.x());
+                assertEquals(beforeTwo.y(), afterTwo.y());
+                assertTrue(Arrays.deepEquals(beforeTwo.cells(), afterTwo.cells()));
+            }
+        });
+    }
+
+    @Test
+    void localBattleKeepsPlayerOneOnWasdAndPlayerTwoOnArrows() throws Exception {
+        SwingUtilities.invokeAndWait(() -> openMatch("로컬 대전", "일반 모드"));
+        SwingUtilities.invokeAndWait(() -> {
+            LocalBattleScreen game = showing(LocalBattleScreen.class);
+            LocalBattleSession session = sessionOf(game);
+            var battle = session.getBattleController();
+            synchronized (battle) {
+                assertTrue(battle.isRunning());
+                var one = session.getPlayer(ONE).action();
+                var two = session.getPlayer(TWO).action();
+                int oneX = one.getViewSnapshot().currentBlock().x();
+                int twoX = two.getViewSnapshot().currentBlock().x();
+
+                pressKey(game, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED);
+                assertEquals(oneX, one.getViewSnapshot().currentBlock().x());
+                assertEquals(twoX - 1, two.getViewSnapshot().currentBlock().x());
+                pressKey(game, KeyEvent.VK_D, 'd');
+                assertEquals(oneX + 1, one.getViewSnapshot().currentBlock().x());
+                assertEquals(twoX - 1, two.getViewSnapshot().currentBlock().x());
+            }
+        });
     }
 
     @Test
@@ -168,6 +236,16 @@ class ComputerBattleScreenTest {
                 .map(type::cast)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("대전 화면이 열리지 않음: " + type.getSimpleName()));
+    }
+
+    private static LocalBattleSession sessionOf(LocalBattleScreen game) {
+        try {
+            var field = LocalBattleScreen.class.getDeclaredField("session");
+            field.setAccessible(true);
+            return (LocalBattleSession) field.get(game);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("대전 세션을 확인할 수 없음", e);
+        }
     }
 
     private static void pressKey(LocalBattleScreen game, int code, char character) {

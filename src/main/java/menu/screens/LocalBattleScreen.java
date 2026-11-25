@@ -51,6 +51,7 @@ import ui.theme.Theme;
  *
  * 1P: A D 이동, W 회전, S 소프트 드롭, Space 하드 드롭, 왼쪽 Shift 홀드
  * 2P: ← → 이동, ↑ 회전, ↓ 소프트 드롭, Enter 하드 드롭, 오른쪽 Shift 홀드
+ * 컴퓨터 대전: 1P가 방향키로 이동·회전·소프트 드롭하고, Space와 왼쪽 Shift를 사용한다.
  * 공통: P / Esc 일시정지
  */
 public class LocalBattleScreen extends JFrame {
@@ -216,10 +217,10 @@ public class LocalBattleScreen extends JFrame {
 
     // ---------- 입력 ----------
 
-    private static boolean isSecondPlayerKey(KeyEvent event) {
+    private static boolean isComputerBattleKey(KeyEvent event) {
         return switch (event.getKeyCode()) {
-            case KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT, KeyEvent.VK_DOWN, KeyEvent.VK_UP, KeyEvent.VK_ENTER -> true;
-            case KeyEvent.VK_SHIFT -> event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT;
+            case KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT, KeyEvent.VK_DOWN, KeyEvent.VK_UP, KeyEvent.VK_SPACE -> true;
+            case KeyEvent.VK_SHIFT -> event.getKeyLocation() != KeyEvent.KEY_LOCATION_RIGHT;
             default -> false;
         };
     }
@@ -230,11 +231,12 @@ public class LocalBattleScreen extends JFrame {
             if (finished || pauseView != null || battle.isPaused()) {
                 return;
             }
-            if (!session.acceptsKeyboardInput(Player.TWO) && isSecondPlayerKey(e)) {
+            boolean computerBattle = !session.acceptsKeyboardInput(Player.TWO);
+            if (computerBattle && !isComputerBattleKey(e)) {
                 return;
             }
             ActionController one = session.getPlayer(Player.ONE).action();
-            ActionController two = session.getPlayer(Player.TWO).action();
+            ActionController arrowPlayer = computerBattle ? one : session.getPlayer(Player.TWO).action();
             int code = e.getKeyCode();
             switch (code) {
                 case KeyEvent.VK_A -> one.moveLeftAction();
@@ -242,14 +244,14 @@ public class LocalBattleScreen extends JFrame {
                 case KeyEvent.VK_S -> one.softDropAction();
                 case KeyEvent.VK_W -> once(code, one::rotateAction);
                 case KeyEvent.VK_SPACE -> once(code, one::hardDropWithScoreAction);
-                case KeyEvent.VK_LEFT -> two.moveLeftAction();
-                case KeyEvent.VK_RIGHT -> two.moveRightAction();
-                case KeyEvent.VK_DOWN -> two.softDropAction();
-                case KeyEvent.VK_UP -> once(code, two::rotateAction);
-                case KeyEvent.VK_ENTER -> once(code, two::hardDropWithScoreAction);
+                case KeyEvent.VK_LEFT -> arrowPlayer.moveLeftAction();
+                case KeyEvent.VK_RIGHT -> arrowPlayer.moveRightAction();
+                case KeyEvent.VK_DOWN -> arrowPlayer.softDropAction();
+                case KeyEvent.VK_UP -> once(code, arrowPlayer::rotateAction);
+                case KeyEvent.VK_ENTER -> once(code, arrowPlayer::hardDropWithScoreAction);
                 case KeyEvent.VK_SHIFT -> {
                     if (e.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT) {
-                        once(-KeyEvent.VK_SHIFT, two::holdAction);
+                        once(-KeyEvent.VK_SHIFT, arrowPlayer::holdAction);
                     } else {
                         once(KeyEvent.VK_SHIFT, one::holdAction);
                     }
@@ -383,9 +385,14 @@ public class LocalBattleScreen extends JFrame {
         modeCard.add(timeLabel);
         addBlock(col, modeCard);
 
+        boolean computerBattle = opponent == Opponent.CPU;
         addBlock(col, keyGuideCard("1P", new String[][] {
-            {"이동", "A  D"}, {"회전", "W"}, {"소프트", "S"}, {"하드", "Space"}, {"홀드", "L Shift"}}));
-        if (opponent == Opponent.CPU) {
+            {"이동", computerBattle ? "←  →" : "A  D"},
+            {"회전", computerBattle ? "↑" : "W"},
+            {"소프트", computerBattle ? "↓" : "S"},
+            {"하드", "Space"},
+            {"홀드", "L Shift"}}));
+        if (computerBattle) {
             RoundedPanel cpuCard = card();
             cpuCard.add(text("CPU", Theme.display(16), Theme.ACCENT));
             cpuCard.add(Box.createVerticalStrut(8));

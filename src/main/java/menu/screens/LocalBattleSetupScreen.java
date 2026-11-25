@@ -41,7 +41,7 @@ public class LocalBattleSetupScreen extends JFrame {
                     select();
                 });
         view.setHint(computerBattle
-                ? "1P  A D W S · Space · L Shift      CPU  자동 조작"
+                ? "1P  ← → ↑ ↓ · Space · L Shift      CPU  자동 조작"
                 : "1P  A D W S · Space · L Shift      2P  ← → ↑ ↓ · Enter · R Shift");
         view.setSelectedIndex(selectedIndex);
         setContentPane(view);
