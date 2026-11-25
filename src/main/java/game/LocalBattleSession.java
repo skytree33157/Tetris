@@ -11,6 +11,8 @@ import score.ScoreManager;
 
 public final class LocalBattleSession implements AutoCloseable {
 
+    public enum Opponent { HUMAN, CPU }
+
     public record PlayerGame(
             Board board,
             GameStateManager state,
@@ -22,6 +24,7 @@ public final class LocalBattleSession implements AutoCloseable {
     private final BattleSettings settings;
     private final BattleController battle;
     private final BattleTimeLimit timeLimit;
+    private final AiPlayer computer;
 
     private final Map<BattleController.Player, PlayerGame> players =
             new EnumMap<>(BattleController.Player.class);
@@ -35,6 +38,11 @@ public final class LocalBattleSession implements AutoCloseable {
     public LocalBattleSession(
             BattleSettings settings,
             Difficulty difficulty) {
+        this(settings, difficulty, Opponent.HUMAN);
+    }
+
+    public LocalBattleSession(BattleSettings settings, Difficulty difficulty, Opponent opponent) {
+        Objects.requireNonNull(opponent, "opponent");
         this.settings = Objects.requireNonNull(settings, "settings");
         Objects.requireNonNull(difficulty, "difficulty");
 
@@ -56,6 +64,7 @@ public final class LocalBattleSession implements AutoCloseable {
         }
 
         timeLimit = new BattleTimeLimit(settings, battle);
+        computer = opponent == Opponent.CPU ? new AiPlayer(this, BattleController.Player.TWO) : null;
     }
 
     private PlayerGame createPlayer(Difficulty difficulty) {
@@ -93,6 +102,10 @@ public final class LocalBattleSession implements AutoCloseable {
         return players.get(Objects.requireNonNull(player, "player"));
     }
 
+    public boolean acceptsKeyboardInput(BattleController.Player player) {
+        return player != BattleController.Player.TWO || computer == null;
+    }
+
     public void start() {
         synchronized (battle) {
             if (closed || started) {
@@ -121,6 +134,9 @@ public final class LocalBattleSession implements AutoCloseable {
                 for (Thread thread : threads.values()) {
                     thread.start();
                 }
+                if (computer != null) {
+                    computer.start();
+                }
             } catch (RuntimeException | Error failure) {
                 close();
                 throw failure;
@@ -137,6 +153,9 @@ public final class LocalBattleSession implements AutoCloseable {
 
             closed = true;
 
+            if (computer != null) {
+                computer.close();
+            }
             timeLimit.close();
             battle.close();
 

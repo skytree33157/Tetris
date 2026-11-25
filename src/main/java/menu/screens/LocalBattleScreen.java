@@ -15,6 +15,7 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -35,6 +36,7 @@ import game.BattleSettings;
 import game.BlockPreviewPanel;
 import game.GamePanel;
 import game.LocalBattleSession;
+import game.LocalBattleSession.Opponent;
 import menu.BattleModes;
 import menu.BattleResult;
 import menu.settings.AppSettings;
@@ -44,7 +46,7 @@ import ui.components.RoundedPanel;
 import ui.theme.Theme;
 
 /**
- * 로컬 2인 대전 화면. 한 창에 1P·2P 보드를 나란히 두고 키보드 하나로 같이 조작한다.
+ * 한 창에 1P와 상대(2P 또는 CPU)의 보드를 나란히 보여 준다.
  * 경기 규칙(공격·승패·시간 제한)은 LocalBattleSession이 처리하고, 이 화면은 그리기와 입력만 맡는다.
  *
  * 1P: A D 이동, W 회전, S 소프트 드롭, Space 하드 드롭, 왼쪽 Shift 홀드
@@ -60,6 +62,7 @@ public class LocalBattleScreen extends JFrame {
     private static final Color ATTACK_ALERT = new Color(0xF26B6B);
 
     private final BattleSettings settings;
+    private final Opponent opponent;
     private final LocalBattleSession session;
     private final BattleController battle;
     private final Timer renderTimer;
@@ -74,16 +77,21 @@ public class LocalBattleScreen extends JFrame {
     private boolean finished;
 
     public LocalBattleScreen(BattleSettings settings) {
-        super("TFSE - 로컬 대전");
+        this(settings, Opponent.HUMAN);
+    }
+
+    LocalBattleScreen(BattleSettings settings, Opponent opponent) {
+        super(opponent == Opponent.CPU ? "TFSE - 컴퓨터 대전" : "TFSE - 로컬 대전");
         ui.AppIcon.apply(this);
         this.settings = settings;
+        this.opponent = opponent;
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
-        session = new LocalBattleSession(settings, AppSettings.getInstance().getDifficulty());
+        session = new LocalBattleSession(settings, AppSettings.getInstance().getDifficulty(), opponent);
         battle = session.getBattleController();
         for (Player player : Player.values()) {
             session.getPlayer(player).action().setSoundListener(SoundManager.getInstance()::play);
-            views.put(player, new PlayerView(player, session.getPlayer(player)));
+            views.put(player, new PlayerView(playerName(player), session.getPlayer(player)));
         }
 
         JPanel root = new JPanel();
@@ -103,6 +111,7 @@ public class LocalBattleScreen extends JFrame {
         root.add(two.sideColumn);
         setContentPane(root);
 
+        renderTimer = new Timer(RENDER_INTERVAL_MS, e -> render());
         render();
         pack();
         setResizable(false);
@@ -121,19 +130,22 @@ public class LocalBattleScreen extends JFrame {
 
             @Override
             public void windowClosing(WindowEvent e) {
-                leaveTo(new BattleMenuScreen());
+                leaveTo(BattleMenuScreen::new);
             }
         });
-
-        renderTimer = new Timer(RENDER_INTERVAL_MS, e -> render());
     }
 
     private void startBattle() {
-        if (started) {
+        if (started || finished) {
             return;
         }
         started = true;
-        session.start();
+        try {
+            session.start();
+        } catch (RuntimeException | Error failure) {
+            dispose();
+            throw failure;
+        }
         renderTimer.start();
         SoundManager.getInstance().startBgm();
     }
@@ -162,15 +174,21 @@ public class LocalBattleScreen extends JFrame {
     }
 
     private void showResult(BattleController.ViewSnapshot snapshot) {
-        finished = true;
         BattleResult result = BattleResult.fromLocal(
-                side("1P", snapshot.players().get(Player.ONE)),
-                side("2P", snapshot.players().get(Player.TWO)),
+                side(playerName(Player.ONE), snapshot.players().get(Player.ONE)),
+                side(playerName(Player.TWO), snapshot.players().get(Player.TWO)),
                 toResultOutcome(snapshot.outcome()),
                 snapshot.endReason() == BattleController.EndReason.TIME_LIMIT,
                 BattleModes.modeLabel(settings),
                 snapshot.elapsedPlayMillis());
-        leaveTo(new BattleResultScreen(result));
+        leaveTo(() -> new BattleResultScreen(result, opponent == Opponent.CPU ? this::newRound : null));
+    }
+
+    private String playerName(Player player) {
+        if (player == Player.ONE) {
+            return "1P";
+        }
+        return opponent == Opponent.CPU ? "CPU" : "2P";
     }
 
     static BattleResult.Outcome toResultOutcome(BattleController.Outcome outcome) {
@@ -198,10 +216,21 @@ public class LocalBattleScreen extends JFrame {
 
     // ---------- 입력 ----------
 
+    private static boolean isSecondPlayerKey(KeyEvent event) {
+        return switch (event.getKeyCode()) {
+            case KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT, KeyEvent.VK_DOWN, KeyEvent.VK_UP, KeyEvent.VK_ENTER -> true;
+            case KeyEvent.VK_SHIFT -> event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT;
+            default -> false;
+        };
+    }
+
     private final class PlayerKeys extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
             if (finished || pauseView != null || battle.isPaused()) {
+                return;
+            }
+            if (!session.acceptsKeyboardInput(Player.TWO) && isSecondPlayerKey(e)) {
                 return;
             }
             ActionController one = session.getPlayer(Player.ONE).action();
@@ -277,9 +306,9 @@ public class LocalBattleScreen extends JFrame {
         }
         pauseView = new PauseView(
                 this::resume,
-                () -> leaveTo(new LocalBattleScreen(settings)),
+                () -> leaveTo(this::newRound),
                 this::openSettings,
-                () -> leaveTo(new StartMenuScreen()),
+                () -> leaveTo(StartMenuScreen::new),
                 this::exitApplication);
         setGlassPane(pauseView);
         pauseView.setVisible(true);
@@ -297,7 +326,7 @@ public class LocalBattleScreen extends JFrame {
     }
 
     private void openSettings() {
-        new SettingsScreen(this, () -> { }, () -> leaveTo(new StartMenuScreen()), true).setVisible(true);
+        new SettingsScreen(this, () -> { }, () -> leaveTo(StartMenuScreen::new), true).setVisible(true);
         if (finished) {
             return;
         }
@@ -311,19 +340,29 @@ public class LocalBattleScreen extends JFrame {
         }
     }
 
-    private void leaveTo(JFrame next) {
-        finished = true;
-        renderTimer.stop();
-        session.close();
-        SoundManager.getInstance().stopBgm();
-        dispose();
-        next.setVisible(true);
+    private LocalBattleScreen newRound() {
+        return new LocalBattleScreen(settings, opponent);
+    }
+
+    private void leaveTo(Supplier<? extends JFrame> next) {
+        if (!finished) {
+            dispose();
+            next.get().setVisible(true);
+        }
+    }
+
+    @Override
+    public void dispose() {
+        if (!finished) {
+            finished = true;
+            renderTimer.stop();
+            session.close();
+            SoundManager.getInstance().stopBgm();
+        }
+        super.dispose();
     }
 
     private void exitApplication() {
-        finished = true;
-        renderTimer.stop();
-        session.close();
         dispose();
         System.exit(0);
     }
@@ -346,8 +385,16 @@ public class LocalBattleScreen extends JFrame {
 
         addBlock(col, keyGuideCard("1P", new String[][] {
             {"이동", "A  D"}, {"회전", "W"}, {"소프트", "S"}, {"하드", "Space"}, {"홀드", "L Shift"}}));
-        addBlock(col, keyGuideCard("2P", new String[][] {
-            {"이동", "←  →"}, {"회전", "↑"}, {"소프트", "↓"}, {"하드", "Enter"}, {"홀드", "R Shift"}}));
+        if (opponent == Opponent.CPU) {
+            RoundedPanel cpuCard = card();
+            cpuCard.add(text("CPU", Theme.display(16), Theme.ACCENT));
+            cpuCard.add(Box.createVerticalStrut(8));
+            cpuCard.add(caption("컴퓨터가 조작합니다"));
+            addBlock(col, cpuCard);
+        } else {
+            addBlock(col, keyGuideCard("2P", new String[][] {
+                {"이동", "←  →"}, {"회전", "↑"}, {"소프트", "↓"}, {"하드", "Enter"}, {"홀드", "R Shift"}}));
+        }
 
         RoundedPanel pauseCard = card();
         pauseCard.add(row(text("일시정지", Theme.body(13, Font.PLAIN), Theme.TEXT_SOFT), keyCap("P, Esc")));
@@ -381,7 +428,7 @@ public class LocalBattleScreen extends JFrame {
         final JLabel linesLabel = text("0", Theme.body(14, Font.BOLD), Theme.TEXT);
         final JLabel attackCount = text("0줄", Theme.body(12, Font.BOLD), Theme.TEXT_MUTED);
 
-        PlayerView(Player player, LocalBattleSession.PlayerGame game) {
+        PlayerView(String name, LocalBattleSession.PlayerGame game) {
             gamePanel = new GamePanel(game.board());
             gamePanel.setMaxCellSize(fitCellSize(game.board().getWidth(),
                     game.board().getHeight() + game.board().getHiddenRows()));
@@ -401,7 +448,6 @@ public class LocalBattleScreen extends JFrame {
             boardFrame.add(frame);
 
             sideColumn = column(SIDE_WIDTH);
-            String name = player == Player.ONE ? "1P" : "2P";
             JLabel title = text(name, Theme.display(22), Theme.ACCENT);
             title.setAlignmentX(Component.LEFT_ALIGNMENT);
             sideColumn.add(title);

@@ -9,10 +9,11 @@ import javax.swing.JFrame;
 
 import app.AppState;
 import app.AppStateManager;
+import game.LocalBattleSession.Opponent;
 import menu.views.StartMenuView;
 import sound.SoundManager;
 
-// 대전 메뉴: 로컬 대전 / 온라인 방 만들기 / 온라인 참여하기
+// 대전 메뉴: 로컬 대전 / 온라인 방 만들기 / 온라인 참여하기 / 컴퓨터 대전
 public class BattleMenuScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
@@ -20,12 +21,14 @@ public class BattleMenuScreen extends JFrame {
     static final int LOCAL_INDEX = 0;
     static final int HOST_INDEX = 1;
     static final int JOIN_INDEX = 2;
-    static final int BACK_INDEX = 3;
+    static final int COMPUTER_INDEX = 3;
+    static final int BACK_INDEX = 4;
 
     private static final String[] MENU_ITEMS = {
         "로컬 대전",
         "온라인 방 만들기",
         "온라인 참여하기",
+        "컴퓨터 대전",
         "뒤로"
     };
 
@@ -40,7 +43,7 @@ public class BattleMenuScreen extends JFrame {
         super("TFSE - 대전");
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        view = new StartMenuView("BATTLE", "친구와 한 판 겨뤄 보세요", false, MENU_ITEMS, 3, index -> {
+        view = new StartMenuView("BATTLE", "상대를 골라 한 판 겨뤄 보세요", false, MENU_ITEMS, BACK_INDEX, index -> {
             selectedIndex = index;
             select();
         });
@@ -110,6 +113,7 @@ public class BattleMenuScreen extends JFrame {
             case LOCAL_INDEX -> open(new LocalBattleSetupScreen());
             case HOST_INDEX -> open(new P2PHostScreen());
             case JOIN_INDEX -> open(new P2PJoinScreen());
+            case COMPUTER_INDEX -> open(new LocalBattleSetupScreen(Opponent.CPU));
             case BACK_INDEX -> backToStart();
             default -> { }
         }

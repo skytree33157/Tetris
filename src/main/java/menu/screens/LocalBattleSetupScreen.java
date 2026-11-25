@@ -7,6 +7,7 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
 
+import game.LocalBattleSession.Opponent;
 import menu.BattleModes;
 import menu.views.StartMenuView;
 import sound.SoundManager;
@@ -19,19 +20,29 @@ public class LocalBattleSetupScreen extends JFrame {
     static final int BACK_INDEX = BattleModes.count();
 
     private final StartMenuView view;
+    private final Opponent opponent;
     private int selectedIndex;
 
     public LocalBattleSetupScreen() {
-        super("TFSE - 로컬 대전");
+        this(Opponent.HUMAN);
+    }
+
+    LocalBattleSetupScreen(Opponent opponent) {
+        super(opponent == Opponent.CPU ? "TFSE - 컴퓨터 대전" : "TFSE - 로컬 대전");
+        this.opponent = opponent;
+        boolean computerBattle = opponent == Opponent.CPU;
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
-        view = new StartMenuView("LOCAL", "한 키보드로 둘이서 겨뤄 보세요", false, menuItems(),
+        view = new StartMenuView(computerBattle ? "CPU" : "LOCAL",
+                computerBattle ? "컴퓨터와 한 판 겨뤄 보세요" : "한 키보드로 둘이서 겨뤄 보세요", false, menuItems(),
                 BattleModes.count(), index -> {
                     selectedIndex = index;
                     select();
                 });
-        view.setHint("1P  A D W S · Space · L Shift      2P  ← → ↑ ↓ · Enter · R Shift");
+        view.setHint(computerBattle
+                ? "1P  A D W S · Space · L Shift      CPU  자동 조작"
+                : "1P  A D W S · Space · L Shift      2P  ← → ↑ ↓ · Enter · R Shift");
         view.setSelectedIndex(selectedIndex);
         setContentPane(view);
         setResizable(false);
@@ -89,7 +100,7 @@ public class LocalBattleSetupScreen extends JFrame {
         }
         // 2P가 Enter로 하드 드롭하므로, 선택에 쓴 Enter가 대전 화면으로 넘어가지 않게 창을 먼저 닫는다
         dispose();
-        new LocalBattleScreen(BattleModes.settings(selectedIndex)).setVisible(true);
+        new LocalBattleScreen(BattleModes.settings(selectedIndex), opponent).setVisible(true);
     }
 
     private void back() {
