@@ -8,8 +8,11 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
+import blocks.core.BlockType;
 import game.GameMode;
 import blocks.core.BlockType;
 
@@ -18,7 +21,14 @@ public final class P2PGameSession implements AutoCloseable {
     // TCP 포트
     public static final int DEFAULT_PORT = 57823;
     // handshake용 프로토콜 식별값
-    private static final int PROTOCOL_MAGIC = 0x54465345;
+    // 버전 2("TFS2"): 상태 메시지에 상대 보드 추가
+    // 버전 3("TFS3"): 핸드셰이크에 제한 시간, 공격·시간 종료 메시지 추가. 이전 버전과는 연결을 거부한다.
+    private static final int PROTOCOL_MAGIC = 0x54465333;
+    // 제한 시간 상한 (초). 잘못된 값이 와도 비정상적으로 긴 경기가 되지 않게 한다.
+    public static final int MAX_TIME_LIMIT_SECONDS = 3600;
+    // 공격 메시지 한 번에 담을 수 있는 줄 수 상한 (보드 높이)
+    private static final int MAX_ATTACK_ROWS = 23;
+    private static final int BOARD_COLS = 10;
     // handshake 완료를 기다리는 최대 시간
     private static final int CONNECT_TIMEOUT_MS = 5_000;
     // 메시지 종류별 식별자. 각 메시지의 실제 필드 형식은 writeMessage/readMessages에서 처리한다.
@@ -28,8 +38,7 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_CLOSE = 4;
     private static final int MESSAGE_KEEP_ALIVE = 5;
     private static final int MESSAGE_ATTACK = 6;
-    // 한 번에 전송 가능한 방해 줄 수 (로컬 대전의 대기열 상한과 동일)
-    private static final int MAX_ATTACK_ROWS = 10;
+    private static final int MESSAGE_TIME_UP = 7;
     private static final int BOARD_WIDTH = 10;
 
 
@@ -45,22 +54,32 @@ public final class P2PGameSession implements AutoCloseable {
         default void onRemoteAttack(java.util.List<int[]> rows) {}
         // 라운드 종료 시 호출
         default void onRoundFinished() {}
+        // 게임 오버(어느 한쪽이 탑아웃)로 승패가 정해졌을 때 호출. 시간 제한 종료에는 호출되지 않는다
+        default void onGameDecided() {}
         // 연결 끊김 또는 프로토콜 오류 시 호출
         default void onDisconnected(IOException exception) {}
         // 연결 지연 상태로 전환 시 호출
         default void onConnectionLatency(){}
         // 연결 정상 복구 시 호출
         default void onConnectionRecovered(){}
+        // 상대가 보낸 공격 줄 수신 시 호출 (네트워크 스레드)
+        default void onAttack(List<int[]> rows) {}
+        // 시간 제한 대전이 끝났을 때 호출. 점수는 호스트가 확정한 값
+        default void onTimeUp(int hostScore, int clientScore) {}
     }
 
     // 호스트 초대 클래스
     public static final class HostInvitation implements AutoCloseable {
+        private final GameMode mode;
+        private final int timeLimitSeconds;
         // 클라이언트 연결을 기다리는 서버 소켓
         private final ServerSocket serverSocket;
         // accept()가 이미 호출되어 초대를 소비했는지 나타낸다. -> accept()는 한 번만 호출 가능
         private boolean consumed;
 
-        private HostInvitation(ServerSocket serverSocket) {
+        private HostInvitation(GameMode mode, int timeLimitSeconds, ServerSocket serverSocket) {
+            this.mode = mode;
+            this.timeLimitSeconds = timeLimitSeconds;
             this.serverSocket = serverSocket;
         }
 
@@ -71,9 +90,18 @@ public final class P2PGameSession implements AutoCloseable {
          * @return 연결을 수락할 수 있는 호스트 초대
          * @throws IOException 포트를 열지 못한 경우
          */
-        public static HostInvitation open() throws IOException {
+        public static HostInvitation open(GameMode mode) throws IOException {
+            return open(mode, 0);
+        }
+
+        /**
+         * @param timeLimitSeconds 시간 제한 대전의 제한 시간(초). 0이면 시간 제한 없음
+         */
+        public static HostInvitation open(GameMode mode, int timeLimitSeconds) throws IOException {
+            Objects.requireNonNull(mode, "mode");
+            validateTimeLimit(timeLimitSeconds);
             ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT);
-            return new HostInvitation(serverSocket);
+            return new HostInvitation(mode, timeLimitSeconds, serverSocket);
         }
 
         // 클라이언트 한 명을 수락하고 초기 프로토콜 핸드셰이크(프로토콜 식별값 확인)를 수행한다.
@@ -96,9 +124,13 @@ public final class P2PGameSession implements AutoCloseable {
                     if (input.readInt() != PROTOCOL_MAGIC) {
                         throw new IOException("Client uses an incompatible multiplayer protocol");
                     }
+                    // 클라이언트가 호스트와 동일한 규칙으로 플레이하도록 호스트 모드를 알린다.
+                    output.writeInt(mode.ordinal());
+                    output.writeInt(timeLimitSeconds);
+                    output.flush();
                     // 핸드셰이크가 끝난 뒤에는 세션 종료까지 계속 메시지를 수신한다.
                     socket.setSoTimeout(0);
-                    return new P2PGameSession(socket, input, output, null, true);
+                    return new P2PGameSession(socket, input, output, mode, timeLimitSeconds, true);
                 } catch (IOException | RuntimeException exception) {
                     // 세션 생성에 실패한 소켓도 누수되지 않도록 닫고, 닫기 실패는 원래 오류에 첨부한다.
                     try {
@@ -121,6 +153,7 @@ public final class P2PGameSession implements AutoCloseable {
     private final Socket socket;
     private final DataInputStream input;
     private final DataOutputStream output;
+    private final int timeLimitSeconds;
     // 게임 모드. 호스트는 시작 전에 정하고, 클라이언트는 시작 메시지로 받는다. 시작 전에는 null.
     private volatile GameMode mode;
     private final boolean server;
@@ -141,11 +174,13 @@ public final class P2PGameSession implements AutoCloseable {
             DataInputStream input,
             DataOutputStream output,
             GameMode mode,
+            int timeLimitSeconds,
             boolean server) {
         this.socket = socket;
         this.input = input;
         this.output = output;
         this.mode = mode;
+        this.timeLimitSeconds = timeLimitSeconds;
         this.server = server;
 
         // 연결 모니터 콜백 설정
@@ -212,9 +247,18 @@ public final class P2PGameSession implements AutoCloseable {
             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
             output.writeInt(PROTOCOL_MAGIC);
             output.flush();
+            int modeOrdinal = input.readInt();
+            GameMode[] modes = GameMode.values();
+            if (modeOrdinal < 0 || modeOrdinal >= modes.length) {
+                throw new IOException("Server selected an unsupported game mode");
+            }
+            int timeLimitSeconds = input.readInt();
+            if (timeLimitSeconds < 0 || timeLimitSeconds > MAX_TIME_LIMIT_SECONDS) {
+                throw new IOException("Server selected an unsupported time limit");
+            }
             // 핸드셰이크 이후에는 지속적인 상태 수신을 위해 읽기 제한 시간을 해제한다.
             socket.setSoTimeout(0);
-            return new P2PGameSession(socket, input, output, null, false);
+            return new P2PGameSession(socket, input, output, modes[modeOrdinal], timeLimitSeconds, false);
         } catch (IOException | RuntimeException exception) {
             // 연결 중 오류가 발생해도 열린 소켓을 남기지 않는다.
             try {
@@ -229,6 +273,21 @@ public final class P2PGameSession implements AutoCloseable {
     // 시작 전에는 null일 수 있다.
     public GameMode getMode() {
         return mode;
+    }
+
+    /** 시간 제한 대전의 제한 시간(초). 0이면 시간 제한 없음 */
+    public int getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public boolean isTimeLimited() {
+        return timeLimitSeconds > 0;
+    }
+
+    static void validateTimeLimit(int seconds) {
+        if (seconds < 0 || seconds > MAX_TIME_LIMIT_SECONDS) {
+            throw new IllegalArgumentException("제한 시간은 0~" + MAX_TIME_LIMIT_SECONDS + "초여야 합니다.");
+        }
     }
 
     /**
@@ -300,65 +359,56 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
-    // 로컬 플레이어가 지운 줄만큼 상대에게 보낼 방해 줄을 전송한다. 라운드가 활성화되지 않았으면 보내지 않는다.
-    public void sendAttack(java.util.List<int[]> rows) throws IOException {
+    /**
+     * 내가 지운 줄로 만든 공격을 상대에게 보낸다. 라운드 중이 아니면 보내지 않는다.
+     * 각 줄은 10칸이며 칸 값은 0(구멍) 또는 BlockType.ATTACK이다.
+     */
+    public void sendAttack(List<int[]> rows) throws IOException {
         Objects.requireNonNull(rows, "rows");
         if (rows.isEmpty()) {
             return;
         }
         if (rows.size() > MAX_ATTACK_ROWS) {
-            throw new IllegalArgumentException("Too many attack rows: " + rows.size());
+            throw new IllegalArgumentException("Too many attack rows");
+        }
+        for (int[] row : rows) {
+            if (row == null || row.length != BOARD_COLS) {
+                throw new IllegalArgumentException("Attack row must have 10 cells");
+            }
         }
         synchronized (this) {
             ensureConnected();
             if (!roundActive) {
                 return;
             }
-            // 헤더를 쓰기 전에 모든 줄을 검증해야 잘못된 입력이 스트림을 망가뜨리지 않는다.
-            for (int[] row : rows) {
-                if (row == null || row.length != BOARD_WIDTH) {
-                    throw new IllegalArgumentException("Attack row must have " + BOARD_WIDTH + " cells");
-                }
-            }
             output.writeByte(MESSAGE_ATTACK);
             output.writeByte(rows.size());
             for (int[] row : rows) {
                 for (int cell : row) {
-                    output.writeByte(cell);
+                    output.writeBoolean(cell != 0);
                 }
             }
             output.flush();
         }
     }
 
-    // 상대가 보낸 방해 줄을 읽는다. 각 칸은 빈 칸(0)이거나 공격 블록(ATTACK)이어야 한다.
-    private java.util.List<int[]> readAttackRows() throws IOException {
-        int count = input.readUnsignedByte();
-        if (count < 1 || count > MAX_ATTACK_ROWS) {
-            throw new IOException("Invalid attack row count: " + count);
+    /**
+     * 호스트 전용. 제한 시간이 끝났음을 알리고 확정 점수를 보낸다. 라운드는 여기서 끝난다.
+     */
+    public void sendTimeUp(int hostScore, int clientScore) throws IOException {
+        if (!server) {
+            throw new IllegalStateException("Only the host decides a time-limit result");
         }
-        java.util.List<int[]> rows = new java.util.ArrayList<>(count);
-        for (int r = 0; r < count; r++) {
-            int[] row = new int[BOARD_WIDTH];
-            for (int c = 0; c < BOARD_WIDTH; c++) {
-                int cell = input.readUnsignedByte();
-                if (cell != 0 && cell != BlockType.ATTACK.getValue()) {
-                    throw new IOException("Invalid attack cell value: " + cell);
-                }
-                row[c] = cell;
-            }
-            rows.add(row);
-        }
-        return rows;
-    }
-
-    // 상대 공격을 리스너에 전달한다. 라운드가 활성화되지 않은 상태의 공격은 거부한다.
-    private void receiveAttack(java.util.List<int[]> rows) throws IOException {
         synchronized (this) {
+            ensureConnected();
             if (!roundActive) {
-                throw new IOException("Attack received outside an active round");
+                return;
             }
-            listener.onRemoteAttack(rows);
+            output.writeByte(MESSAGE_TIME_UP);
+            output.writeInt(Math.max(0, hostScore));
+            output.writeInt(Math.max(0, clientScore));
+            output.flush();
+            endRound();
         }
     }
 
@@ -377,6 +427,7 @@ public final class P2PGameSession implements AutoCloseable {
                     case MESSAGE_START -> receiveStart(input.readUnsignedByte());
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
                     case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
+                    case MESSAGE_TIME_UP -> receiveTimeUp(input.readInt(), input.readInt());
                     case MESSAGE_KEEP_ALIVE -> {
                         // Keep-alive 메시지는 처리 없음 - recordMessageReceived()에서 활동으로 기록됨
                     }
@@ -445,6 +496,48 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    private List<int[]> readAttackRows() throws IOException {
+        int count = input.readUnsignedByte();
+        if (count < 1 || count > MAX_ATTACK_ROWS) {
+            throw new IOException("Invalid attack row count: " + count);
+        }
+        List<int[]> rows = new ArrayList<>(count);
+        for (int r = 0; r < count; r++) {
+            int[] row = new int[BOARD_COLS];
+            for (int c = 0; c < BOARD_COLS; c++) {
+                row[c] = input.readBoolean() ? BlockType.ATTACK.getValue() : 0;
+            }
+            rows.add(row);
+        }
+        return List.copyOf(rows);
+    }
+
+    // 라운드가 끝난 뒤 늦게 도착한 공격은 버린다 (상대는 이미 결과를 보고 있음)
+    private void receiveAttack(List<int[]> rows) {
+        synchronized (this) {
+            if (!roundActive) {
+                return;
+            }
+        }
+        listener.onAttack(rows);
+    }
+
+    private void receiveTimeUp(int hostScore, int clientScore) throws IOException {
+        synchronized (this) {
+            if (server) {
+                throw new IOException("Only the host can end a time-limit match");
+            }
+            if (!roundActive) {
+                return;
+            }
+            if (hostScore < 0 || clientScore < 0) {
+                throw new IOException("Invalid time-up scores");
+            }
+            endRound();
+        }
+        listener.onTimeUp(hostScore, clientScore);
+    }
+
     // 양쪽 준비를 확인한 호스트가 클라이언트에 시작을 알리고 자신의 라운드도 연다.
     private void startRound() throws IOException {
         if (!server || roundActive || !localReady || !remoteReady) {
@@ -473,6 +566,11 @@ public final class P2PGameSession implements AutoCloseable {
                 || (!localGameOver && (remoteStatus == null || !remoteStatus.isGameOver()))) {
             return;
         }
+        listener.onGameDecided();
+        endRound();
+    }
+
+    private void endRound() {
         roundActive = false;
         localReady = false;
         remoteReady = false;

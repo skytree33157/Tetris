@@ -13,6 +13,8 @@ import network.P2PGameSession;
 import score.ScoreManager;
 
 //P2P 게임 화면과 P2PGameSession을 연결하는 컨트롤러
+// 공격 규칙은 로컬 대전과 같은 BattleController를 쓴다. 이 PC의 플레이어(localPlayer)만 사용하고,
+// 상대에게 보낼 공격은 drainOutgoingAttacks()로 꺼내 세션으로 보낸다.
 public final class P2PGameController {
     private final P2PGameSession session;
     private final GameScreen gameScreen;
@@ -20,6 +22,7 @@ public final class P2PGameController {
     private final ScoreManager scoreManager;
     private final BattleController battle;
     private final BattleController.Player localPlayer;
+    private final ActionController localAction;
     private volatile boolean roundActive = false;
     private volatile boolean ready = false;
     private volatile boolean localGameOver = false;
@@ -31,13 +34,15 @@ public final class P2PGameController {
             GameStateManager gameStateManager,
             ScoreManager scoreManager,
             BattleController battle,
-            BattleController.Player localPlayer) {
+            BattleController.Player localPlayer,
+            ActionController localAction) {
         this.session = session;
         this.gameScreen = gameScreen;
         this.gameStateManager = gameStateManager;
         this.scoreManager = scoreManager;
         this.battle = battle;
         this.localPlayer = localPlayer;
+        this.localAction = localAction;
     }
 
     // P2P 세션 onStarted() 이벤트 처리
@@ -55,6 +60,9 @@ public final class P2PGameController {
 
     // 상대가 지운 줄만큼 받은 방해 줄을 로컬 플레이어 대기열에 추가
     public void onRemoteAttack(List<int[]> rows) {
+        if (!roundActive) {
+            return;
+        }
         battle.receiveAttack(localPlayer, rows);
     }
 
@@ -90,7 +98,7 @@ public final class P2PGameController {
         GameStatus status;
         List<BattleController.Attack> attacks;
         synchronized (battle) {
-            status = GameStatus.capture(battle, gameStateManager, scoreManager);
+            status = GameStatus.capture(localAction, gameStateManager, scoreManager);
             attacks = battle.drainOutgoingAttacks();
         }
         // 상태 전송 시 라운드가 즉시 끝날 수 있으므로, 패배 판정 플래그를 먼저 세운다
@@ -108,13 +116,30 @@ public final class P2PGameController {
         localGameOver = true;
         GameStatus finalStatus;
         synchronized (battle) {
+            // 마지막 보드도 함께 보내 상대 화면에 끝난 모습이 남도록 한다
+            GameStatus current = GameStatus.capture(localAction, gameStateManager, scoreManager);
             finalStatus = new GameStatus(
-                    scoreManager.getScore(),
-                    gameStateManager.getCurrentLevel(),
-                    gameStateManager.getTotalLinesCleared(),
-                    true); // gameOver = true
+                    current.getScore(),
+                    current.getLevel(),
+                    current.getLines(),
+                    true, // gameOver = true
+                    current.getCells());
         }
         session.sendStatus(finalStatus);
+    }
+
+    // 호스트 전용: 시간 제한이 끝났음을 확정 점수와 함께 알린다
+    public void sendTimeUp(int hostScore, int clientScore) throws IOException {
+        session.sendTimeUp(hostScore, clientScore);
+        roundActive = false;
+    }
+
+    public boolean isHost() {
+        return session.isServer();
+    }
+
+    public int getTimeLimitSeconds() {
+        return session.getTimeLimitSeconds();
     }
 
     // 라운드가 활성화되어있는지 확인

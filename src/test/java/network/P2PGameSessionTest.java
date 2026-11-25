@@ -29,6 +29,7 @@ class P2PGameSessionTest {
         CountDownLatch clientReceivedStatus = new CountDownLatch(1);
         CountDownLatch serverRoundFinished = new CountDownLatch(1);
         CountDownLatch clientRoundFinished = new CountDownLatch(1);
+        CountDownLatch clientGameDecided = new CountDownLatch(1);
         java.util.concurrent.atomic.AtomicInteger serverStartCount =
                 new java.util.concurrent.atomic.AtomicInteger();
         java.util.concurrent.atomic.AtomicInteger clientStartCount =
@@ -36,13 +37,12 @@ class P2PGameSessionTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         // 테스트 내부의 로컬 호스트를 이용해 실제 TCP 핸드셰이크와 양방향 메시지를 검증한다.
-        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open()) {
-            // accept()는 클라이언트 접속을 기다리므로 별도 스레드에서 실행한다.
+        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(GameMode.ITEM)) {
             var accepted = executor.submit(invitation::accept);
             try (P2PGameSession client = P2PGameSession.connect("127.0.0.1");
                     P2PGameSession server = accepted.get(5, TimeUnit.SECONDS)) {
-                // 모드는 시작 시점에 호스트가 보낸다. 연결 직후에는 아직 정해지지 않는다.
-                assertNull(client.getMode());
+                // 클라이언트는 연결 핸드셰이크에서 호스트가 연 방의 모드를 받는다.
+                assertEquals(GameMode.ITEM, client.getMode());
                 server.setMode(GameMode.ITEM);
 
                 // 첫 시작과 다음 라운드 시작을 각각 확인할 수 있도록 시작 횟수를 구분한다.
@@ -87,6 +87,11 @@ class P2PGameSessionTest {
                     public void onRoundFinished() {
                         clientRoundFinished.countDown();
                     }
+
+                    @Override
+                    public void onGameDecided() {
+                        clientGameDecided.countDown();
+                    }
                 });
 
                 // 한쪽만 준비된 상태에서는 시작되지 않고, 양쪽이 준비된 후에만 양쪽이 시작 이벤트를 받는다.
@@ -109,6 +114,8 @@ class P2PGameSessionTest {
                 server.sendStatus(status(42, true));
                 assertTrue(serverRoundFinished.await(5, TimeUnit.SECONDS));
                 assertTrue(clientRoundFinished.await(5, TimeUnit.SECONDS));
+                // 게임 오버로 승패가 정해진 것도 상대 쪽에 알려져 결과 화면을 띄울 수 있어야 한다.
+                assertTrue(clientGameDecided.await(5, TimeUnit.SECONDS));
 
                 // 라운드 종료 후 연결을 재사용해 다시 양쪽 준비 및 시작이 가능한지 검증한다.
                 client.setReady();
@@ -132,7 +139,7 @@ class P2PGameSessionTest {
         AtomicReference<List<int[]>> receivedRows = new AtomicReference<>();
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
-        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open()) {
+        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(GameMode.NORMAL)) {
             var accepted = executor.submit(invitation::accept);
             try (P2PGameSession client = P2PGameSession.connect("127.0.0.1");
                     P2PGameSession server = accepted.get(5, TimeUnit.SECONDS)) {
@@ -150,7 +157,7 @@ class P2PGameSessionTest {
                     }
 
                     @Override
-                    public void onRemoteAttack(List<int[]> rows) {
+                    public void onAttack(List<int[]> rows) {
                         receivedRows.set(rows);
                         attackReceived.countDown();
                     }
@@ -178,7 +185,7 @@ class P2PGameSessionTest {
     @Test
     void hostInvitationCanBeClosedWhileWaitingForAClient() throws Exception {
         // 접속을 기다리는 서버 소켓을 닫으면 accept()가 예외로 종료되어야 한다.
-        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open();
+        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(GameMode.NORMAL);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             var accepting = executor.submit(() -> {

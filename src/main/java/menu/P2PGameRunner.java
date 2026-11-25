@@ -1,15 +1,18 @@
 package menu;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import game.BattleSettings;
 import game.BattleController;
 import game.GameMode;
 import menu.screens.BattleMenuScreen;
@@ -63,7 +66,7 @@ public final class P2PGameRunner {
     // 명령줄(--p2p-server)용: 모드를 정한 뒤 바로 준비한다. 실패하면 팝업을 띄우고 시작 메뉴로 돌아간다.
     public static void startServer(GameMode mode) {
         try {
-            startServer(commandLineListener(mode));
+            startServer(mode, commandLineListener());
         } catch (IOException exception) {
             showConnectionFailure(exception);
         }
@@ -71,18 +74,34 @@ public final class P2PGameRunner {
 
     // 명령줄(--p2p-client)용: 접속하면 바로 준비한다.
     public static void joinServer(String address) {
-        joinServer(address, commandLineListener(null));
+        joinServer(address, commandLineListener());
     }
 
     /**
      * 방을 열고 별도 스레드에서 상대를 기다린다. 포트를 열지 못하면 바로 IOException.
-     * 게임 모드는 방 생성자가 로비에서 정한다.
+     * 방의 대전 방식은 방을 열 때 정해진다.
      *
      * @return 대기를 취소할 수 있는 핸들
      */
     public static HostHandle startServer(ConnectListener listener) throws IOException {
+        return startServer(GameMode.NORMAL, 0, listener);
+    }
+
+    public static HostHandle startServer(GameMode mode, ConnectListener listener) throws IOException {
+        return startServer(mode, 0, listener);
+    }
+
+    /** 방 만들기 화면용: 일반·아이템·시간 제한 중 고른 대전 방식으로 방을 연다. */
+    public static HostHandle startServer(BattleSettings settings, ConnectListener listener) throws IOException {
+        Objects.requireNonNull(settings, "settings");
+        return startServer(settings.getGameMode(), settings.getTimeLimitSeconds(), listener);
+    }
+
+    static HostHandle startServer(GameMode mode, int timeLimitSeconds, ConnectListener listener)
+            throws IOException {
         Objects.requireNonNull(listener, "listener");
-        P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open();
+        P2PGameSession.HostInvitation invitation =
+                P2PGameSession.HostInvitation.open(mode, timeLimitSeconds);
         HostHandle handle = new HostHandle(invitation);
 
         // 서버 연결을 기다리는 동안 UI가 멈추지 않도록 별도 스레드에서 실행
@@ -140,6 +159,13 @@ public final class P2PGameRunner {
         if (exception instanceof SocketTimeoutException) {
             return "응답이 없어요. 상대가 방을 열었는지, 같은 네트워크인지 확인해 주세요.";
         }
+        if (exception instanceof EOFException) {
+            return "연결이 바로 끊겼어요. 두 사람의 TFSE 버전이 같은지 확인해 주세요.";
+        }
+        String detail = exception.getMessage();
+        if (detail != null && detail.contains("incompatible")) {
+            return "다른 버전의 TFSE가 접속했어요. 두 사람 모두 같은 버전으로 실행해 주세요.";
+        }
         if (exception instanceof ConnectException) {
             return "연결이 거부됐어요. 상대가 방을 열어 둔 상태인지 확인해 주세요.";
         }
@@ -147,15 +173,12 @@ public final class P2PGameRunner {
         return "연결하지 못했어요." + (message == null || message.isBlank() ? "" : " (" + message + ")");
     }
 
-    // 명령줄 실행용 리스너. 호스트면 모드를 정한 뒤, 클라이언트면 그대로 준비 신호를 보낸다.
-    private static ConnectListener commandLineListener(GameMode hostMode) {
+    // 명령줄 실행용 리스너. 접속하면 그대로 준비 신호를 보낸다.
+    private static ConnectListener commandLineListener() {
         return new ConnectListener() {
             @Override
             public void onConnected(P2PGameSession session) {
                 try {
-                    if (hostMode != null) {
-                        session.setMode(hostMode);
-                    }
                     session.setReady();
                 } catch (IOException exception) {
                     showConnectionFailure(exception);
@@ -280,7 +303,6 @@ public final class P2PGameRunner {
         private volatile GameScreen gameScreen;
         private volatile P2PGameController p2pController;
         private volatile boolean monitoringDisconnection = false;
-        private volatile boolean gameFinished = false;
 
         private P2PGameRunnerLoop(P2PGameSession session) {
             this.session = session;
@@ -309,7 +331,8 @@ public final class P2PGameRunner {
                     gameScreen.getGameStateManager(),
                     gameScreen.getScoreManager(),
                     battle,
-                    localPlayer
+                    localPlayer,
+                    gameScreen.getActionController()
             );
 
             // 게임 화면에 P2P 컨트롤러 설정
@@ -332,21 +355,30 @@ public final class P2PGameRunner {
                 }
 
                 @Override
-                public void onRemoteAttack(java.util.List<int[]> rows) {
-                    // 상대가 지운 줄만큼 방해 줄을 받는다
-                    p2pController.onRemoteAttack(rows);
+                public void onRoundFinished() {
+                    // 승패 판정: 먼저 게임 오버된 쪽이 패배한다
+                    p2pController.onRoundFinished();
+                    // 다음 라운드 준비
+                    SwingUtilities.invokeLater(() -> gameScreen.resetForNextRound());
+                }
+
+                @Override
+                public void onGameDecided() {
+                    // 게임 오버로 승패가 정해졌으면 결과 화면을 띄운다 (로컬 대전과 동일하게 승자 표시)
+                    SwingUtilities.invokeLater(() -> gameScreen.showRoundResult());
                 }
                 
                 @Override
-                public void onRoundFinished() {
-                    // 승패 판정: 먼저 게임 오버된 쪽이 패배한다
-                    boolean won = !p2pController.isLocalGameOver();
-                    p2pController.onRoundFinished();
-                    // 플래그를 먼저 세워 뒤따르는 연결 종료 이벤트를 무시하게 한다
-                    gameFinished = true;
-                    SwingUtilities.invokeLater(() -> showGameResult(won));
+                public void onAttack(java.util.List<int[]> rows) {
+                    // 네트워크 스레드에서 바로 대기열에 넣는다 (경기 잠금으로 보호됨)
+                    p2pController.onRemoteAttack(rows);
                 }
-                
+
+                @Override
+                public void onTimeUp(int hostScore, int clientScore) {
+                    SwingUtilities.invokeLater(() -> gameScreen.finishByTime(hostScore, clientScore));
+                }
+
                 @Override
                 public void onConnectionLatency() {
                     // 지연 상태를 UI에 표시
@@ -382,41 +414,8 @@ public final class P2PGameRunner {
             }
         }
 
-        // 한 쪽이 게임 오버되면 승패 결과를 띄우고 P2P 초기 화면으로 복귀
-        private void showGameResult(boolean won) {
-            monitoringDisconnection = false;
-            if (gameScreen != null) {
-                gameScreen.stopGame();
-                gameScreen.dispose();
-            }
-
-            String message = won ? "승리했습니다!" : "패배했습니다.";
-            JOptionPane.showMessageDialog(
-                    null,
-                    message,
-                    "대전 결과",
-                    JOptionPane.INFORMATION_MESSAGE);
-
-            try {
-                session.close();
-            } catch (IOException ignored) {
-                // 상대가 이미 연결을 끊은 경우
-            }
-            new BattleMenuScreen().setVisible(true);
-        }
-
         // 연결 종료 처리 - P2P 초기 화면으로 복귀
         private void handleDisconnect(IOException exception) {
-            if (gameFinished) {
-                // 승패가 이미 결정된 뒤의 연결 종료는 정상 흐름(상대가 결과 확인 후 닫음)
-                try {
-                    session.close();
-                } catch (IOException ignored) {
-                    // 이미 닫힘
-                }
-                monitoringDisconnection = false;
-                return;
-            }
             try {
                 session.close();
             } catch (IOException closeException) {
@@ -426,6 +425,12 @@ public final class P2PGameRunner {
             monitoringDisconnection = false;
             
             SwingUtilities.invokeLater(() -> {
+                // 승부가 이미 났으면(내가 끝났거나 상대가 게임 오버를 보낸 뒤 종료 메시지가 온 경우)
+                // 연결 오류가 아니라 정상 종료: 결과 화면으로 넘어가고 오류 창은 띄우지 않는다
+                if (gameScreen != null && gameScreen.finishBattleIfEnded()) {
+                    return;
+                }
+
                 // 게임 화면 정리 - 렌더링 타이머와 게임 루프 스레드 중지
                 if (gameScreen != null) {
                     gameScreen.stopGame();

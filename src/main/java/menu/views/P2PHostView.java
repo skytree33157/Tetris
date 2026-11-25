@@ -30,6 +30,7 @@ public class P2PHostView extends JPanel {
     private final SegmentedControl modeControl;
     private final JPanel addressList = new JPanel();
     private final JLabel status = label(" ", Theme.body(14, Font.PLAIN), Theme.TEXT_SOFT);
+    private final JLabel modeDescription = label(" ", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED);
     private final ThemedButton primaryButton = new ThemedButton("방 열기", Kind.PRIMARY);
     private final ThemedButton backButton = new ThemedButton("뒤로", Kind.SECONDARY);
 
@@ -52,6 +53,8 @@ public class P2PHostView extends JPanel {
         modeControl = new SegmentedControl(modeLabels, onModePick);
         modeControl.setAlignmentX(Component.LEFT_ALIGNMENT);
         modeCard.add(modeControl);
+        modeCard.add(Box.createVerticalStrut(8));
+        modeCard.add(modeDescription);
         col.add(fixHeight(modeCard));
         col.add(Box.createVerticalStrut(14));
 
@@ -114,6 +117,11 @@ public class P2PHostView extends JPanel {
 
     public void setModeIndex(int index) {
         modeControl.setSelectedIndex(index);
+    }
+
+    // 고른 방식의 규칙 한 줄 설명
+    public void setModeDescription(String text) {
+        modeDescription.setText(text);
     }
 
     public void setModeEnabled(boolean enabled) {

@@ -86,7 +86,7 @@ class P2PGameRunnerTest {
         assertEquals(List.of(), host.failures);
         assertEquals(1, host.connected.getCount());
         // 같은 포트로 다시 열 수 있어야 한다
-        P2PGameSession.HostInvitation.open().close();
+        P2PGameSession.HostInvitation.open(GameMode.NORMAL).close();
     }
 
     @Test // 이미 방을 열고 있으면 같은 포트로 또 열 수 없음
