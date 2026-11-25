@@ -5,7 +5,7 @@ import difficulty.Difficulty;
 // 게임 상태(게임오버, 하강속도(레벨업)) 관리 클래스
 
 public class GameStateManager {
-    private volatile int dropSpeed = 1000000; // 1000ms = 1s
+    private volatile int dropSpeed = 1000; // 1000ms = 1s
     private int countBlock = 0;
     private int countClearLine = 0;
     private volatile int totalLinesCleared = 0; //레베업으로 리셋되지 않는 누적 줄 수 (HUD 표시)
