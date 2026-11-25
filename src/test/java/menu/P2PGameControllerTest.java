@@ -7,6 +7,7 @@ import blocks.tetromino.OBlock;
 import board.Board;
 import difficulty.Difficulty;
 import game.ActionController;
+import game.BattleController;
 import game.GameMode;
 import game.GameStateManager;
 import java.util.concurrent.CountDownLatch;
@@ -65,8 +66,10 @@ class P2PGameControllerTest {
                 });
 
                 // 게임 화면 없이 컨트롤러만 사용 (화면 갱신은 이 테스트 범위가 아님)
-                P2PGameController controller =
-                        new P2PGameController(client, null, manager, action, scoreManager);
+                BattleController battle = new BattleController(false);
+                battle.registerPlayer(BattleController.Player.ONE, action);
+                P2PGameController controller = new P2PGameController(
+                        client, null, manager, scoreManager, battle, BattleController.Player.ONE, action);
                 controller.notifyPlayerReady();
                 host.setReady();
                 assertTrue(hostStarted.await(5, TimeUnit.SECONDS), "round should start on host");

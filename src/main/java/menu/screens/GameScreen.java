@@ -60,6 +60,7 @@ public class GameScreen extends JFrame {
     private static final long serialVersionUID = 1L;
     private static final int RENDER_INTERVAL_MS = 50;
     private static final int SIDE_WIDTH = 210;
+    private static final Color CONNECTION_NORMAL_COLOR = new Color(0x4CD964);
     private static final Color CONNECTION_LOST_COLOR = new Color(0xF26B6B);
 
   private final GameStateManager gameStateManager;
@@ -269,24 +270,19 @@ private JLabel scoreLabel;
                 // 연결 끊김은 P2PGameSession의 리스너에서 처리
                 exception.printStackTrace();
             }
-
-            // 상대 플레이어 게임 오버 감지
-            GameStatus remoteStatus = p2pController.getRemoteStatus();
-            if (remoteStatus != null && remoteStatus.isGameOver() && !gameOverHandled) {
-                showGameOver(frame);
-                return;
-            }
         }
 
         // 로컬 게임 오버 처리
         if (frame.gameOver() && !gameOverHandled) {
-            // P2P 게임이면 게임 오버를 상대에게 통지
+            gameOverHandled = true;
+            // P2P 게임은 게임 오버를 상대에게 통지하고, 승패 결과는 라운드 종료 시 P2PGameRunner에서 표시
             if (p2pController != null) {
                 try {
                     p2pController.notifyGameOver();
                 } catch (IOException exception) {
                     exception.printStackTrace();
                 }
+                return;
             }
             showGameOver(frame);
         }
@@ -306,6 +302,14 @@ private JLabel scoreLabel;
             return true;
         }
         return false;
+    }
+
+    /** P2P 게임 오버로 승패가 정해졌을 때(EDT). 이미 결과가 떴으면 무시한다. */
+    public void showRoundResult() {
+        if (resultShown || p2pController == null) {
+            return;
+        }
+        showGameOver(actionController.getViewSnapshot());
     }
 
     private boolean isTimeUpOnHost() {
@@ -662,8 +666,17 @@ private JLabel scoreLabel;
         SoundManager.getInstance().stopBgm();
     }
 
-    // 연결 상태를 상단 바에 보여줌 (정상 제외)
-    public void showConnectionStatus(String message, boolean isWarning) {
+    // 정상 연결 상태를 초록색 글씨로 상단 바에 표시
+    public void showConnectionNormal() {
+        showConnectionStatus("연결 정상", CONNECTION_NORMAL_COLOR);
+    }
+
+    // 연결 지연 상태를 상단 바에 경고 색으로 표시
+    public void showConnectionLatency() {
+        showConnectionStatus("연결 지연 중...", Theme.BRONZE);
+    }
+
+    private void showConnectionStatus(String message, Color color) {
         if (connectionStatusLabel == null) {
             connectionStatusLabel = new JLabel(message);
             connectionStatusLabel.setFont(Theme.body(14, Font.BOLD));
@@ -671,22 +684,13 @@ private JLabel scoreLabel;
         } else {
             connectionStatusLabel.setText(message);
         }
-        connectionStatusLabel.setForeground(isWarning ? Theme.BRONZE : CONNECTION_LOST_COLOR);
+        connectionStatusLabel.setForeground(color);
 
         // 상단에 상태 레이블 추가 (이미 추가되었다면 업데이트만)
+        // 창 크기를 다시 맞추지 않으면 고정 크기 창에서 보드 영역이 잘리므로 pack()으로 크기를 갱신한다.
         if (connectionStatusLabel.getParent() == null) {
             getContentPane().add(connectionStatusLabel, BorderLayout.NORTH);
-            revalidate();
-            repaint();
-        }
-    }
-
-    // 정상 상태로 복구 시 상단 바 제거
-    public void hideConnectionStatus() {
-        if (connectionStatusLabel != null && connectionStatusLabel.getParent() != null) {
-            getContentPane().remove(connectionStatusLabel);
-            revalidate();
-            repaint();
+            pack();
         }
     }
 
@@ -705,6 +709,8 @@ private JLabel scoreLabel;
     // P2P 게임 컨트롤러 설정. 처음 연결되면 상대 열을 붙이고 창 크기를 다시 맞춘다.
     public void setP2PController(P2PGameController controller) {
         this.p2pController = controller;
+        // 네트워크 대전에서는 상대 보드가 멈추지 않도록 일시정지를 비활성화
+        gameController.setPauseEnabled(controller == null);
         if (controller != null && remoteBoardPanel == null) {
             installOpponentColumn();
             pack();

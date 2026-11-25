@@ -14,17 +14,24 @@ import javax.swing.Timer;
 
 import menu.P2PGameRunner;
 import menu.views.P2PJoinView;
+import network.P2PGameSession;
 import network.RecentPeerStore;
 
-// 온라인 참여하기: IP 입력(또는 최근 접속 선택) → 접속
+// 온라인 참여하기: IP 입력(또는 최근 접속 선택) → 접속 → 게임 시작 요청 후 방장을 기다림
 public class P2PJoinScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
     private static final String CONNECTING_TEXT = "연결 중";
+    private static final String WAITING_TEXT = "상대를 기다리는 중";
 
     private final P2PJoinView view;
     private final Timer dotsTimer;
     private boolean connecting;
+    // 접속이 끝나 로비에 머무는 동안의 세션 (게임 화면으로 넘어가면 null)
+    private P2PGameSession session;
+    private boolean localReady;
+    private boolean remoteReady;
+    private String statusPrefix = CONNECTING_TEXT;
     private int dots;
 
     public P2PJoinScreen() {
@@ -48,7 +55,7 @@ public class P2PJoinScreen extends JFrame {
 
         dotsTimer = new Timer(450, e -> {
             dots = dots % 3 + 1;
-            view.setStatus(CONNECTING_TEXT + ".".repeat(dots), false);
+            view.setStatus(statusPrefix + ".".repeat(dots), false);
         });
 
         // 입력칸에 포커스가 있어도 Esc로 뒤로 가기
@@ -90,6 +97,10 @@ public class P2PJoinScreen extends JFrame {
     }
 
     private void connect() {
+        if (session != null) {
+            startGame();
+            return;
+        }
         if (connecting) {
             return;
         }
@@ -100,21 +111,60 @@ public class P2PJoinScreen extends JFrame {
         }
         connecting = true;
         view.setConnecting(true);
+        statusPrefix = CONNECTING_TEXT;
         dots = 0;
         view.setStatus(CONNECTING_TEXT + "...", false);
         dotsTimer.start();
 
         P2PGameRunner.joinServer(address, new P2PGameRunner.ConnectListener() {
             @Override
-            public void onConnected() {
+            public void onConnected(P2PGameSession connected) {
+                if (!isDisplayable()) {
+                    return;
+                }
+                connecting = false;
+                session = connected;
+                dotsTimer.stop();
+                view.setLobby(false);
+                updateLobbyStatus();
+            }
+
+            @Override
+            public void onRemoteReady(boolean ready) {
+                if (!isDisplayable()) {
+                    return;
+                }
+                remoteReady = ready;
+                if (session != null && !localReady) {
+                    updateLobbyStatus();
+                }
+            }
+
+            @Override
+            public void onGameStarting() {
+                // 세션은 게임 루프가 가져가므로 로비에서는 더 이상 닫지 않는다
+                session = null;
                 dotsTimer.stop();
                 dispose();
             }
 
             @Override
+            public void onLobbyDisconnected(IOException exception) {
+                if (!isDisplayable()) {
+                    return;
+                }
+                resetLobby();
+                view.setStatus("방장과의 연결이 끊어졌어요. 다시 접속해 주세요.", true);
+                view.getAddressField().requestFocusInWindow();
+            }
+
+            @Override
             public void onFailure(IOException exception) {
-                dotsTimer.stop();
+                if (!isDisplayable()) {
+                    return;
+                }
                 connecting = false;
+                dotsTimer.stop();
                 view.setConnecting(false);
                 view.setStatus(P2PGameRunner.describeFailure(exception), true);
                 view.getAddressField().requestFocusInWindow();
@@ -122,12 +172,63 @@ public class P2PJoinScreen extends JFrame {
         });
     }
 
+    // 방장이 준비했는지에 따라 안내 문구를 고른다
+    private void updateLobbyStatus() {
+        view.setStatus(remoteReady
+                ? "방장이 준비했어요. 게임 시작을 누르면 바로 시작해요."
+                : "방에 접속했어요. 게임 시작을 누르고 방장을 기다려 주세요.", false);
+    }
+
+    // 게임 시작 요청: 방장이 게임 방식을 고르고 시작할 때까지 대기한다
+    private void startGame() {
+        if (localReady || session == null) {
+            return;
+        }
+        try {
+            session.setReady();
+        } catch (IOException exception) {
+            view.setStatus(P2PGameRunner.describeFailure(exception), true);
+            return;
+        }
+        localReady = true;
+        statusPrefix = WAITING_TEXT;
+        dots = 0;
+        view.setLobby(true);
+        view.setStatus(WAITING_TEXT + "...", false);
+        dotsTimer.start();
+    }
+
+    // 접속이 끊겨 로비를 처음 상태로 되돌린다
+    private void resetLobby() {
+        session = null;
+        connecting = false;
+        localReady = false;
+        remoteReady = false;
+        statusPrefix = CONNECTING_TEXT;
+        dotsTimer.stop();
+        view.setConnecting(false);
+    }
+
     private void back() {
         // 연결 시도 중이면 최대 5초 안에 끝나므로 기다리게 한다 (중간에 창을 닫으면 결과를 받을 곳이 없음)
         if (connecting) {
             return;
         }
+        dotsTimer.stop();
+        if (session != null) {
+            closeSession(session);
+            session = null;
+        }
         dispose();
         new BattleMenuScreen().setVisible(true);
     }
+
+    private static void closeSession(P2PGameSession target) {
+        try {
+            target.close();
+        } catch (IOException ignored) {
+            // 이미 끊어진 연결이면 닫을 것이 없음
+        }
+    }
 }
+
