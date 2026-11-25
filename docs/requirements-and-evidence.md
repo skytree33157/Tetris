@@ -80,6 +80,15 @@
 | FR-37 · 아이템 모드 연동 | 모드별 공급·색상·점수·정지·게임 오버·기록 메타데이터를 각 모듈에 연결. | [고정·효과 테스트](../src/test/java/game/ActionControllerTest.java), [렌더러 테스트](../src/test/java/ui/BlockRendererTest.java), [입력 테스트](../src/test/java/game/GameControllerTest.java), [게임 종료·순위 테스트](../src/test/java/menu/screens/GameOverScreenTest.java) | [#48](https://github.com/skytree33157/Tetris/pull/48), [#50](https://github.com/skytree33157/Tetris/pull/50), [#64](https://github.com/skytree33157/Tetris/pull/64) |
 | FR-38 · 난이도·아이템 점수 | EASY ×0.8·NORMAL ×1.0·HARD ×1.2, P 개수별 고정 보너스. [점수 명세](scoring.md) | [점수 테스트](../src/test/java/score/ScoreManagerTest.java) / [점수 검증](test-results.md#점수-계산) | [#37](https://github.com/skytree33157/Tetris/pull/37), [#44](https://github.com/skytree33157/Tetris/pull/44), [#47](https://github.com/skytree33157/Tetris/pull/47) |
 
+### 3차 담당 요구사항과 컴퓨터 대전
+
+| ID·요구사항 | 구현·규칙 | 테스트·결과 |
+|---|---|---|
+| FR-41 · 대전 공격 줄 생성 | 한 번에 2줄 이상 지우면, 마지막 블록이 차지했던 칸을 비운 공격 줄을 상대에게 보냅니다. | [공격 줄 생성 테스트](../src/test/java/game/BattleAttackTest.java) |
+| FR-42 · 공격 줄 반영 및 제한 | 대기 공격 줄은 최대 10줄이며, 받은 쪽의 현재 블록이 고정된 뒤 다음 블록이 나오기 전에 아래쪽에 삽입합니다. | [대기열과 삽입 시점 테스트](../src/test/java/game/BattleAttackTest.java) · [보드 삽입 테스트](../src/test/java/board/BoardAttackTest.java) |
+| FR-43 · 대전 종료 및 승자 판정 | 한쪽이 더 이상 블록을 쌓을 수 없으면 상대가 승리합니다. 시간 제한이 끝나면 점수를 비교합니다. | [승패 판정 테스트](../src/test/java/game/BattleControllerTest.java) · [컴퓨터 대전 결과 화면 검증](test-results.md#컴퓨터-대전-검증) |
+| CH-01 · 컴퓨터 대전 | `CHALLENGE`에서 1P는 키보드, 2P는 CPU로 경기합니다. 기존 로컬 대전 화면·모드와 기존 [AI 로직](https://github.com/skytree33157/Tetris/pull/91)을 사용합니다. | [컴퓨터 대전 통합 테스트](test-results.md#컴퓨터-대전-검증) |
+
 ### 비기능 요구사항
 
 | ID·요구사항 | 구현·규칙 | 테스트·결과 | 개발 기록 |

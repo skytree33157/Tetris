@@ -272,6 +272,24 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 | 블록의 1초 자동 하강 확인 | [GameLoopTest.automaticallyDropsAtTheConfiguredOneSecondInterval()](../src/test/java/game/GameLoopTest.java#L54) |
 | 일시정지 시 하강이 멈추고 재개 시 다시 하강 | [GameLoopTest.pauseStopsAutomaticDropAndResumeRestartsIt()](../src/test/java/game/GameLoopTest.java#L74) |
 
+## 컴퓨터 대전 검증
+
+`CHALLENGE`용 사람 vs CPU 기능과 기존 대전 규칙을 JDK 21에서 검증했습니다.
+
+| 요구사항 | 확인한 동작 | 테스트 |
+|---|---|---|
+| CH-01 · CPU 조작 | 일반·아이템·시간 제한에서 CPU가 블록을 고정하고 1P는 키보드를 사용합니다. 일시정지 중 CPU와 경기 시간이 멈추고, 재개하면 CPU가 다시 조작합니다. | [ComputerBattleIntegrationTest](../src/test/java/game/ComputerBattleIntegrationTest.java) |
+| CH-01 · 화면 연결 | 실제 Swing 화면에서 세 모드로 진입하고, CPU의 하드 드롭 키가 차단되며, 일시정지·결과 화면에서 같은 모드로 재경기합니다. 기존 로컬 2인 대전도 확인합니다. | [ComputerBattleScreenTest](../src/test/java/menu/screens/ComputerBattleScreenTest.java) |
+| FR-41 · 공격 줄 생성 | 한 번에 2줄 이상 지울 때 공격 줄을 만들고, 해당 블록이 차지했던 칸을 비웁니다. | [BattleAttackTest](../src/test/java/game/BattleAttackTest.java) |
+| FR-42 · 공격 줄 반영 | 최대 10줄을 대기시키고, 현재 블록을 고정한 뒤 다음 블록이 나오기 전에 아래쪽에 삽입합니다. | [BattleAttackTest](../src/test/java/game/BattleAttackTest.java) · [BoardAttackTest](../src/test/java/board/BoardAttackTest.java) |
+| FR-43 · 승패 판정 | 블록을 더 쌓지 못하면 상대가 이기며, 시간 제한이 끝나면 점수를 비교합니다. | [BattleControllerTest](../src/test/java/game/BattleControllerTest.java) |
+
+Windows에서 컴퓨터 대전 테스트 11건을 포함해 전체 **411건 통과 / 실패 0 / 건너뜀 0**을 확인했습니다. 화면을 띄울 수 없는 환경에서는 Swing 테스트를 건너뜁니다.
+
+```powershell
+.\gradlew.bat test -x jacocoTestReport
+```
+
 ## 직접 실행하는 방법
 
 JDK 21을 준비하고 프로젝트 루트의 PowerShell에서 실행합니다.
