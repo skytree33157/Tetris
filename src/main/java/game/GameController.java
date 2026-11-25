@@ -127,6 +127,8 @@ public class GameController extends KeyAdapter {
     private boolean ignoreEscapeUntilReleased;
     private boolean stopped;
     private long seenPauseRevision;
+    // 네트워크 대전 중에는 일시정지(P, ESC 짧게 누르기)를 막는다
+    private volatile boolean pauseEnabled = true;
 
     public GameController(
             GameLoop loop,
@@ -186,6 +188,10 @@ public class GameController extends KeyAdapter {
         });
 
         escapeHoldTimer.setRepeats(false);
+    }
+
+    public void setPauseEnabled(boolean enabled) {
+        pauseEnabled = enabled;
     }
 
     public void shutdown() {
@@ -386,7 +392,9 @@ public class GameController extends KeyAdapter {
         }
 
         if (code == KeyEvent.VK_P) {
-            togglePauseMenu();
+            if (pauseEnabled) {
+                togglePauseMenu();
+            }
             return;
         }
 
@@ -473,7 +481,7 @@ public class GameController extends KeyAdapter {
             escapePressed = false;
             escapeHoldTimer.stop();
 
-            if (!escapeHoldTriggered && !gameStateManager.isGameOver()) {
+            if (pauseEnabled && !escapeHoldTriggered && !gameStateManager.isGameOver()) {
                 togglePauseMenu();
             }
 

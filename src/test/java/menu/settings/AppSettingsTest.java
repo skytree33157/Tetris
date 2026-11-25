@@ -99,6 +99,23 @@ class AppSettingsTest {
         assertEquals(Difficulty.NORMAL, settings.getDifficulty());
     }
 
+    @Test // 삭제된 TFSE 색상 모드가 저장돼 있으면 일반 모드로 열고 나머지 설정은 유지
+    void removedTfseColorModeFallsBackToNormalAndKeepsOtherSettings() throws IOException {
+        Files.writeString(SETTINGS_PATH,
+                "screenSize=LARGE\ncolorMode=TFSE\ndifficulty=HARD\nsound.bgmVolume=70\nkey.MOVE_LEFT="
+                        + KeyEvent.VK_A + "\n");
+
+        settings.load();
+
+        assertAll(
+                () -> assertEquals(ColorMode.NORMAL, settings.getColorMode()),
+                () -> assertEquals(ScreenSize.LARGE, settings.getScreenSize()),
+                () -> assertEquals(Difficulty.HARD, settings.getDifficulty()),
+                () -> assertEquals(70, settings.getBgmVolume()),
+                () -> assertEquals(KeyEvent.VK_A, settings.getKey(KeyAction.MOVE_LEFT))
+        );
+    }
+
     @Test // 저장된 값이 깨져 있으면 전체 기본값으로 복구
     void brokenValueFallsBackToDefaults() throws IOException {
         Files.writeString(SETTINGS_PATH, "screenSize=LARGE\ndifficulty=SUPER_HARD\n");

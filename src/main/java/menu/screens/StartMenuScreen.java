@@ -22,6 +22,7 @@ public class StartMenuScreen extends JFrame {
     private static final String[] MENU_ITEMS = {
         "일반 모드",
         "아이템 모드",
+        "대전 모드",
         "설정",
         "스코어보드",
         "게임 종료"
@@ -89,12 +90,15 @@ public class StartMenuScreen extends JFrame {
                 startGame(GameMode.ITEM);
                 break;
             case 2:
-                startSettings();
+                startBattleMenu();
                 break;
             case 3:
-                startScoreboard();
+                startSettings();
                 break;
             case 4:
+                startScoreboard();
+                break;
+            case 5:
                 exitApplication();
                 break;
         }
@@ -106,6 +110,13 @@ public class StartMenuScreen extends JFrame {
         dispose();
         GameScreen gameScreen = new GameScreen(mode);
         gameScreen.setVisible(true);
+    }
+
+    // 대전 메뉴로 전환
+    private void startBattleMenu() {
+        stateManager.transitionTo(AppState.BATTLE_MENU);
+        dispose();
+        new BattleMenuScreen().setVisible(true);
     }
 
     // 설정 화면으로 전환
