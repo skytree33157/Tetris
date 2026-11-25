@@ -33,12 +33,15 @@ import blocks.core.BlockFactory;
 import board.Board;
 import difficulty.Difficulty;
 import game.ActionController;
+import game.AttackPreviewPanel;
 import game.BlockPreviewPanel;
+import game.RemoteBoardPanel;
 import game.GameController;
 import game.GameLoop;
 import game.GameMode;
 import game.GamePanel;
 import game.GameStateManager;
+import menu.BattleResult;
 import menu.P2PGameController;
 import menu.views.PauseView;
 import menu.settings.AppSettings;
@@ -79,6 +82,20 @@ public class GameScreen extends JFrame {
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
     private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
     private JLabel connectionStatusLabel;
+    private JPanel rightPanel;
+
+    // P2P 대전: 상대 보드와 점수 (setP2PController 이후에만 생성)
+    private RemoteBoardPanel remoteBoardPanel;
+    private JLabel opponentScoreLabel;
+    private JLabel opponentLevelLabel;
+    private JLabel opponentLinesLabel;
+    // 대전: 받은 공격 중 아직 보드에 들어가지 않은 줄
+    private AttackPreviewPanel attackPreviewPanel;
+    private JLabel attackCountLabel;
+    // 시간 제한 대전의 제한 시간(초). 0이면 시간 제한 없음
+    private int timeLimitSeconds;
+    private JLabel timeCaptionLabel;
+    private JLabel modeValueLabel;
 
 private JLabel scoreLabel;
     private JLabel bestLabel;
@@ -93,6 +110,8 @@ private JLabel scoreLabel;
     private long elapsedMs = 0;
     private long lastTickMs = System.currentTimeMillis();
     private boolean gameOverHandled = false;
+    // 결과 화면으로 넘어갔는지. 라운드 종료(resetForNextRound)에도 되돌리지 않는다.
+    private boolean resultShown = false;
     private boolean closed = false;
 
     public GameScreen(GameMode mode) {
@@ -169,8 +188,12 @@ private JLabel scoreLabel;
         root.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         root.add(createLeftPanel(), BorderLayout.WEST);
         root.add(boardHolder, BorderLayout.CENTER);
-        root.add(createRightPanel(), BorderLayout.EAST);
+        rightPanel = createRightPanel();
+        root.add(rightPanel, BorderLayout.EAST);
         setContentPane(root);
+        if (p2pController != null) {
+            installOpponentColumn();
+        }
         updateHud();
 
         pack();
@@ -207,7 +230,9 @@ private JLabel scoreLabel;
     // 주기적으로 상태를 화면에 반영하고, 게임오버 시 결과 화면으로 전환
     private void onTick(){
         long now = System.currentTimeMillis();
-        if (!gameLoop.isPaused() && !gameStateManager.isGameOver()) {
+        // P2P는 상대 준비를 기다리는 동안 시간이 흐르지 않게, 게임 루프가 시작된 뒤부터 센다
+        boolean running = gameThread.getState() != Thread.State.NEW;
+        if (running && !gameLoop.isPaused() && !gameStateManager.isGameOver()) {
             elapsedMs += now - lastTickMs;
         }
         lastTickMs = now;
@@ -218,7 +243,23 @@ private JLabel scoreLabel;
         gamePanel.setSnapshot(frame);
         blockPreviewPanel.setSnapshot(frame.nextBlock());
         holdPreviewPanel.setSnapshot(frame.heldBlock());
+        updateAttackPreview(frame);
         updateHud();
+
+        // 시간 제한 대전: 호스트가 시간 종료를 판정해 양쪽 점수를 확정한다.
+        // 클라이언트는 호스트의 TIME_UP 메시지를 받을 때까지 계속 플레이한다.
+        if (isTimeUpOnHost()) {
+            int hostScore = scoreManager.getScore();
+            GameStatus remote = p2pController.getRemoteStatus();
+            int clientScore = remote == null ? 0 : remote.getScore();
+            try {
+                p2pController.sendTimeUp(hostScore, clientScore);
+            } catch (IOException exception) {
+                exception.printStackTrace();
+            }
+            finishByTime(hostScore, clientScore);
+            return;
+        }
 
         // P2P 게임 상태 전송
         if (p2pController != null && p2pController.isRoundActive()) {
@@ -251,14 +292,83 @@ private JLabel scoreLabel;
         }
     }
 
+    /**
+     * 대전 연결이 끊겼을 때 호출(EDT). 이미 끝난 게임이거나 상대가 게임 오버를 보낸 뒤라면
+     * 연결 오류가 아니라 정상 종료이므로 결과 화면으로 넘어가고 true를 돌려준다.
+     */
+    public boolean finishBattleIfEnded() {
+        if (resultShown || gameOverHandled) {
+            return true;
+        }
+        GameStatus remote = p2pController == null ? null : p2pController.getRemoteStatus();
+        if (remote != null && remote.isGameOver()) {
+            showGameOver(actionController.getViewSnapshot());
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isTimeUpOnHost() {
+        return timeLimitSeconds > 0
+                && p2pController != null
+                && p2pController.isHost()
+                && p2pController.isRoundActive()
+                && !gameOverHandled
+                && elapsedMs >= timeLimitSeconds * 1000L;
+    }
+
+    /**
+     * 시간 제한 대전 종료(EDT). 호스트는 직접, 클라이언트는 TIME_UP 메시지로 호출된다.
+     * 점수가 높은 쪽이 이긴다.
+     */
+    public void finishByTime(int hostScore, int clientScore) {
+        if (resultShown || gameOverHandled || p2pController == null) {
+            return;
+        }
+        boolean host = p2pController.isHost();
+        BattleResult result = BattleResult.fromP2PTimeUp(
+                GameStatus.capture(actionController, gameStateManager, scoreManager),
+                p2pController.getRemoteStatus(),
+                host ? hostScore : clientScore,
+                host ? clientScore : hostScore,
+                modeLabel(),
+                elapsedMs);
+        finishBattle(actionController.getViewSnapshot(), result);
+    }
+
+    private String modeLabel() {
+        if (timeLimitSeconds > 0) {
+            return "시간 제한 모드";
+        }
+        return mode == GameMode.ITEM ? "아이템 모드" : "일반 모드";
+    }
+
     private void showGameOver(ActionController.ViewSnapshot frame) {
+        // 대전이면 게임을 멈추기 전에 양쪽 마지막 상태를 잡아 둔다
+        BattleResult battleResult = p2pController == null ? null
+                : BattleResult.fromP2P(
+                        GameStatus.capture(actionController, gameStateManager, scoreManager),
+                        p2pController.getRemoteStatus(),
+                        modeLabel(),
+                        elapsedMs);
+        finishBattle(frame, battleResult);
+    }
+
+    private void finishBattle(ActionController.ViewSnapshot frame, BattleResult battleResult) {
         gameOverHandled = true;
+        resultShown = true;
         stopGame();
         dispose();
 
         // P2P 게임 오버 콜백 호출 (session 정리 등)
         if (onGameOverCallback != null) {
             onGameOverCallback.run();
+        }
+
+        // 대전: 승패 결과 화면 (혼자 하는 게임의 기록 등록 화면 대신)
+        if (battleResult != null) {
+            new BattleResultScreen(battleResult).setVisible(true);
+            return;
         }
 
         GameOverScreen gameOverScreen = new GameOverScreen(
@@ -282,7 +392,10 @@ private JLabel scoreLabel;
         levelLabel.setText(String.valueOf(level));
         linesLabel.setText(String.valueOf(gameStateManager.getTotalLinesCleared()));
 
-        timeLabel.setText(GameHud.formatTime(elapsedMs));
+        // 시간 제한 대전은 남은 시간을 거꾸로 센다
+        timeLabel.setText(GameHud.formatTime(timeLimitSeconds > 0
+                ? Math.max(0L, timeLimitSeconds * 1000L - elapsedMs)
+                : elapsedMs));
 
         // getLevelSettings(): {감소량, 최소속도, 레벨업 블록 수, 레벨업 줄 수, 현재속도}
         int[] lv = gameStateManager.getLevelSettings();
@@ -343,7 +456,8 @@ private JLabel scoreLabel;
 
         RoundedPanel timeCard = card();
         timeLabel = text("00:00", Theme.display(13), Theme.TEXT);
-        timeCard.add(row(text("시간", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), timeLabel));
+        timeCaptionLabel = text("시간", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED);
+        timeCard.add(row(timeCaptionLabel, timeLabel));
         timeCard.add(Box.createVerticalStrut(8));
         timeCard.add(text("다음 레벨까지", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
         timeCard.add(Box.createVerticalStrut(2));
@@ -357,7 +471,7 @@ private JLabel scoreLabel;
 
         col.add(Box.createVerticalGlue());
 
-        RoundedPanel comboCard = new RoundedPanel(Theme.CARD, Theme.PRIMARY, Theme.RADIUS);
+        RoundedPanel comboCard = new RoundedPanel(Theme.CARD, Theme.OUTLINE, Theme.RADIUS);
         comboCard.setLayout(new BoxLayout(comboCard, BoxLayout.Y_AXIS));
         comboCard.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
         comboCard.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -379,8 +493,8 @@ private JLabel scoreLabel;
         addBlock(col, previewCard("NEXT", blockPreviewPanel));
 
         RoundedPanel infoCard = card();
-        infoCard.add(row(text("모드", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED),
-                text(mode == GameMode.ITEM ? "아이템" : "일반", Theme.body(13, Font.BOLD), Theme.TEXT)));
+        modeValueLabel = text(mode == GameMode.ITEM ? "아이템" : "일반", Theme.body(13, Font.BOLD), Theme.TEXT);
+        infoCard.add(row(text("모드", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), modeValueLabel));
         infoCard.add(Box.createVerticalStrut(6));
         infoCard.add(row(text("난이도", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED),
                 text(GameHud.difficultyLabel(difficulty), Theme.body(13, Font.BOLD), Theme.TEXT)));
@@ -409,8 +523,12 @@ private JLabel scoreLabel;
         RoundedPanel card = card();
         card.add(caption(title));
         card.add(Box.createVerticalStrut(10));
+        // 보드처럼 검은 상자 + 테두리 안에 미리보기
         JPanel previewWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        previewWrap.setOpaque(false);
+        previewWrap.setBackground(Theme.BOARD_BG);
+        previewWrap.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.OUTLINE, 1),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)));
         previewWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
         previewWrap.add(preview);
         fixHeight(previewWrap);
@@ -528,9 +646,9 @@ private JLabel scoreLabel;
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(Theme.TRACK);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+            g2.fillRect(0, 0, getWidth(), getHeight());
             g2.setColor(Theme.ACCENT);
-            g2.fillRoundRect(0, 0, (int) (getWidth() * ratio), getHeight(), 6, 6);
+            g2.fillRect(0, 0, (int) (getWidth() * ratio), getHeight());
             g2.dispose();
         }
     }
@@ -573,13 +691,113 @@ private JLabel scoreLabel;
     }
 
     // 상대 플레이어의 게임 상태 업데이트
-    // 향후 UI 확장 시 상대 보드, 점수 등을 표시할 수 있음 (현재는 화면에 표시하지 않음)
+    // 상대 보드와 점수·레벨·줄 수를 오른쪽 '상대' 열에 표시 (EDT에서 호출)
     public void updateRemoteStatus(GameStatus status) {
+        if (status == null || remoteBoardPanel == null) {
+            return;
+        }
+        remoteBoardPanel.setStatus(status);
+        opponentScoreLabel.setText(String.format("%,d", status.getScore()));
+        opponentLevelLabel.setText(String.valueOf(status.getLevel()));
+        opponentLinesLabel.setText(String.valueOf(status.getLines()));
     }
 
-    // P2P 게임 컨트롤러 설정
+    // P2P 게임 컨트롤러 설정. 처음 연결되면 상대 열을 붙이고 창 크기를 다시 맞춘다.
     public void setP2PController(P2PGameController controller) {
         this.p2pController = controller;
+        if (controller != null && remoteBoardPanel == null) {
+            installOpponentColumn();
+            pack();
+            setLocationRelativeTo(null);
+        }
+    }
+
+    // 오른쪽 패널 옆에 '상대' 열 추가: 상대 보드(작게) + 점수·레벨·줄 수
+    private void installOpponentColumn() {
+        timeLimitSeconds = p2pController.getTimeLimitSeconds();
+        if (timeLimitSeconds > 0) {
+            timeCaptionLabel.setText("남은 시간");
+            modeValueLabel.setText("시간 제한 " + GameHud.formatTime(timeLimitSeconds * 1000L));
+        }
+        installAttackPreview();
+
+        remoteBoardPanel = new RemoteBoardPanel();
+        opponentScoreLabel = text("0", Theme.display(22), Theme.TEXT);
+        opponentLevelLabel = text("1", Theme.body(13, Font.BOLD), Theme.TEXT);
+        opponentLinesLabel = text("0", Theme.body(13, Font.BOLD), Theme.TEXT);
+
+        JPanel col = column();
+
+        RoundedPanel boardCard = card();
+        boardCard.add(caption("상대"));
+        boardCard.add(Box.createVerticalStrut(10));
+        JPanel boardWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        boardWrap.setBackground(Theme.BOARD_BG);
+        boardWrap.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.OUTLINE, 1),
+                BorderFactory.createEmptyBorder(4, 4, 4, 4)));
+        boardWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        boardWrap.add(remoteBoardPanel);
+        fixHeight(boardWrap);
+        boardCard.add(boardWrap);
+        addBlock(col, boardCard);
+
+        RoundedPanel scoreCard = card();
+        scoreCard.add(caption("상대 점수"));
+        scoreCard.add(Box.createVerticalStrut(4));
+        scoreCard.add(opponentScoreLabel);
+        scoreCard.add(Box.createVerticalStrut(8));
+        scoreCard.add(row(text("레벨", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), opponentLevelLabel));
+        scoreCard.add(Box.createVerticalStrut(6));
+        scoreCard.add(row(text("줄", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), opponentLinesLabel));
+        addBlock(col, scoreCard);
+        col.add(Box.createVerticalGlue());
+
+        // 기존 오른쪽 패널과 상대 열을 나란히 둔다
+        JPanel east = new JPanel();
+        east.setOpaque(false);
+        east.setLayout(new BoxLayout(east, BoxLayout.X_AXIS));
+        getContentPane().remove(rightPanel);
+        east.add(rightPanel);
+        east.add(Box.createHorizontalStrut(24));
+        east.add(col);
+        getContentPane().add(east, BorderLayout.EAST);
+        getContentPane().revalidate();
+    }
+
+    // NEXT 카드 바로 아래에 공격 대기 카드를 넣는다
+    private void installAttackPreview() {
+        attackPreviewPanel = new AttackPreviewPanel();
+        attackCountLabel = text("0줄", Theme.body(12, Font.BOLD), Theme.TEXT_MUTED);
+
+        RoundedPanel card = card();
+        card.add(row(caption("공격 대기"), attackCountLabel));
+        card.add(Box.createVerticalStrut(8));
+        JPanel wrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        wrap.setBackground(Theme.BOARD_BG);
+        wrap.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.OUTLINE, 1),
+                BorderFactory.createEmptyBorder(4, 4, 4, 4)));
+        wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        wrap.add(attackPreviewPanel);
+        fixHeight(wrap);
+        card.add(wrap);
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fixHeight(card);
+
+        // rightPanel: [NEXT, 간격, 모드 카드, ...] 에서 NEXT와 간격 뒤에 끼운다
+        rightPanel.add(card, 2);
+        rightPanel.add(Box.createVerticalStrut(14), 3);
+    }
+
+    private void updateAttackPreview(ActionController.ViewSnapshot frame) {
+        if (attackPreviewPanel == null) {
+            return;
+        }
+        attackPreviewPanel.setRows(frame.pendingAttackRows());
+        int count = attackPreviewPanel.getRowCount();
+        attackCountLabel.setText(count + "줄");
+        attackCountLabel.setForeground(count > 0 ? CONNECTION_LOST_COLOR : Theme.TEXT_MUTED);
     }
 
     // 게임 상태 관리자 접근

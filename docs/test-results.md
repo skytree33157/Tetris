@@ -166,12 +166,10 @@ ActionControllerTest에는 10줄 경계 뒤 새 NEXT 공급·일반 모드 제�
 | 확인할 내용 | 테스트 메서드 |
 |---|---|
 | 색상 모드별 7종 블록의 색·패턴 구분 | [BlockStyleTest.sevenBlocksHaveDistinctColorsAndPatternsInEveryMode()](../src/test/java/blocks/style/BlockStyleTest.java#L11) |
-| TFSE 테마 7종 블록의 시안 색상 사용 | [BlockStyleTest.tfseModeUsesDesignPalette()](../src/test/java/blocks/style/BlockStyleTest.java#L29) |
 | 색상 모드별 특수 아이템 전용 스타일 유지 | [BlockStyleTest.specialItemsKeepDedicatedStylesAcrossModes()](../src/test/java/blocks/style/BlockStyleTest.java#L40) |
 | 색상 모드·셀 크기별 일반 칸의 기존 렌더링 유지 | [BlockRendererTest.ordinaryCellsKeepLegacyRenderingInEveryModeAndSize()](../src/test/java/ui/BlockRendererTest.java#L48) |
 | 표시 칸의 문자와 나머지 칸의 원본 배경 유지 | [BlockRendererTest.attachedMarkersChangeOnlyMarkedCellAndKeepUnmarkedBackground()](../src/test/java/ui/BlockRendererTest.java#L60) |
 | 낙하 블록·보드 저장 칸의 외형 일치 | [BlockRendererTest.objectAndStoredCellMatchAndPreserveLegacyBorder()](../src/test/java/ui/BlockRendererTest.java#L73) |
-| TFSE 테마 칸의 베벨 표시·패턴과 검정 테두리 없음 | [BlockRendererTest.tfseCellsUseBevelInsteadOfPatternAndBlackBorder()](../src/test/java/ui/BlockRendererTest.java#L92) |
 | 잘못된 인자·빈칸·범위 밖 칸은 그리지 않음 | [BlockRendererTest.invalidArgumentsEmptyAndOutOfBoundsCellsDrawNothing()](../src/test/java/ui/BlockRendererTest.java#L110) |
 | 보드 좌표에 맞춰 블록 표시·보드 위쪽 칸 제외 | [BlockRendererTest.wholeBlockUsesBoardCoordinatesAndSkipsCellsAboveBoard()](../src/test/java/ui/BlockRendererTest.java#L136) |
 | 렌더링 후 호출자의 Graphics 설정 유지 | [BlockRendererTest.renderingPreservesCallerGraphicsState()](../src/test/java/ui/BlockRendererTest.java#L147) |

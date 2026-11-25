@@ -157,7 +157,7 @@ public class AppSettings {
 
         try {
             screenSize = ScreenSize.valueOf(props.getProperty("screenSize", screenSize.name()));
-            colorMode = ColorMode.valueOf(props.getProperty("colorMode", colorMode.name()));
+            colorMode = parseColorMode(props.getProperty("colorMode"), colorMode);
             difficulty = Difficulty.valueOf(props.getProperty("difficulty", difficulty.name()));
             soundEnabled = Boolean.parseBoolean(
                     props.getProperty("sound.enabled", String.valueOf(soundEnabled)));
@@ -181,6 +181,16 @@ public class AppSettings {
             resetToDefaults(); // 저장된 값이 깨져 있으면 기본값으로 복구
         }
     }
+
+    // 삭제된 색상 모드(예: 예전 TFSE)가 저장돼 있어도 다른 설정은 그대로 읽도록 따로 처리
+    static ColorMode parseColorMode(String value, ColorMode fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return ColorMode.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return ColorMode.NORMAL;
+        }
+    }
 }
-
-

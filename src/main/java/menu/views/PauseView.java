@@ -34,7 +34,7 @@ public class PauseView extends JPanel {
         "시작 화면",
         "게임 종료"
     };
-    private static final Color DIM = new Color(5, 10, 25, 200);
+    private static final Color DIM = new Color(0, 0, 0, 170);
 
     private final Runnable[] actions;
     private final ThemedButton[] buttons = new ThemedButton[MENU_ITEMS.length];
@@ -48,7 +48,7 @@ public class PauseView extends JPanel {
         setLayout(new GridBagLayout());
         setFocusable(true);
 
-        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.OUTLINE, 16);
+        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.OUTLINE, Theme.RADIUS);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createEmptyBorder(28, 32, 28, 32));
 

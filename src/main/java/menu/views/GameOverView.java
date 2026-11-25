@@ -70,7 +70,7 @@ public class GameOverView extends JPanel {
     }
 
     private JPanel createResultCard(Result result, Runnable onRegister) {
-        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.OUTLINE, 16);
+        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.OUTLINE, Theme.RADIUS);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
@@ -78,7 +78,7 @@ public class GameOverView extends JPanel {
         card.add(centered(label("GAME OVER", Theme.display(34), Theme.TEXT)));
         card.add(Box.createVerticalStrut(8));
         if (result.newBest()) {
-            JLabel badge = label("최고 기록 갱신!", Theme.body(13, Font.BOLD), Theme.BG);
+            JLabel badge = label("최고 기록 갱신!", Theme.body(13, Font.BOLD), Theme.ON_ACCENT);
             badge.setOpaque(true);
             badge.setBackground(Theme.ACCENT);
             badge.setBorder(BorderFactory.createEmptyBorder(3, 12, 3, 12));

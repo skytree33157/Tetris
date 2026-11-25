@@ -11,7 +11,7 @@ public class RoundedPanel extends JPanel {
     private final Color border;
     private final int radius;
 
-    public RoundedPanel() { this(Theme.CARD, Theme.CARD_BORDER, 12); }
+    public RoundedPanel() { this(Theme.CARD, Theme.CARD_BORDER, Theme.RADIUS); }
 
     public RoundedPanel(Color fill, Color border, int radius) {
         this.fill = fill;

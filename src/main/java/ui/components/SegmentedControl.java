@@ -32,7 +32,7 @@ public class SegmentedControl extends JPanel {
     public void setSelectedIndex(int index) {
         for (int i = 0; i < segments.length; i++) {
             segments[i].setSelected(i == index);
-            segments[i].setForeground(i == index ? Theme.TEXT : Theme.TEXT_MUTED);
+            segments[i].setForeground(i == index ? Theme.ON_ACCENT : Theme.TEXT_MUTED);
         }
         repaint();
     }
@@ -55,7 +55,7 @@ public class SegmentedControl extends JPanel {
     protected void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        int r = Theme.RADIUS * 2;
+        int r = 0;   // 직사각형
         g2.setColor(Theme.BG);
         g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, r, r);
         if (highlighted) {
@@ -87,8 +87,8 @@ public class SegmentedControl extends JPanel {
             if (isSelected()) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Theme.PRIMARY);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.setColor(isEnabled() ? Theme.ACCENT : Theme.OUTLINE);
+                g2.fillRect(0, 0, getWidth(), getHeight());
                 g2.dispose();
             }
             super.paintComponent(g);
