@@ -56,11 +56,21 @@ public final class RoomRules {
 
     // 생존 중이며 sender가 아닌 슬롯 중 무작위 한 명을 고른다. 대상이 없으면 -1.
     public int pickTarget(int sender, Random random) {
+        return pickTargetExcluding(sender, -1, random);
+    }
+
+    // pickTarget과 같지만, 가능하면 previous 슬롯은 제외한다(다른 상대가 없을 때만 previous를 고를 수 있다).
+    public int pickNextTarget(int sender, int previous, Random random) {
+        int next = pickTargetExcluding(sender, previous, random);
+        return next >= 0 ? next : pickTarget(sender, random);
+    }
+
+    private int pickTargetExcluding(int sender, int excluded, Random random) {
         Objects.requireNonNull(random, "random");
         checkSlot(sender);
         List<Integer> candidates = new ArrayList<>();
         for (int slot = 0; slot < size; slot++) {
-            if (slot != sender && alive[slot]) {
+            if (slot != sender && slot != excluded && alive[slot]) {
                 candidates.add(slot);
             }
         }
@@ -68,6 +78,29 @@ public final class RoomRules {
             return -1;
         }
         return candidates.get(random.nextInt(candidates.size()));
+    }
+
+    // 생존 슬롯의 공격 대상을 유지하고, 대상이 탈락했거나 없으면 새로 고른다. 탈락 슬롯은 -1이 된다. 값이 바뀐 슬롯 목록을 반환한다.
+    public List<Integer> refreshTargets(int[] targets, Random random) {
+        Objects.requireNonNull(targets, "targets");
+        Objects.requireNonNull(random, "random");
+        if (targets.length != size) {
+            throw new IllegalArgumentException("targets length must equal room size");
+        }
+        List<Integer> changed = new ArrayList<>();
+        for (int slot = 0; slot < size; slot++) {
+            int current = targets[slot];
+            boolean valid = alive[slot] && current >= 0 && current < size && current != slot && alive[current];
+            if (valid) {
+                continue;
+            }
+            int next = alive[slot] ? pickTarget(slot, random) : -1;
+            if (next != current) {
+                targets[slot] = next;
+                changed.add(slot);
+            }
+        }
+        return changed;
     }
 
     // 마지막 생존자가 1등, 그 뒤로 나중에 탈락한 순서대로 순위를 매긴다. 생존자가 둘 이상이면 아직 종료 전이다.

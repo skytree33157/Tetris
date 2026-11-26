@@ -26,6 +26,7 @@ public final class RoomProtocol {
     static final int C_ATTACK = 6;
     static final int C_OUT = 7;
     static final int C_READY = 8;
+    static final int C_CHANGE_TARGET = 9;
 
     // 서버 -> 클라이언트
     static final int S_ROSTER = 10;
@@ -35,6 +36,7 @@ public final class RoomProtocol {
     static final int S_PLAYER_OUT = 14;
     static final int S_ROOM_END = 15;
     static final int S_ERROR = 16;
+    static final int S_TARGET = 17;
     static final int S_KEEP_ALIVE = 5;
     static final int S_CLOSE = 4;
 

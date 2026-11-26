@@ -11,6 +11,8 @@ import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -18,10 +20,12 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -199,6 +203,7 @@ private JLabel scoreLabel;
         setContentPane(root);
         if (roomController != null) {
             installOpponentColumn();
+            installTargetChangeKey();
         }
         updateHud();
 
@@ -623,6 +628,20 @@ private JLabel scoreLabel;
         opponentScoreLabel.setText(String.format("%,d", status.getScore()));
         opponentLevelLabel.setText(String.valueOf(status.getLevel()));
         opponentLinesLabel.setText(String.valueOf(status.getLines()));
+    }
+
+    // Tab은 포커스 이동 키이므로 기본 동작을 끄고, 방 모드에서만 공격 상대 변경 키로 쓴다.
+    private void installTargetChangeKey() {
+        setFocusTraversalKeysEnabled(false);
+        JComponent root = getRootPane();
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "changeAttackTarget");
+        root.getActionMap().put("changeAttackTarget", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                roomController.requestTargetChange();
+            }
+        });
     }
 
     // 오른쪽 패널 옆에 '상대' 열 추가: 상대 보드(작게) + 점수·레벨·줄 수

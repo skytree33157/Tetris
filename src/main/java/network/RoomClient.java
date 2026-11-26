@@ -28,6 +28,9 @@ public final class RoomClient implements AutoCloseable {
 
         void onPlayerOut(int slot);
 
+        // 내가 공격하는 상대 슬롯이 바뀌었을 때 호출된다.
+        void onAttackTarget(int slot);
+
         // 순위는 1등부터 나열된 슬롯 목록이다.
         void onRoomEnd(List<Integer> rankingSlots);
 
@@ -101,6 +104,11 @@ public final class RoomClient implements AutoCloseable {
     // 로컬 플레이어가 게임 시작 준비를 마쳤음을 서버에 알린다.
     public void sendReady() {
         send(() -> output.writeByte(RoomProtocol.C_READY));
+    }
+
+    // 로컬 플레이어가 공격 상대 변경을 요청한다. 새 상대는 서버가 정해 S_TARGET으로 알린다.
+    public void sendChangeTarget() {
+        send(() -> output.writeByte(RoomProtocol.C_CHANGE_TARGET));
     }
 
     // 로컬 플레이어가 탈락했음을 서버에 알린다.
@@ -196,6 +204,7 @@ public final class RoomClient implements AutoCloseable {
             }
             case RoomProtocol.S_ATTACK -> listener.onAttack(RoomProtocol.readRows(input));
             case RoomProtocol.S_PLAYER_OUT -> listener.onPlayerOut(input.readInt());
+            case RoomProtocol.S_TARGET -> listener.onAttackTarget(input.readInt());
             case RoomProtocol.S_ROOM_END -> {
                 int count = input.readInt();
                 if (count < 0 || count > RoomProtocol.MAX_PARTICIPANTS) {

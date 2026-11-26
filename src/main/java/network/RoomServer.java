@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -56,6 +57,8 @@ public final class RoomServer implements AutoCloseable {
     private GameMode hostMode;
     private int hostTimeLimitSeconds;
     private ScheduledFuture<?> timeLimitFuture;
+    // 슬롯별 공격 대상(-1이면 없음). 대상이 탈락하기 전까지 바뀌지 않는다.
+    private int[] attackTargets = new int[0];
 
     private RoomServer(ServerSocket serverSocket, Random random) {
         this.serverSocket = serverSocket;
@@ -104,6 +107,9 @@ public final class RoomServer implements AutoCloseable {
             output.writeByte(mode.ordinal());
             output.writeInt(timeLimitSeconds);
         });
+        attackTargets = new int[members.size()];
+        Arrays.fill(attackTargets, -1);
+        assignAttackTargets();
         if (timeLimitSeconds > 0) {
             timeLimitFuture = scheduler.schedule(this::onTimeLimit, timeLimitSeconds, TimeUnit.SECONDS);
         }
@@ -182,6 +188,7 @@ public final class RoomServer implements AutoCloseable {
             case RoomProtocol.C_ATTACK -> onAttack(member, RoomProtocol.readRows(input));
             case RoomProtocol.C_OUT -> onOut(member);
             case RoomProtocol.C_READY -> onReady(member);
+            case RoomProtocol.C_CHANGE_TARGET -> onChangeTarget(member);
             case RoomProtocol.C_KEEP_ALIVE -> {
             }
             default -> throw new IOException("Unknown room message: " + type);
@@ -228,13 +235,40 @@ public final class RoomServer implements AutoCloseable {
         if (!playing || ended || !rules.isAlive(sender.slot)) {
             return;
         }
-        int target = rules.pickTarget(sender.slot, random);
-        if (target < 0) {
+        int target = attackTargets[sender.slot];
+        if (target < 0 || !rules.isAlive(target)) {
             return;
         }
         sendTo(members.get(target), output -> {
             output.writeByte(RoomProtocol.S_ATTACK);
             RoomProtocol.writeRows(output, rows);
+        });
+        // 공격 후에는 다른 무작위 상대로 대상을 바꾸고 발신자에게 알린다.
+        attackTargets[sender.slot] = rules.pickNextTarget(sender.slot, target, random);
+        sendTargetTo(sender.slot);
+    }
+
+    // 참가자가 Tab으로 요청하면 직전 대상을 제외한 다른 무작위 상대로 바꾼다.
+    private synchronized void onChangeTarget(Member sender) {
+        if (!playing || ended || !rules.isAlive(sender.slot)) {
+            return;
+        }
+        attackTargets[sender.slot] = rules.pickNextTarget(sender.slot, attackTargets[sender.slot], random);
+        sendTargetTo(sender.slot);
+    }
+
+    // 바뀐 공격 대상만 해당 참가자에게 알린다.
+    private void assignAttackTargets() {
+        for (int slot : rules.refreshTargets(attackTargets, random)) {
+            sendTargetTo(slot);
+        }
+    }
+
+    private void sendTargetTo(int slot) {
+        int target = attackTargets[slot];
+        sendTo(members.get(slot), output -> {
+            output.writeByte(RoomProtocol.S_TARGET);
+            output.writeInt(target);
         });
     }
 
@@ -302,6 +336,7 @@ public final class RoomServer implements AutoCloseable {
             output.writeByte(RoomProtocol.S_PLAYER_OUT);
             output.writeInt(slot);
         });
+        assignAttackTargets();
         if (rules.aliveCount() <= 1) {
             endGame(rules.rankingByElimination());
         }

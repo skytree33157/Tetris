@@ -11,6 +11,7 @@ import game.ActionController;
 import game.BattleController;
 import game.GameMode;
 import menu.screens.BattleMenuScreen;
+import menu.screens.BattleResultScreen;
 import menu.screens.GameScreen;
 import network.GameStatus;
 import network.RoomClient;
@@ -41,6 +42,11 @@ public final class RoomGameController implements RoomClient.Listener {
     private List<String> names = new ArrayList<>();
     private boolean[] alive = new boolean[0];
     private GameStatus[] statuses = new GameStatus[0];
+    // 서버가 지정한 공격 대상 슬롯(-1이면 없음)
+    private int targetSlot = -1;
+    private GameMode roundMode = GameMode.NORMAL;
+    private int roundTimeLimitSeconds;
+    private long roundStartedAt;
     private boolean roundActive;
     private boolean outReported;
     private boolean finished;
@@ -100,6 +106,14 @@ public final class RoomGameController implements RoomClient.Listener {
         return roundActive;
     }
 
+    // Tab 키로 공격 상대 변경을 요청한다. 실제 상대 선택과 화면 갱신은 서버 응답(onAttackTarget)에서 처리한다.
+    public void requestTargetChange() {
+        RoomClient current = client;
+        if (roundActive && current != null) {
+            current.sendChangeTarget();
+        }
+    }
+
     // 로비에서 준비 버튼을 누르면 서버에 준비 완료를 알린다
     public void sendReady() {
         RoomClient current = client;
@@ -132,6 +146,10 @@ public final class RoomGameController implements RoomClient.Listener {
         alive = new boolean[names.size()];
         Arrays.fill(alive, true);
         statuses = new GameStatus[names.size()];
+        targetSlot = -1;
+        roundMode = mode;
+        roundTimeLimitSeconds = timeLimitSeconds;
+        roundStartedAt = System.currentTimeMillis();
         BattleController localBattle = new BattleController(false);
         battle = localBattle;
         screen = new GameScreen(mode, this, timeLimitSeconds);
@@ -152,24 +170,29 @@ public final class RoomGameController implements RoomClient.Listener {
                 statuses[slot] = status;
             }
             if (screen != null) {
-                screen.updateRemoteStatus(bestOpponentStatus());
+                screen.updateRemoteStatus(targetStatus());
                 screen.setPlayerLines(buildPlayerLines());
             }
         });
     }
 
-    // 20명 방이라 한 명만 보여줄 수 있으므로, 살아 있는 상대 중 점수가 가장 높은 보드를 표시한다.
-    private GameStatus bestOpponentStatus() {
-        GameStatus best = null;
-        for (int i = 0; i < statuses.length; i++) {
-            if (i == mySlot || statuses[i] == null || i >= alive.length || !alive[i]) {
-                continue;
+    @Override
+    public void onAttackTarget(int slot) {
+        SwingUtilities.invokeLater(() -> {
+            targetSlot = slot;
+            if (screen != null) {
+                screen.updateRemoteStatus(targetStatus());
+                screen.setPlayerLines(buildPlayerLines());
             }
-            if (best == null || statuses[i].getScore() > best.getScore()) {
-                best = statuses[i];
-            }
+        });
+    }
+
+    // 상대 보드에는 서버가 지정한 공격 대상의 보드를 표시한다. 대상이 없거나 아직 상태가 없으면 null이다.
+    private GameStatus targetStatus() {
+        if (targetSlot < 0 || targetSlot >= statuses.length) {
+            return null;
         }
-        return best;
+        return statuses[targetSlot];
     }
 
     @Override
@@ -199,9 +222,14 @@ public final class RoomGameController implements RoomClient.Listener {
         SwingUtilities.invokeLater(() -> {
             finished = true;
             roundActive = false;
+            BattleResult result = buildRoomResult(rankingSlots);
             closeGameScreen();
-            showRanking(rankingSlots);
-            returnToMenu();
+            closeClient();
+            if (result != null) {
+                new BattleResultScreen(result).setVisible(true);
+            } else {
+                new BattleMenuScreen().setVisible(true);
+            }
         });
     }
 
@@ -243,18 +271,59 @@ public final class RoomGameController implements RoomClient.Listener {
         return lines;
     }
 
-    private void showRanking(List<Integer> rankingSlots) {
-        StringBuilder text = new StringBuilder("순위\n");
+    // 온라인 결과: 왼쪽 = 1등, 오른쪽 = 로컬 플레이어(1등이면 2등). 순위표는 전체 순위를 쓴다.
+    private BattleResult buildRoomResult(List<Integer> rankingSlots) {
+        if (rankingSlots.isEmpty() || mySlot < 0) {
+            return null;
+        }
+        // 로컬 상태는 서버 방송을 기다리지 않고 지금 화면에서 직접 읽는다
+        GameStatus localStatus = captureLocalStatus();
+        List<BattleResult.Standing> standings = new ArrayList<>();
         for (int i = 0; i < rankingSlots.size(); i++) {
             int slot = rankingSlots.get(i);
-            String name = slot >= 0 && slot < names.size() ? names.get(slot) : "?";
-            text.append(i + 1).append("위: ").append(name);
-            if (slot == mySlot) {
-                text.append(LOCAL_MARK);
-            }
-            text.append('\n');
+            GameStatus status = slot == mySlot ? localStatus : statusOf(slot);
+            int score = status == null ? 0 : status.getScore();
+            standings.add(new BattleResult.Standing(i + 1, nameOf(slot), score, slot == mySlot));
         }
-        JOptionPane.showMessageDialog(null, text.toString(), "대전 결과", JOptionPane.INFORMATION_MESSAGE);
+        int firstSlot = rankingSlots.get(0);
+        boolean localIsFirst = firstSlot == mySlot;
+        int otherSlot = localIsFirst
+                ? (rankingSlots.size() > 1 ? rankingSlots.get(1) : -1)
+                : mySlot;
+        BattleResult.Side first = BattleResult.side(nameOf(firstSlot),
+                firstSlot == mySlot ? localStatus : statusOf(firstSlot));
+        BattleResult.Side other = BattleResult.side(
+                otherSlot >= 0 ? nameOf(otherSlot) : "-",
+                otherSlot == mySlot ? localStatus : statusOf(otherSlot));
+        return BattleResult.fromRoom(first, other, standings,
+                roomModeLabel(), System.currentTimeMillis() - roundStartedAt);
+    }
+
+    private String roomModeLabel() {
+        if (roundTimeLimitSeconds > 0) {
+            return "시간 제한 모드";
+        }
+        return roundMode == GameMode.ITEM ? "아이템 모드" : "일반 모드";
+    }
+
+    private GameStatus captureLocalStatus() {
+        BattleController currentBattle = battle;
+        GameScreen currentScreen = screen;
+        if (currentBattle == null || currentScreen == null) {
+            return statusOf(mySlot);
+        }
+        synchronized (currentBattle) {
+            return GameStatus.capture(currentScreen.getActionController(),
+                    currentScreen.getGameStateManager(), currentScreen.getScoreManager());
+        }
+    }
+
+    private GameStatus statusOf(int slot) {
+        return slot >= 0 && slot < statuses.length ? statuses[slot] : null;
+    }
+
+    private String nameOf(int slot) {
+        return slot >= 0 && slot < names.size() ? names.get(slot) : "?";
     }
 
     private void showMessageAndReturn(String message) {
@@ -280,10 +349,14 @@ public final class RoomGameController implements RoomClient.Listener {
 
     // 모든 경로에서 연결을 정리하고 대전 메뉴로 돌아간다.
     private void returnToMenu() {
+        closeClient();
+        new BattleMenuScreen().setVisible(true);
+    }
+
+    private void closeClient() {
         RoomClient current = client;
         if (current != null) {
             current.close();
         }
-        new BattleMenuScreen().setVisible(true);
     }
 }

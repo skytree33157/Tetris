@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.util.List;
 import java.util.function.IntConsumer;
 
 import javax.swing.BorderFactory;
@@ -35,14 +36,25 @@ public class BattleResultView extends JPanel {
         super(new BorderLayout(0, 22));
         setBackground(Theme.BG);
         setBorder(BorderFactory.createEmptyBorder(28, 48, 28, 48));
-        setPreferredSize(new Dimension(960, 720));
+        boolean ranked = !result.standings().isEmpty();
+        setPreferredSize(ranked ? new Dimension(1160, 720) : new Dimension(960, 720));
 
         add(createHeader(result), BorderLayout.NORTH);
 
-        JPanel cards = new JPanel(new GridLayout(1, 2, 24, 0));
-        cards.setOpaque(false);
-        cards.add(playerCard(result.left(), result.leftWon()));
-        cards.add(playerCard(result.right(), result.rightWon()));
+        JPanel cards;
+        if (ranked) {
+            // 왼쪽 1등 카드 · 오른쪽(로컬 플레이어) 카드 · 순위표
+            cards = new JPanel(new GridLayout(1, 3, 24, 0));
+            cards.setOpaque(false);
+            cards.add(playerCard(result.left(), result.leftWon()));
+            cards.add(playerCard(result.right(), result.rightWon()));
+            cards.add(standingsPanel(result.standings()));
+        } else {
+            cards = new JPanel(new GridLayout(1, 2, 24, 0));
+            cards.setOpaque(false);
+            cards.add(playerCard(result.left(), result.leftWon()));
+            cards.add(playerCard(result.right(), result.rightWon()));
+        }
         add(cards, BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
@@ -82,7 +94,7 @@ public class BattleResultView extends JPanel {
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
 
         Color headlineColor = result.outcome() == BattleResult.Outcome.DRAW ? Theme.TEXT
-                : (result.personal() && !result.leftWon()) ? Theme.TEXT_MUTED : Theme.ACCENT;
+                : (result.personal() && !result.headlineWin()) ? Theme.TEXT_MUTED : Theme.ACCENT;
         header.add(centered(label(result.headline(), Theme.body(44, Font.BOLD), headlineColor)));
         header.add(Box.createVerticalStrut(6));
         header.add(centered(label(result.reason(), Theme.body(15, Font.PLAIN), Theme.TEXT_SOFT)));
@@ -141,6 +153,38 @@ public class BattleResultView extends JPanel {
         stats.add(statRow("줄", String.valueOf(side.lines())));
         stats.add(Box.createVerticalGlue());
         card.add(stats, BorderLayout.CENTER);
+        return card;
+    }
+
+    // 전체 순위표: 순위, 이름(내 줄 강조), 점수
+    private static JComponent standingsPanel(List<BattleResult.Standing> standings) {
+        RoundedPanel card = new RoundedPanel(Theme.CARD, Theme.CARD_BORDER, Theme.RADIUS);
+        card.setLayout(new BorderLayout());
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Theme.CARD_BORDER, 1),
+                BorderFactory.createEmptyBorder(18, 20, 18, 20)));
+
+        JPanel rows = new JPanel();
+        rows.setOpaque(false);
+        rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
+        rows.add(left(label("순위", Theme.body(20, Font.BOLD), Theme.TEXT)));
+        rows.add(Box.createVerticalStrut(14));
+        for (BattleResult.Standing standing : standings) {
+            Color color = standing.me() ? Theme.ACCENT : Theme.TEXT;
+            String name = standing.name() + (standing.me() ? " (나)" : "");
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setOpaque(false);
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            row.add(label(standing.rank() + "위", Theme.body(14, Font.BOLD), color), BorderLayout.WEST);
+            row.add(label(name, Theme.body(14, standing.me() ? Font.BOLD : Font.PLAIN), color), BorderLayout.CENTER);
+            row.add(label(String.format("%,d", standing.score()), Theme.body(14, Font.PLAIN), color),
+                    BorderLayout.EAST);
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+            rows.add(row);
+            rows.add(Box.createVerticalStrut(8));
+        }
+        rows.add(Box.createVerticalGlue());
+        card.add(rows, BorderLayout.NORTH);
         return card;
     }
 

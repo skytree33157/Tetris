@@ -53,4 +53,50 @@ class RoomRulesTest {
         rules.eliminate(3);
         assertEquals(List.of(1, 0, 2, 3), rules.rankingByScore(new int[] {500, 900, 500, 100}));
     }
+
+    @Test
+    void refreshTargetsKeepsValidTargetsAndReportsNothingChanged() {
+        RoomRules rules = new RoomRules(3);
+        int[] targets = {1, 0, 0};
+        assertEquals(List.of(), rules.refreshTargets(targets, new Random(1)));
+        assertEquals(1, targets[0]);
+        assertEquals(0, targets[1]);
+        assertEquals(0, targets[2]);
+    }
+
+    @Test
+    void refreshTargetsReassignsOnlyTargetsThatWereEliminated() {
+        RoomRules rules = new RoomRules(3);
+        int[] targets = {1, 0, 0};
+        rules.eliminate(1);
+        assertEquals(List.of(0, 1), rules.refreshTargets(targets, new Random(1)));
+        assertEquals(2, targets[0]);
+        assertEquals(-1, targets[1]);
+    }
+
+    @Test
+    void refreshTargetsClearsDeadSlotsAndLeavesLastSurvivorWithoutTarget() {
+        RoomRules rules = new RoomRules(2);
+        int[] targets = {1, 0};
+        rules.eliminate(1);
+        assertEquals(List.of(0, 1), rules.refreshTargets(targets, new Random(1)));
+        assertEquals(-1, targets[0]);
+        assertEquals(-1, targets[1]);
+    }
+
+    @Test
+    void pickNextTargetAvoidsPreviousTargetWhenAnotherOpponentExists() {
+        RoomRules rules = new RoomRules(4);
+        rules.eliminate(3);
+        for (long seed = 0; seed < 50; seed++) {
+            assertEquals(2, rules.pickNextTarget(0, 1, new Random(seed)));
+        }
+    }
+
+    @Test
+    void pickNextTargetFallsBackToPreviousWhenItIsTheOnlyOpponent() {
+        RoomRules rules = new RoomRules(3);
+        rules.eliminate(2);
+        assertEquals(1, rules.pickNextTarget(0, 1, new Random(1)));
+    }
 }
