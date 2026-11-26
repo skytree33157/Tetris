@@ -108,8 +108,8 @@ public class BattleMenuScreen extends JFrame {
         }
         switch (selectedIndex) {
             case LOCAL_INDEX -> open(new LocalBattleSetupScreen());
-            case HOST_INDEX -> open(new P2PHostScreen());
-            case JOIN_INDEX -> open(new P2PJoinScreen());
+            case HOST_INDEX -> open(new RoomHostScreen());
+            case JOIN_INDEX -> open(new RoomJoinScreen());
             case BACK_INDEX -> backToStart();
             default -> { }
         }

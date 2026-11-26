@@ -23,20 +23,29 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+
+import network.RoomMember;
 import ui.components.RoundedPanel;
 import ui.components.ThemedButton;
 import ui.components.ThemedButton.Kind;
 import ui.theme.Theme;
 
-// 온라인 참여하기 화면 레이아웃. 동작은 P2PJoinScreen이 담당
+// 온라인 참여하기 화면 레이아웃. 동작은 RoomJoinScreen이 담당
 public class P2PJoinView extends JPanel {
 
     private static final String CONNECT_TEXT = "접속";
-    private static final String START_TEXT = "게임 시작";
-    private static final String WAITING_TEXT = "대기 중";
+    private static final String READY_TEXT = "준비";
+    private static final String WAITING_TEXT = "준비 완료 · 방장 대기 중";
 
     private final JTextField addressField = new JTextField();
     private final JPanel recentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    private final JPanel rosterList = new JPanel();
     private final List<ThemedButton> recentButtons = new ArrayList<>();
     private final JLabel status = label(" ", Theme.body(14, Font.PLAIN), Theme.TEXT_SOFT);
     private final ThemedButton connectButton = new ThemedButton("접속", Kind.PRIMARY);
@@ -98,13 +107,21 @@ public class P2PJoinView extends JPanel {
         col.add(recentCard);
         col.add(Box.createVerticalStrut(16));
 
+        RoundedPanel rosterCard = card();
+        rosterCard.add(label("참가자", Theme.body(15, Font.BOLD), Theme.TEXT));
+        rosterCard.add(Box.createVerticalStrut(8));
+        rosterCard.add(LobbyParts.rosterScroll(rosterList));
+        col.add(fixHeight(rosterCard));
+        col.add(Box.createVerticalStrut(16));
+
         col.add(status);
         col.add(Box.createVerticalStrut(12));
         connectButton.addActionListener(e -> onConnect.run());
         backButton.addActionListener(e -> onBack.run());
         col.add(LobbyParts.buttonRow(connectButton, backButton));
         col.add(Box.createVerticalStrut(16));
-        col.add(label("Enter 접속/게임 시작   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+        col.add(label("Enter 접속/준비   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+
 
         for (Component c : col.getComponents()) {
             if (c instanceof JComponent jc) {
@@ -169,13 +186,18 @@ public class P2PJoinView extends JPanel {
         repaint();
     }
 
-    // 방에 접속한 뒤: waiting=false면 "게임 시작" 버튼, waiting=true면 게임 시작 요청 후 "대기 중"
-    public void setLobby(boolean waiting) {
+    // 방에 접속한 뒤: 준비 전에는 "준비" 버튼을, 준비 후에는 방장 대기 상태를 보여준다
+    public void setJoined(boolean ready) {
         addressField.setEnabled(false);
         setRecentEnabled(false);
-        connectButton.setText(waiting ? WAITING_TEXT : START_TEXT);
-        connectButton.setEnabled(!waiting);
+        connectButton.setText(ready ? WAITING_TEXT : READY_TEXT);
+        connectButton.setEnabled(!ready);
         repaint();
+    }
+
+    // 참가자 목록을 갱신한다. mySlot 위치에는 "(나)"를 붙인다.
+    public void setRoster(List<RoomMember> members, int mySlot) {
+        LobbyParts.fillRoster(rosterList, members, mySlot);
     }
 
     private void setRecentEnabled(boolean enabled) {
