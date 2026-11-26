@@ -5,12 +5,40 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import network.GameStatus;
 import org.junit.jupiter.api.Test;
 
 // FR-43: 대전 승패 판정과 결과 화면 문구
 class BattleResultTest {
     private static final int[][] BOARD = {{0, 1}, {1, 1}};
+
+    @Test // 순위 화면: 왼쪽은 항상 1등이고 WIN, 2등인 나는 패배 제목
+    void rankedResultKeepsFirstPlaceAsWinnerWhenILose() {
+        BattleResult.Side first = new BattleResult.Side("A", 900, 3, 8, false, BOARD);
+        BattleResult.Side me = new BattleResult.Side("나", 400, 2, 4, true, BOARD);
+        BattleResult result = BattleResult.fromRoom(first, me, List.of(
+                new BattleResult.Standing(1, "A", 900, false),
+                new BattleResult.Standing(2, "나", 400, true)), "일반 모드", 0);
+
+        assertTrue(result.leftWon());
+        assertFalse(result.headlineWin());
+        assertEquals("패배", result.headline());
+        assertEquals("총 2명 중 2위", result.reason());
+    }
+
+    @Test // 순위 화면: 내가 1등이면 승리 제목, 오른쪽 카드는 2등
+    void rankedResultShowsMeOnLeftWhenIWin() {
+        BattleResult.Side me = new BattleResult.Side("나", 900, 3, 8, false, BOARD);
+        BattleResult result = BattleResult.fromRoom(me, new BattleResult.Side("B", 400, 2, 4, true, BOARD),
+                List.of(new BattleResult.Standing(1, "나", 900, true),
+                        new BattleResult.Standing(2, "B", 400, false)), "일반 모드", 0);
+
+        assertEquals("나", result.left().name());
+        assertEquals("승리", result.headline());
+        assertEquals("B", result.right().name());
+    }
 
     @Test // 내 블록만 천장에 닿으면 패배
     void iLoseWhenOnlyIToppedOut() {
