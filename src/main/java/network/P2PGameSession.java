@@ -23,7 +23,8 @@ public final class P2PGameSession implements AutoCloseable {
     // handshake용 프로토콜 식별값
     // 버전 2("TFS2"): 상태 메시지에 상대 보드 추가
     // 버전 3("TFS3"): 핸드셰이크에 제한 시간, 공격·시간 종료 메시지 추가. 이전 버전과는 연결을 거부한다.
-    private static final int PROTOCOL_MAGIC = 0x54465333;
+    // 버전 4("TFS4"): 대기실 및 게임 중 채팅 메시지 추가
+    private static final int PROTOCOL_MAGIC = 0x54465334;
     // 제한 시간 상한 (초). 잘못된 값이 와도 비정상적으로 긴 경기가 되지 않게 한다.
     public static final int MAX_TIME_LIMIT_SECONDS = 3600;
     // 공격 메시지 한 번에 담을 수 있는 줄 수 상한 (보드 높이)
@@ -39,6 +40,10 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_KEEP_ALIVE = 5;
     private static final int MESSAGE_ATTACK = 6;
     private static final int MESSAGE_TIME_UP = 7;
+    private static final int MESSAGE_CHAT = 8;
+    // 채팅 문자열의 최대 길이. 요구사항에 정해진 값은 아니며 구현상 정한 제한
+    public static final int MAX_CHAT_LENGTH = 200;
+
     private static final int BOARD_WIDTH = 10;
 
 
@@ -66,6 +71,8 @@ public final class P2PGameSession implements AutoCloseable {
         default void onAttack(List<int[]> rows) {}
         // 시간 제한 대전이 끝났을 때 호출. 점수는 호스트가 확정한 값
         default void onTimeUp(int hostScore, int clientScore) {}
+        // 상대 채팅 수신 시 호출. 네트워크 수신 스레드에서 실행된다.
+        default void onRemoteChat(String message) {}
     }
 
     // 호스트 초대 클래스
@@ -160,6 +167,8 @@ public final class P2PGameSession implements AutoCloseable {
     private volatile Listener listener = new Listener() {};
     private boolean closed;
     private boolean localReady;
+    // 준비 해제와 게임 시작이 엇갈렸을 때 시작 메시지를 검증하는 데 사용
+    private boolean readySentForRound;
     private boolean remoteReady;
     private boolean roundActive;
     // 첫 라운드가 시작되면 모드를 바꿀 수 없다.
@@ -337,10 +346,50 @@ public final class P2PGameSession implements AutoCloseable {
                 throw new IllegalStateException("Host must choose a game mode before starting");
             }
             localReady = true;
+            readySentForRound = true;
             writeMessage(MESSAGE_READY, true, null);
             if (server && remoteReady) {
                 startRound();
             }
+        }
+    }
+
+    //게임 시작 전 준비 해제를 요청한다.
+    public boolean cancelReady() throws IOException {
+        synchronized (this) {
+            ensureConnected();
+
+            if (roundActive || !localReady) {
+                return false;
+            }
+
+            writeMessage(MESSAGE_READY, false, null);
+            localReady = false;
+
+            return true;
+        }
+    }
+
+    /**
+     * 연결된 상대에게 채팅을 전송한다. 대기실과 게임 중에 공통으로 사용한다.
+     */
+    public void sendChat(String message) throws IOException {
+        Objects.requireNonNull(message, "message");
+
+        if (message.isBlank()) {
+            throw new IllegalArgumentException("빈 채팅은 보낼 수 없습니다.");
+        }
+        if (message.length() > MAX_CHAT_LENGTH) {
+            throw new IllegalArgumentException(
+                    "채팅 문자열은 " + MAX_CHAT_LENGTH + " 길이를 초과할 수 없습니다."
+            );
+        }
+
+        synchronized (this) {
+            ensureConnected();
+            output.writeByte(MESSAGE_CHAT);
+            output.writeUTF(message);
+            output.flush();
         }
     }
 
@@ -428,6 +477,7 @@ public final class P2PGameSession implements AutoCloseable {
                     case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
                     case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
                     case MESSAGE_TIME_UP -> receiveTimeUp(input.readInt(), input.readInt());
+                    case MESSAGE_CHAT -> receiveChat(input.readUTF());
                     case MESSAGE_KEEP_ALIVE -> {
                         // Keep-alive 메시지는 처리 없음 - recordMessageReceived()에서 활동으로 기록됨
                     }
@@ -453,11 +503,27 @@ public final class P2PGameSession implements AutoCloseable {
         }
     }
 
+    private void receiveChat(String message) throws IOException {
+        if (message.isBlank() || message.length() > MAX_CHAT_LENGTH) {
+            throw new IOException("올바르지 않은 채팅 메시지입니다.");
+        }
+
+        synchronized (this) {
+            // 연결이 종료된 뒤에는 채팅을 전달하지 않는다.
+            if (closed) {
+                return;
+            }
+
+            listener.onRemoteChat(message);
+        }
+    }
+
     // 상대 준비 상태를 저장하고, 호스트라면 양쪽 준비 여부를 확인해 라운드를 시작한다.
     private void receiveReady(boolean ready) throws IOException {
         synchronized (this) {
             if (roundActive) {
-                throw new IOException("Ready message received during an active round");
+                // 게임 시작이 이미 확정됐다면 늦게 온 준비·해제 신호는 무시한다.
+                return;
             }
             remoteReady = ready;
             listener.onRemoteReady(ready);
@@ -471,7 +537,7 @@ public final class P2PGameSession implements AutoCloseable {
     private void receiveStart(int modeOrdinal) throws IOException {
         synchronized (this) {
             GameMode[] modes = GameMode.values();
-            if (server || roundActive || !localReady || !remoteReady
+            if (server || roundActive || !readySentForRound || !remoteReady
                     || modeOrdinal < 0 || modeOrdinal >= modes.length) {
                 throw new IOException("Unexpected multiplayer start message");
             }
@@ -551,6 +617,7 @@ public final class P2PGameSession implements AutoCloseable {
         // 연결은 유지하고, 이전 라운드에 한정된 준비/게임 오버/상대 상태만 초기화한다.
         started = true;
         localReady = false;
+        readySentForRound = false;
         remoteReady = false;
         localGameOver = false;
         remoteStatus = null;

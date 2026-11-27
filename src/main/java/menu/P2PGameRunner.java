@@ -31,6 +31,8 @@ public final class P2PGameRunner {
         void onConnected(P2PGameSession session);
         // 상대의 준비 상태 변경. onConnected보다 먼저 올 수 있으므로 화면은 상태를 저장해 둔다.
         void onRemoteReady(boolean ready);
+        // 상대 채팅을 대기 화면에 전달한다. EDT에서 호출된다.
+        default void onRemoteChat(String message) {}
         // 게임 화면을 띄우기 직전에 호출 (로비 창 정리용)
         void onGameStarting();
         // 게임 시작 전에 연결이 끊긴 경우
@@ -240,6 +242,23 @@ public final class P2PGameRunner {
         }
 
         @Override
+        public void onRemoteChat(String message) {
+            SwingUtilities.invokeLater(() -> {
+                if (lobbyClosed || !session.isConnected()) {
+                    return;
+                }
+
+                // 게임 화면으로 넘어갔다면 게임 채팅으로 전달한다.
+                if (loop != null) {
+                    loop.handleChat(message);
+                    return;
+                }
+
+                listener.onRemoteChat(message);
+            });
+        }
+
+        @Override
         public void onStarted() {
             SwingUtilities.invokeLater(this::enterGame);
         }
@@ -355,6 +374,11 @@ public final class P2PGameRunner {
                 }
 
                 @Override
+                public void onRemoteChat(String message) {
+                    handleChat(message);
+                }
+
+                @Override
                 public void onRoundFinished() {
                     // 승패 판정: 먼저 게임 오버된 쪽이 패배한다
                     p2pController.onRoundFinished();
@@ -411,6 +435,23 @@ public final class P2PGameRunner {
                 if (remoteStatus != null) {
                     p2pController.onRemoteStatus(remoteStatus);
                 }
+            }
+        }
+
+        // 상대 채팅을 게임 화면에 전달한다.
+        private void handleChat(String message) {
+            Runnable deliver = () -> {
+                GameScreen screen = gameScreen;
+
+                if (screen != null) {
+                    screen.receiveGameChat(message);
+                }
+            };
+
+            if (SwingUtilities.isEventDispatchThread()) {
+                deliver.run();
+            } else {
+                SwingUtilities.invokeLater(deliver);
             }
         }
 

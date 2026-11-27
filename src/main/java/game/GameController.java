@@ -129,6 +129,8 @@ public class GameController extends KeyAdapter {
     private long seenPauseRevision;
     // 네트워크 대전 중에는 일시정지(P, ESC 짧게 누르기)를 막는다
     private volatile boolean pauseEnabled = true;
+    // 채팅 입력 중에는 게임 조작만 비활성화한다.
+    private boolean inputEnabled = true;
 
     public GameController(
             GameLoop loop,
@@ -179,6 +181,7 @@ public class GameController extends KeyAdapter {
             refreshPauseRevision();
 
             if (!stopped
+                    && inputEnabled
                     && !action.isStopped()
                     && escapePressed
                     && !ignoreEscapeUntilReleased) {
@@ -192,6 +195,22 @@ public class GameController extends KeyAdapter {
 
     public void setPauseEnabled(boolean enabled) {
         pauseEnabled = enabled;
+    }
+
+    // Swing 화면 처리 스레드(EDT)에서 호출한다.
+    public void setInputEnabled(boolean enabled) {
+        if (stopped || inputEnabled == enabled) {
+            return;
+        }
+
+        // 반복 이동과 Esc 길게 누르기 타이머를 정리한다.
+        resetHeldInput();
+
+        // 남아 있는 공통 키도 손을 뗄 때까지 차단한다.
+        blockedUntilRelease.addAll(pressedKeys);
+        pressedKeys.clear();
+
+        inputEnabled = enabled;
     }
 
     public void shutdown() {
@@ -286,6 +305,13 @@ public class GameController extends KeyAdapter {
 
                 root.getActionMap().put(name, new AbstractAction() {
                     @Override
+                    public boolean isEnabled() {
+                        return super.isEnabled()
+                                && !stopped
+                                && (released || inputEnabled);
+                    }
+
+                    @Override
                     public void actionPerformed(ActionEvent event) {
                         if (released) {
                             handleKeyReleased(code);
@@ -339,7 +365,8 @@ public class GameController extends KeyAdapter {
         synchronized (actionController.stateLock()) {
             refreshPauseRevision();
 
-            if (gameLoop.isPaused()
+            if (!inputEnabled
+                    || gameLoop.isPaused()
                     || actionController.isStopped()
                     || gameStateManager.isGameOver()) {
                 return;
@@ -376,6 +403,12 @@ public class GameController extends KeyAdapter {
 
         if ((common && !commonKeys)
                 || (!common && !bindings.codes().contains(code))) {
+            return;
+        }
+
+        if (!inputEnabled) {
+            pressedKeys.add(code);
+            blockedUntilRelease.add(code);
             return;
         }
 
@@ -467,6 +500,13 @@ public class GameController extends KeyAdapter {
 
         pressedKeys.remove(code);
         blockedUntilRelease.remove(code);
+
+        if (!inputEnabled) {
+            if (code == KeyEvent.VK_ESCAPE) {
+                ignoreEscapeUntilReleased = false;
+            }
+            return;
+        }
 
         if (code == KeyEvent.VK_ESCAPE && commonKeys) {
             if (ignoreEscapeUntilReleased) {

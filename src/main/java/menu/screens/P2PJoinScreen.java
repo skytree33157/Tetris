@@ -1,5 +1,11 @@
 package menu.screens;
 
+import java.util.concurrent.ExecutionException;
+
+import javax.swing.SwingWorker;
+
+import menu.views.LobbyChatPanel;
+
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -25,6 +31,7 @@ public class P2PJoinScreen extends JFrame {
     private static final String WAITING_TEXT = "상대를 기다리는 중";
 
     private final P2PJoinView view;
+    private final LobbyChatPanel chatPanel;
     private final Timer dotsTimer;
     private boolean connecting;
     // 접속이 끝나 로비에 머무는 동안의 세션 (게임 화면으로 넘어가면 null)
@@ -33,16 +40,24 @@ public class P2PJoinScreen extends JFrame {
     private boolean remoteReady;
     private String statusPrefix = CONNECTING_TEXT;
     private int dots;
+    private boolean left;
 
     public P2PJoinScreen() {
         super("TFSE - 온라인 참여");
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
+        chatPanel = new LobbyChatPanel(
+                P2PGameSession.MAX_CHAT_LENGTH,
+                this::sendChat
+        );
+
         view = new P2PJoinView(this::connect, this::back, this::pickRecent, address -> {
             pickRecent(address);
             connect();
         });
+
+        view.addChatPanel(chatPanel);
         List<String> recent = loadRecent();
         view.setRecentAddresses(recent);
         if (!recent.isEmpty()) {
@@ -68,6 +83,23 @@ public class P2PJoinScreen extends JFrame {
             }
         });
 
+        // Ctrl + Enter로 접속 또는 게임 시작 요청
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(
+                        KeyStroke.getKeyStroke(
+                                KeyEvent.VK_ENTER,
+                                KeyEvent.CTRL_DOWN_MASK
+                        ),
+                        "primary"
+                );
+
+        getRootPane().getActionMap().put("primary", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                connect();
+            }
+        });
+
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
@@ -80,6 +112,44 @@ public class P2PJoinScreen extends JFrame {
                 back();
             }
         });
+    }
+
+    private void sendChat(String message) {
+        P2PGameSession target = session;
+
+        if (target == null || left || !isDisplayable()) {
+            chatPanel.setChatEnabled(false);
+            chatPanel.sendFailed("연결 후 대기 중에 전송할 수 있어요.");
+            return;
+        }
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws IOException {
+                target.sendChat(message);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (left || !isDisplayable() || session != target) {
+                    return;
+                }
+
+                try {
+                    get();
+                    chatPanel.sendSucceeded(message);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    chatPanel.sendFailed("전송 결과를 확인하지 못했어요.");
+                } catch (ExecutionException exception) {
+                    Throwable cause = exception.getCause();
+                    chatPanel.sendFailed(
+                            cause == null ? null : cause.getMessage()
+                    );
+                }
+            }
+        }.execute();
     }
 
     private static List<String> loadRecent() {
@@ -97,8 +167,19 @@ public class P2PJoinScreen extends JFrame {
     }
 
     private void connect() {
+        if (left) {
+            return;
+        }
         if (session != null) {
-            startGame();
+            if (localReady) {
+                cancelReady();
+            } else {
+                startGame();
+            }
+
+            if (!left && session != null) {
+                chatPanel.focusInput();
+            }
             return;
         }
         if (connecting) {
@@ -109,6 +190,7 @@ public class P2PJoinScreen extends JFrame {
             view.setStatus("주소를 입력해 주세요.", true);
             return;
         }
+        chatPanel.resetChat();
         connecting = true;
         view.setConnecting(true);
         statusPrefix = CONNECTING_TEXT;
@@ -127,6 +209,8 @@ public class P2PJoinScreen extends JFrame {
                 dotsTimer.stop();
                 view.setLobby(false);
                 updateLobbyStatus();
+                chatPanel.setChatEnabled(true);
+                chatPanel.focusInput();
             }
 
             @Override
@@ -141,8 +225,19 @@ public class P2PJoinScreen extends JFrame {
             }
 
             @Override
+            public void onRemoteChat(String message) {
+                if (!isDisplayable() || left) {
+                    return;
+                }
+
+                chatPanel.appendRemoteMessage(message);
+            }
+
+            @Override
             public void onGameStarting() {
                 // 세션은 게임 루프가 가져가므로 로비에서는 더 이상 닫지 않는다
+                left = true;
+                chatPanel.setChatEnabled(false);
                 session = null;
                 dotsTimer.stop();
                 dispose();
@@ -160,12 +255,10 @@ public class P2PJoinScreen extends JFrame {
 
             @Override
             public void onFailure(IOException exception) {
-                if (!isDisplayable()) {
+                if (!isDisplayable() || left) {
                     return;
                 }
-                connecting = false;
-                dotsTimer.stop();
-                view.setConnecting(false);
+                resetLobby();
                 view.setStatus(P2PGameRunner.describeFailure(exception), true);
                 view.getAddressField().requestFocusInWindow();
             }
@@ -198,6 +291,32 @@ public class P2PJoinScreen extends JFrame {
         dotsTimer.start();
     }
 
+    private void cancelReady() {
+        if (session == null || left) {
+            return;
+        }
+
+        try {
+            if (!session.cancelReady()) {
+                // 이미 게임 시작이 확정됐다면 화면 상태를 바꾸지 않는다.
+                return;
+            }
+        } catch (IOException exception) {
+            view.setStatus(
+                    P2PGameRunner.describeFailure(exception),
+                    true
+            );
+            return;
+        }
+
+        localReady = false;
+        dotsTimer.stop();
+        statusPrefix = CONNECTING_TEXT;
+
+        view.setLobby(false);
+        updateLobbyStatus();
+    }
+
     // 접속이 끊겨 로비를 처음 상태로 되돌린다
     private void resetLobby() {
         session = null;
@@ -207,18 +326,24 @@ public class P2PJoinScreen extends JFrame {
         statusPrefix = CONNECTING_TEXT;
         dotsTimer.stop();
         view.setConnecting(false);
+        chatPanel.resetChat();
     }
 
     private void back() {
-        // 연결 시도 중이면 최대 5초 안에 끝나므로 기다리게 한다 (중간에 창을 닫으면 결과를 받을 곳이 없음)
-        if (connecting) {
+        // 연결 시도 중에는 기존처럼 완료될 때까지 기다린다.
+        if (left || connecting) {
             return;
         }
+
+        left = true;
+        chatPanel.setChatEnabled(false);
         dotsTimer.stop();
+
         if (session != null) {
             closeSession(session);
             session = null;
         }
+
         dispose();
         new BattleMenuScreen().setVisible(true);
     }
