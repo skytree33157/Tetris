@@ -1,5 +1,9 @@
 package menu.screens;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.concurrent.ExecutionException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -17,6 +21,10 @@ import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
+import javax.swing.AbstractAction;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -25,6 +33,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import menu.views.GameChatPanel;
+import network.P2PGameSession;
 
 import app.AppState;
 import app.AppStateManager;
@@ -84,6 +94,8 @@ public class GameScreen extends JFrame {
     private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
     private JLabel connectionStatusLabel;
     private JPanel rightPanel;
+    private GameChatPanel gameChatPanel;
+    private boolean chatOpenKeyHeld;
 
     // P2P 대전: 상대 보드와 점수 (setP2PController 이후에만 생성)
     private RemoteBoardPanel remoteBoardPanel;
@@ -173,7 +185,7 @@ private JLabel scoreLabel;
                     refreshInputBindings();
                     refreshKeyGuide();
                     gamePanel.refreshCellSize();
-                    pack();
+                    packGameWindow();
                     if (PauseView != null){
                         PauseView.requestFocusInWindow();
                     }
@@ -197,11 +209,12 @@ private JLabel scoreLabel;
         }
         updateHud();
 
-        pack();
+        packGameWindow();
         setLocationRelativeTo(null);
 
         setFocusable(true);
         gameController.installKeyBindings(getRootPane());
+        installGameChatBindings();
 
         addWindowListener(new WindowAdapter() {
           @Override
@@ -412,6 +425,16 @@ private JLabel scoreLabel;
     }
 
     // ---------- 레이아웃 ----------
+
+    private void packGameWindow() {
+        // 설정에서 더 작은 화면 크기를 선택할 수도 있으므로 초기화한다.
+        setMinimumSize(new Dimension(0, 0));
+
+        pack();
+
+        // 보드와 패널이 모두 들어가는 크기를 최소 크기로 지정한다.
+        setMinimumSize(getSize());
+    }
 
     private JPanel createBoardHolder() {
         JPanel frame = new JPanel(new BorderLayout());
@@ -659,6 +682,12 @@ private JLabel scoreLabel;
 
     public void stopGame() {
         closed = true;
+        chatOpenKeyHeld = false;
+
+        if (gameChatPanel != null) {
+            gameChatPanel.setChatEnabled(false);
+        }
+
         renderTimer.stop();
         gameController.shutdown();
         actionController.shutdown();
@@ -690,7 +719,7 @@ private JLabel scoreLabel;
         // 창 크기를 다시 맞추지 않으면 고정 크기 창에서 보드 영역이 잘리므로 pack()으로 크기를 갱신한다.
         if (connectionStatusLabel.getParent() == null) {
             getContentPane().add(connectionStatusLabel, BorderLayout.NORTH);
-            pack();
+            packGameWindow();
         }
     }
 
@@ -713,7 +742,7 @@ private JLabel scoreLabel;
         gameController.setPauseEnabled(controller == null);
         if (controller != null && remoteBoardPanel == null) {
             installOpponentColumn();
-            pack();
+            packGameWindow();
             setLocationRelativeTo(null);
         }
     }
@@ -757,6 +786,28 @@ private JLabel scoreLabel;
         scoreCard.add(Box.createVerticalStrut(6));
         scoreCard.add(row(text("줄", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), opponentLinesLabel));
         addBlock(col, scoreCard);
+
+        AppSettings settings = AppSettings.getInstance();
+
+        int chatKey = chooseChatOpenKey(
+                settings.getKey(KeyAction.MOVE_LEFT),
+                settings.getKey(KeyAction.MOVE_RIGHT),
+                settings.getKey(KeyAction.ROTATE),
+                settings.getKey(KeyAction.MOVE_DOWN),
+                settings.getKey(KeyAction.HARD_DROP),
+                settings.getKey(KeyAction.HOLD)
+        );
+
+        gameChatPanel = new GameChatPanel(
+                P2PGameSession.MAX_CHAT_LENGTH,
+                chatKey,
+                this::sendGameChat,
+                this::finishChatInput
+        );
+
+        installGameChatInput();
+        addBlock(col, gameChatPanel);
+
         col.add(Box.createVerticalGlue());
 
         // 기존 오른쪽 패널과 상대 열을 나란히 둔다
@@ -769,6 +820,232 @@ private JLabel scoreLabel;
         east.add(col);
         getContentPane().add(east, BorderLayout.EAST);
         getContentPane().revalidate();
+    }
+
+    // Enter가 조작 키라면 사용하지 않는 F키를 선택한다.
+    static int chooseChatOpenKey(int... gameplayKeys) {
+        int[] candidates = {
+            KeyEvent.VK_ENTER,
+            KeyEvent.VK_F2,
+            KeyEvent.VK_F3,
+            KeyEvent.VK_F4,
+            KeyEvent.VK_F6,
+            KeyEvent.VK_F7,
+            KeyEvent.VK_F8,
+            KeyEvent.VK_F9
+        };
+
+        for (int candidate : candidates) {
+            boolean used = false;
+
+            for (int key : gameplayKeys) {
+                if (key == candidate) {
+                    used = true;
+                    break;
+                }
+            }
+
+            if (!used) {
+                return candidate;
+            }
+        }
+
+        throw new IllegalStateException("채팅 열기 키를 지정할 수 없습니다.");
+    }
+
+    private void installGameChatInput() {
+        GameChatPanel panel = gameChatPanel;
+        int chatKey = panel.getOpenKeyCode();
+
+        panel.getInputField().addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent event) {
+                if (!panel.isInputOpen()) {
+                    return;
+                }
+
+                if (event.getKeyCode() == chatKey) {
+                    chatOpenKeyHeld = true;
+                }
+
+                // 입력은 차단된 상태지만, 누른 키의 상태는 기록한다.
+                gameController.keyPressed(event);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent event) {
+                gameController.keyReleased(event);
+
+                if (event.getKeyCode() == chatKey) {
+                    chatOpenKeyHeld = false;
+                    panel.openingKeyReleased();
+                }
+            }
+        });
+
+        addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowLostFocus(WindowEvent event) {
+                chatOpenKeyHeld = false;
+                panel.openingKeyReleased();
+            }
+        });
+
+        installGameChatBindings();
+    }
+
+    private void installGameChatBindings() {
+        if (gameChatPanel == null) {
+            return;
+        }
+
+        GameChatPanel panel = gameChatPanel;
+        int chatKey = panel.getOpenKeyCode();
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(
+                        KeyStroke.getKeyStroke(chatKey, 0, false),
+                        "game.chat.open"
+                );
+
+        getRootPane().getActionMap().put(
+                "game.chat.open",
+                new AbstractAction() {
+                    @Override
+                    public boolean isEnabled() {
+                        return super.isEnabled()
+                                && !closed
+                                && !resultShown
+                                && p2pController != null
+                                && p2pController.isRoundActive();
+                    }
+
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        if (chatOpenKeyHeld) {
+                            return;
+                        }
+
+                        chatOpenKeyHeld = true;
+                        openGameChat();
+                    }
+                }
+        );
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(
+                        KeyStroke.getKeyStroke(chatKey, 0, true),
+                        "game.chat.release"
+                );
+
+        getRootPane().getActionMap().put(
+                "game.chat.release",
+                new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        chatOpenKeyHeld = false;
+                        panel.openingKeyReleased();
+                    }
+                }
+        );
+    }
+
+    private void openGameChat() {
+        if (closed || resultShown
+                || gameChatPanel == null
+                || p2pController == null
+                || !p2pController.isRoundActive()
+                || gameStateManager.isGameOver()) {
+            return;
+        }
+
+        GameChatPanel panel = gameChatPanel;
+
+        if (!panel.isInputOpen() && !panel.openInput()) {
+            return;
+        }
+
+        gameController.setInputEnabled(false);
+
+        // 입력칸의 배치가 반영된 뒤 포커스를 옮긴다.
+        SwingUtilities.invokeLater(() -> {
+            if (!closed && !resultShown
+                    && gameChatPanel == panel
+                    && panel.isInputOpen()) {
+                panel.getInputField().requestFocusInWindow();
+            }
+        });
+    }
+
+    private void finishChatInput() {
+        if (closed) {
+            return;
+        }
+
+        boolean running = p2pController != null
+                && p2pController.isRoundActive()
+                && !gameStateManager.isGameOver();
+
+        gameController.setInputEnabled(running);
+
+        if (running) {
+            requestFocusInWindow();
+        }
+    }
+
+    private void sendGameChat(String message) {
+        GameChatPanel panel = gameChatPanel;
+        P2PGameController target = p2pController;
+
+        if (panel == null || closed || resultShown) {
+            return;
+        }
+
+        if (target == null || !target.isRoundActive()) {
+            panel.sendFailed("대전 중에 사용할 수 있어요.");
+            return;
+        }
+
+        P2PGameSession session = target.getSession();
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws IOException {
+                session.sendChat(message);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (closed || resultShown
+                        || p2pController != target
+                        || gameChatPanel != panel) {
+                    return;
+                }
+
+                try {
+                    get();
+                    panel.sendSucceeded(message);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    panel.sendFailed("전송 결과를 확인하지 못했어요.");
+                } catch (ExecutionException exception) {
+                    Throwable cause = exception.getCause();
+                    panel.sendFailed(
+                            cause == null ? null : cause.getMessage()
+                    );
+                }
+            }
+        }.execute();
+    }
+
+    // Runner에서 EDT로 전달받아 호출한다.
+    public void receiveGameChat(String message) {
+        if (closed || resultShown || gameChatPanel == null) {
+            return;
+        }
+
+        gameChatPanel.appendRemoteMessage(message);
     }
 
     // NEXT 카드 바로 아래에 공격 대기 카드를 넣는다
@@ -828,9 +1105,23 @@ private JLabel scoreLabel;
 
     // P2P onStarted() 콜백: 게임 루프 시작 허용
     public void allowGameStart() {
+        if (closed || resultShown) {
+            return;
+        }
+
         if (!gameStartAllowed && gameThread.getState() == Thread.State.NEW) {
             gameStartAllowed = true;
             startGameLoop();
+        }
+
+        if (gameChatPanel != null
+                && p2pController != null
+                && p2pController.isRoundActive()) {
+            gameChatPanel.setChatEnabled(true);
+
+            if (!gameChatPanel.isInputOpen()) {
+                gameController.setInputEnabled(true);
+            }
         }
     }
 
@@ -838,10 +1129,14 @@ private JLabel scoreLabel;
     public void resetForNextRound() {
         gameOverHandled = false;
         gameStartAllowed = false;
+        if (gameChatPanel != null) {
+            gameChatPanel.setChatEnabled(false);
+        }
     }
 
     private void refreshInputBindings() {
         gameController.installKeyBindings(getRootPane());
+        installGameChatBindings();
         requestFocusInWindow();
     }
 

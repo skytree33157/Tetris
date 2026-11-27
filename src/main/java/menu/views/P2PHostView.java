@@ -5,6 +5,8 @@ import static menu.views.LobbyParts.card;
 import static menu.views.LobbyParts.fixHeight;
 import static menu.views.LobbyParts.label;
 
+import java.awt.GridBagConstraints;
+import java.awt.Insets;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -40,7 +42,16 @@ public class P2PHostView extends JPanel {
         setPreferredSize(new Dimension(960, 720));
         setLayout(new GridBagLayout());
 
-        JPanel col = LobbyParts.column();
+        JPanel col = new JPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension size = super.getPreferredSize();
+                return new Dimension(COLUMN_WIDTH, size.height);
+            }
+        };
+
+        col.setOpaque(false);
+        col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
 
         col.add(label("방 만들기", Theme.body(28, Font.BOLD), Theme.TEXT));
         col.add(label("방을 열고 상대에게 아래 주소를 알려 주세요", Theme.body(14, Font.PLAIN), Theme.TEXT_MUTED));
@@ -88,15 +99,16 @@ public class P2PHostView extends JPanel {
         backButton.addActionListener(e -> onBack.run());
         col.add(LobbyParts.buttonRow(primaryButton, backButton));
         col.add(Box.createVerticalStrut(16));
-        col.add(label("← → 방식 선택   Enter 방 열기/게임 시작/취소   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
-
+        col.add(label("← → 방식 선택   Ctrl+Enter 방 열기/시작/취소   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
         for (Component c : col.getComponents()) {
             if (c instanceof javax.swing.JComponent jc) {
                 jc.setAlignmentX(Component.LEFT_ALIGNMENT);
             }
         }
-        col.setPreferredSize(new Dimension(COLUMN_WIDTH, col.getPreferredSize().height));
-        add(col);
+        GridBagConstraints columnConstraints = new GridBagConstraints();
+        columnConstraints.gridx = 0;
+        columnConstraints.gridy = 0;
+        add(col, columnConstraints);
     }
 
     public void setAddresses(List<String> addresses) {
@@ -136,5 +148,23 @@ public class P2PHostView extends JPanel {
 
     public void setStatus(String text, boolean warning) {
         LobbyParts.setStatus(status, text, warning);
+    }
+
+    public void addChatPanel(LobbyChatPanel chatPanel) {
+        GridBagConstraints constraints = new GridBagConstraints();
+
+        // 기존 방 설정 오른쪽에 배치
+        constraints.gridx = 1;
+        constraints.gridy = 0;
+
+        // 왼쪽 설정과 채팅 사이에 24픽셀 간격
+        constraints.insets = new Insets(0, 24, 0, 0);
+
+        // 기존 설정 영역의 높이에 맞춰 채팅 패널을 늘림
+        constraints.fill = GridBagConstraints.VERTICAL;
+
+        add(chatPanel, constraints);
+        revalidate();
+        repaint();
     }
 }

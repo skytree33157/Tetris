@@ -5,6 +5,8 @@ import static menu.views.LobbyParts.card;
 import static menu.views.LobbyParts.fixHeight;
 import static menu.views.LobbyParts.label;
 
+import java.awt.GridBagConstraints;
+import java.awt.Insets;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -33,7 +35,7 @@ public class P2PJoinView extends JPanel {
 
     private static final String CONNECT_TEXT = "접속";
     private static final String START_TEXT = "게임 시작";
-    private static final String WAITING_TEXT = "대기 중";
+    private static final String CANCEL_READY_TEXT = "준비 해제";
 
     private final JTextField addressField = new JTextField();
     private final JPanel recentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -104,7 +106,7 @@ public class P2PJoinView extends JPanel {
         backButton.addActionListener(e -> onBack.run());
         col.add(LobbyParts.buttonRow(connectButton, backButton));
         col.add(Box.createVerticalStrut(16));
-        col.add(label("Enter 접속/게임 시작   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
+        col.add(label("Ctrl+Enter 접속/준비·해제   Esc 뒤로", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED));
 
         for (Component c : col.getComponents()) {
             if (c instanceof JComponent jc) {
@@ -112,7 +114,10 @@ public class P2PJoinView extends JPanel {
             }
         }
         col.setPreferredSize(new Dimension(COLUMN_WIDTH, col.getPreferredSize().height + 40));
-        add(col);
+        GridBagConstraints columnConstraints = new GridBagConstraints();
+        columnConstraints.gridx = 0;
+        columnConstraints.gridy = 0;
+        add(col, columnConstraints);
     }
 
     public JTextField getAddressField() {
@@ -169,12 +174,14 @@ public class P2PJoinView extends JPanel {
         repaint();
     }
 
-    // 방에 접속한 뒤: waiting=false면 "게임 시작" 버튼, waiting=true면 게임 시작 요청 후 "대기 중"
-    public void setLobby(boolean waiting) {
+    // 접속 후: 준비 전에는 게임 시작, 준비 후에는 준비 해제 버튼 표시
+    public void setLobby(boolean ready) {
         addressField.setEnabled(false);
         setRecentEnabled(false);
-        connectButton.setText(waiting ? WAITING_TEXT : START_TEXT);
-        connectButton.setEnabled(!waiting);
+
+        connectButton.setText(ready ? CANCEL_READY_TEXT : START_TEXT);
+        connectButton.setEnabled(true);
+
         repaint();
     }
 
@@ -186,5 +193,20 @@ public class P2PJoinView extends JPanel {
 
     public void setStatus(String text, boolean warning) {
         LobbyParts.setStatus(status, text, warning);
+    }
+
+    public void addChatPanel(LobbyChatPanel chatPanel) {
+        GridBagConstraints constraints = new GridBagConstraints();
+
+        // 접속 설정 오른쪽에 채팅 배치
+        constraints.gridx = 1;
+        constraints.gridy = 0;
+
+        constraints.insets = new Insets(0, 24, 0, 0);
+        constraints.fill = GridBagConstraints.VERTICAL;
+
+        add(chatPanel, constraints);
+        revalidate();
+        repaint();
     }
 }
