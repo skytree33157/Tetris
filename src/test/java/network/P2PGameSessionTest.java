@@ -100,7 +100,7 @@ class P2PGameSessionTest {
                 server.setReady();
                 assertTrue(serverStarted.await(5, TimeUnit.SECONDS));
                 assertTrue(clientStarted.await(5, TimeUnit.SECONDS));
-                // 시작 메시지로 전달된 모드가 클라이언트에도 적용되고, 시작 후에는 모드를 바꿀 수 없다.
+                // 시작 메시지로 전달된 모드가 클라이언트에도 적용되고, 라운드 진행 중에는 모드를 바꿀 수 없다.
                 assertEquals(GameMode.ITEM, client.getMode());
                 assertThrows(IllegalStateException.class, () -> server.setMode(GameMode.NORMAL));
 
@@ -118,6 +118,8 @@ class P2PGameSessionTest {
                 assertTrue(clientGameDecided.await(5, TimeUnit.SECONDS));
 
                 // 라운드 종료 후 연결을 재사용해 다시 양쪽 준비 및 시작이 가능한지 검증한다.
+                // 대기실에서 게임 시작을 누를 때 호스트가 모드를 다시 정해도 예외가 나지 않아야 한다.
+                server.setMatch(GameMode.NORMAL, 0);
                 client.setReady();
                 server.setReady();
                 assertTrue(serverStartedAgain.await(5, TimeUnit.SECONDS));
@@ -200,6 +202,34 @@ class P2PGameSessionTest {
             assertTrue(accepting.get(5, TimeUnit.SECONDS));
         } finally {
             // 예외가 발생하더라도 테스트 실행기를 종료한다.
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void reportsDisconnectWhenPeerEndsTheConnection() throws Exception {
+        // 상대가 연결을 끊으면(종료 메시지 포함) 남은 쪽 리스너가 연결 끊김을 한 번 받아야 한다.
+        CountDownLatch clientDisconnected = new CountDownLatch(1);
+        AtomicReference<IOException> reason = new AtomicReference<>();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        try (P2PGameSession.HostInvitation invitation = P2PGameSession.HostInvitation.open(GameMode.NORMAL)) {
+            var accepted = executor.submit(invitation::accept);
+            try (P2PGameSession client = P2PGameSession.connect("127.0.0.1")) {
+                try (P2PGameSession server = accepted.get(5, TimeUnit.SECONDS)) {
+                    client.setListener(new P2PGameSession.Listener() {
+                        @Override
+                        public void onDisconnected(IOException exception) {
+                            reason.set(exception);
+                            clientDisconnected.countDown();
+                        }
+                    });
+                    server.close();
+                }
+                assertTrue(clientDisconnected.await(5, TimeUnit.SECONDS));
+                assertEquals("상대 플레이어가 연결을 종료했습니다.", reason.get().getMessage());
+            }
+        } finally {
             executor.shutdownNow();
         }
     }

@@ -106,4 +106,22 @@ class GameStateManagerTest {
 
         assertTrue(manager.isGameOver());
     }
+
+    @Test // 디버그 레벨 설정은 범위를 벗어나면 클램프된다
+    void debugLevelIsClamped() {
+        manager.setDebugLevel(99);
+        assertEquals(GameStateManager.MAX_LEVEL, manager.getCurrentLevel());
+
+        manager.setDebugLevel(0);
+        assertEquals(1, manager.getCurrentLevel());
+    }
+
+    @Test // 디버그 드롭 속도는 허용 범위로 클램프된다
+    void debugDropSpeedIsClamped() {
+        manager.setDebugDropSpeed(1);
+        assertEquals(GameStateManager.DEBUG_MIN_DROP_SPEED, manager.getDropSpeed());
+
+        manager.setDebugDropSpeed(100000);
+        assertEquals(GameStateManager.DEBUG_MAX_DROP_SPEED, manager.getDropSpeed());
+    }
 }

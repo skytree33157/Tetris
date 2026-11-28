@@ -129,6 +129,7 @@ public class GameController extends KeyAdapter {
     private long seenPauseRevision;
     // 네트워크 대전 중에는 일시정지(P, ESC 짧게 누르기)를 막는다
     private volatile boolean pauseEnabled = true;
+    private volatile Runnable surrenderHandler;
 
     public GameController(
             GameLoop loop,
@@ -192,6 +193,11 @@ public class GameController extends KeyAdapter {
 
     public void setPauseEnabled(boolean enabled) {
         pauseEnabled = enabled;
+    }
+
+    /** 네트워크 대전에서 ESC를 떼었을 때 항복 확인을 여는 동작 */
+    public void setSurrenderHandler(Runnable handler) {
+        surrenderHandler = handler;
     }
 
     public void shutdown() {
@@ -399,6 +405,11 @@ public class GameController extends KeyAdapter {
         }
 
         if (code == KeyEvent.VK_ESCAPE) {
+            if (!pauseEnabled && surrenderHandler != null) {
+                // 대전: 정지하지 않고, ESC를 떼는 순간 항복 확인을 띄운다.
+                escapePressed = true;
+                return;
+            }
             escapePressed = true;
             escapeHoldTriggered = false;
             escapeHoldTimer.restart();
@@ -479,6 +490,14 @@ public class GameController extends KeyAdapter {
             }
 
             escapePressed = false;
+
+            if (!pauseEnabled && surrenderHandler != null) {
+                if (!gameStateManager.isGameOver()) {
+                    surrenderHandler.run();
+                }
+                return;
+            }
+
             escapeHoldTimer.stop();
 
             if (pauseEnabled && !escapeHoldTriggered && !gameStateManager.isGameOver()) {

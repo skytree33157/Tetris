@@ -8,14 +8,20 @@ import network.GameStatus;
  * 로컬 2인 대전에서는 "1P 승리" 형식으로 쓴다.
  */
 public record BattleResult(Side left, Side right, Outcome outcome, boolean personal,
-                           String modeLabel, long elapsedMs, boolean timeUp) {
+                           String modeLabel, long elapsedMs, boolean timeUp, boolean surrender) {
 
     public enum Outcome { LEFT_WINS, RIGHT_WINS, DRAW }
+
+    /** 블록이 천장에 닿거나 시간 제한으로 끝난 경기 */
+    public BattleResult(Side left, Side right, Outcome outcome, boolean personal,
+                        String modeLabel, long elapsedMs, boolean timeUp) {
+        this(left, right, outcome, personal, modeLabel, elapsedMs, timeUp, false);
+    }
 
     /** 블록이 천장에 닿아 끝난 경기 */
     public BattleResult(Side left, Side right, Outcome outcome, boolean personal,
                         String modeLabel, long elapsedMs) {
-        this(left, right, outcome, personal, modeLabel, elapsedMs, false);
+        this(left, right, outcome, personal, modeLabel, elapsedMs, false, false);
     }
 
     /** 한 플레이어의 최종 기록과 마지막 보드(보이는 줄). */
@@ -42,10 +48,19 @@ public record BattleResult(Side left, Side right, Outcome outcome, boolean perso
      * @param remote 상대가 마지막으로 보낸 상태. 아직 받지 못했으면 null
      */
     public static BattleResult fromP2P(GameStatus mine, GameStatus remote, String modeLabel, long elapsedMs) {
+        return fromP2P(mine, remote, modeLabel, elapsedMs, false);
+    }
+
+    /**
+     * P2P 대전 결과. surrendered가 true면 한쪽이 항복해서 끝난 경기이다.
+     * 항복한 쪽이 패배하므로 승패는 천장 판정과 같은 방식으로 정한다.
+     */
+    public static BattleResult fromP2P(GameStatus mine, GameStatus remote, String modeLabel, long elapsedMs,
+            boolean surrendered) {
         Side me = side("나", mine);
         Side opponent = side("상대", remote);
         return new BattleResult(me, opponent, judge(me.toppedOut(), opponent.toppedOut()),
-                true, modeLabel, elapsedMs);
+                true, modeLabel, elapsedMs, false, surrendered);
     }
 
     /**
@@ -114,6 +129,9 @@ public record BattleResult(Side left, Side right, Outcome outcome, boolean perso
         }
         if (outcome == Outcome.DRAW) {
             return left.toppedOut() ? "두 사람이 동시에 끝났어요" : "아직 승부가 나지 않았어요";
+        }
+        if (surrender && personal) {
+            return leftWon() ? "상대방의 항복으로 인해 승리하였습니다." : "항복하여 패배했습니다.";
         }
         if (personal) {
             return leftWon() ? "상대 블록이 먼저 천장에 닿았어요" : "블록이 먼저 천장에 닿았어요";

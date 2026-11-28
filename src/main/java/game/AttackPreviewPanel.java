@@ -31,10 +31,20 @@ public class AttackPreviewPanel extends JPanel {
     private static final Color WARNING = new Color(0xF26B6B);
 
     private volatile List<int[]> rows = List.of();
+    private volatile int capRows = ROWS;
 
     public AttackPreviewPanel() {
         setBackground(Theme.BOARD_BG);
         setPreferredSize(new Dimension(COLS * CELL_SIZE, ROWS * CELL_SIZE));
+    }
+
+    /** 대기 행 최대 수. 줄 수는 그대로 두고 가득 찼음을 표시하는 기준만 바꾼다. */
+    public void setCapRows(int cap) {
+        int next = Math.max(1, Math.min(ROWS, cap));
+        if (next != capRows) {
+            capRows = next;
+            repaint();
+        }
     }
 
     /** EDT에서 호출. ViewSnapshot.pendingAttackRows()의 복사본을 넘긴다. */
@@ -104,7 +114,7 @@ public class AttackPreviewPanel extends JPanel {
             }
 
             // 대기열이 가득 차면 위쪽 테두리를 빨갛게 표시
-            if (frame.size() >= ROWS) {
+            if (frame.size() >= capRows) {
                 g2.setColor(WARNING);
                 g2.fillRect(x0, y0, COLS * size, 2);
             }

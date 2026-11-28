@@ -5,7 +5,8 @@ import java.util.Objects;
 public final class BattleSettings {
 
     private final BattleMode mode;
-    private final int timeLimitSeconds;
+    // 디버그 패널에서 남은 시간을 바꿀 수 있어 타이머 스레드와 공유하는 값이다.
+    private volatile long timeLimitMillis;
 
     public BattleSettings(BattleMode mode, int timeLimitSeconds) {
         this.mode = Objects.requireNonNull(mode, "mode");
@@ -22,7 +23,7 @@ public final class BattleSettings {
             );
         }
 
-        this.timeLimitSeconds = timeLimitSeconds;
+        this.timeLimitMillis = timeLimitSeconds * 1000L;
     }
 
     public BattleMode getMode() {
@@ -30,7 +31,21 @@ public final class BattleSettings {
     }
 
     public int getTimeLimitSeconds() {
-        return timeLimitSeconds;
+        return (int) (timeLimitMillis / 1000L);
+    }
+
+    /**
+     * 현재 경과 시간 기준으로 남은 시간을 remainingMillis로 맞춘다.
+     * 제한 시간 총량을 경과 시간만큼 늘려서, 이후 표시와 만료 판정이 함께 바뀐다.
+     */
+    public synchronized void setRemainingTimeMillis(long elapsedPlayMillis, long remainingMillis) {
+        if (!isTimeLimited()) {
+            throw new IllegalStateException("시간제한 모드에서만 남은 시간을 바꿀 수 있습니다.");
+        }
+        if (elapsedPlayMillis < 0 || remainingMillis <= 0) {
+            throw new IllegalArgumentException("경과 시간은 음수일 수 없고, 남은 시간은 0보다 커야 합니다.");
+        }
+        timeLimitMillis = elapsedPlayMillis + remainingMillis;
     }
 
     public boolean isTimeLimited() {
@@ -45,7 +60,7 @@ public final class BattleSettings {
         }
 
         return isTimeLimited()
-                && elapsedPlayMillis >= timeLimitSeconds * 1000L;
+                && elapsedPlayMillis >= timeLimitMillis;
     }
 
     public GameMode getGameMode() {
@@ -66,7 +81,6 @@ public final class BattleSettings {
             return 0;
         }
 
-        long limitMillis = timeLimitSeconds * 1000L;
-        return Math.max(0L, limitMillis - elapsedPlayMillis);
+        return Math.max(0L, timeLimitMillis - elapsedPlayMillis);
     }
 }

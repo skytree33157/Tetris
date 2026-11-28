@@ -15,8 +15,9 @@ import javax.swing.SwingUtilities;
 import game.BattleSettings;
 import game.BattleController;
 import game.GameMode;
-import menu.screens.BattleMenuScreen;
 import menu.screens.GameScreen;
+import menu.screens.P2PHostScreen;
+import menu.screens.P2PJoinScreen;
 import menu.screens.StartMenuScreen;
 import network.GameStatus;
 import network.P2PGameSession;
@@ -147,6 +148,12 @@ public final class P2PGameRunner {
         session.setListener(router);
         SwingUtilities.invokeLater(router::connected);
     }
+
+    // 게임 종료 후 같은 연결을 유지한 채 로비 화면으로 되돌린다. EDT에서 로비 화면이 보인 뒤 호출해야 한다.
+    public static void resumeLobby(P2PGameSession session, ConnectListener listener) {
+        attachLobby(session, listener);
+    }
+
 
     // 사용자에게 보여줄 연결 실패 문구
     public static String describeFailure(IOException exception) {
@@ -281,6 +288,26 @@ public final class P2PGameRunner {
         }
     }
 
+    // 연결 끊김 오류 창. 게임 중이든 로비든 같은 문구로 P2P 초기 화면 복귀를 안내한다.
+    public static void showDisconnectDialog(IOException exception) {
+        String message;
+        if ("연결이 끊어졌습니다".equals(exception.getMessage())) {
+            message = "네트워크 연결이 끊어졌습니다.\n P2P 초기 화면으로 돌아갑니다.";
+        } else {
+            message = "대전 연결이 종료되었습니다.\n" + exception.getMessage() + "\nP2P 초기 화면으로 돌아갑니다.";
+        }
+        JOptionPane.showMessageDialog(null, message, "P2P 연결 오류", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // 연결이 끊겼을 때 돌아갈 P2P 초기 화면: 방장은 방 만들기, 참가자는 온라인 참여 화면
+    public static void openP2PStartScreen(boolean host) {
+        if (host) {
+            new P2PHostScreen().setVisible(true);
+        } else {
+            new P2PJoinScreen().setVisible(true);
+        }
+    }
+
     private static void closeQuietly(P2PGameSession session) {
         try {
             session.close();
@@ -337,6 +364,7 @@ public final class P2PGameRunner {
 
             // 게임 화면에 P2P 컨트롤러 설정
             gameScreen.setP2PController(p2pController);
+            gameScreen.setP2PResultActions(this::returnToLobby, this::closeSession);
             
             // 통합 리스너: Runner와 Controller 모두에 event 전달
             session.setListener(new P2PGameSession.Listener() {
@@ -414,6 +442,20 @@ public final class P2PGameRunner {
             }
         }
 
+        // 결과 화면의 "대기실로": 같은 세션으로 호스트/참가 로비를 다시 연다
+        private void returnToLobby() {
+            if (session.isServer()) {
+                new P2PHostScreen(session).setVisible(true);
+            } else {
+                new P2PJoinScreen(session).setVisible(true);
+            }
+        }
+
+        // 결과 화면 종료: 연결을 닫는다 (대전 메뉴로 가는 경우)
+        private void closeSession() {
+            closeQuietly(session);
+        }
+
         // 연결 종료 처리 - P2P 초기 화면으로 복귀
         private void handleDisconnect(IOException exception) {
             try {
@@ -437,21 +479,9 @@ public final class P2PGameRunner {
                     gameScreen.dispose();
                 }
                 
-                // 연결 끊김 상황에 따른 메시지
-                String message;
-                if ("연결이 끊어졌습니다".equals(exception.getMessage())) {
-                    message = "네트워크 연결이 끊어졌습니다.\n P2P 초기 화면으로 돌아갑니다.";
-                } else {
-                    message = "대전 연결이 종료되었습니다.\n" + exception.getMessage() + "\nP2P 초기 화면으로 돌아갑니다.";
-                }
-                
-                JOptionPane.showMessageDialog(
-                        null,
-                        message,
-                        "P2P 연결 오류",
-                        JOptionPane.ERROR_MESSAGE);
-                // P2P 초기 화면(대전 메뉴)으로 복귀
-                new BattleMenuScreen().setVisible(true);
+                showDisconnectDialog(exception);
+                // P2P 초기 화면(방 만들기 또는 온라인 참여)으로 복귀
+                openP2PStartScreen(session.isServer());
             });
         }
     }

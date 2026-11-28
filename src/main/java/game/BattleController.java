@@ -34,6 +34,10 @@ public final class BattleController implements AutoCloseable {
     }
 
     private final Map<Player, ActionController> players = new EnumMap<>(Player.class);
+    // 두 플레이어가 공유하는 공격 대기 행 최대 수. 디버그 패널에서 바꾼다.
+    public static final int MIN_MAX_PENDING_ATTACK_ROWS = 1;
+    public static final int MAX_MAX_PENDING_ATTACK_ROWS = ActionController.MAX_PENDING_ATTACK_ROWS;
+    private volatile int maxPendingAttackRows = MAX_MAX_PENDING_ATTACK_ROWS;
     // 이 PC에 실제 상대 컨트롤러가 없을 때만 통신 계층이 꺼내갈 공격을 보관한다.
     private final List<Attack> outgoingAttacks = new ArrayList<>();
     // true: 로컬/서버에서 승패 확정, false: 클라이언트에서 서버 결과 대기.
@@ -62,6 +66,13 @@ public final class BattleController implements AutoCloseable {
         players.forEach((player, action) -> views.put(player, action.getViewSnapshot()));
         return new ViewSnapshot(views, paused, outcome, endReason, getElapsedPlayMillis());
     }
+
+    /** 게임 중에도 바꿀 수 있다. 이미 대기 중인 행은 줄이지 않고, 이후 받는 공격부터 적용한다. */
+    public void setMaxPendingAttackRows(int rows) {
+        maxPendingAttackRows = Math.max(MIN_MAX_PENDING_ATTACK_ROWS, Math.min(MAX_MAX_PENDING_ATTACK_ROWS, rows));
+    }
+
+    public int getMaxPendingAttackRows() { return maxPendingAttackRows; }
 
     /** 정지 상태는 경기 전체에서 하나만 관리한다. UI/네트워크 콜백은 잠금 안에서 호출하지 않는다. */
     public synchronized void setPaused(boolean paused) {

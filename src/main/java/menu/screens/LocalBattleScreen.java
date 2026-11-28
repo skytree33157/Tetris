@@ -3,12 +3,15 @@ package menu.screens;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.EnumMap;
@@ -83,7 +86,7 @@ public class LocalBattleScreen extends JFrame {
         battle = session.getBattleController();
         for (Player player : Player.values()) {
             session.getPlayer(player).action().setSoundListener(SoundManager.getInstance()::play);
-            views.put(player, new PlayerView(player, session.getPlayer(player)));
+            views.put(player, new PlayerView(this, player, session.getPlayer(player), battle, settings));
         }
 
         JPanel root = new JPanel();
@@ -316,6 +319,7 @@ public class LocalBattleScreen extends JFrame {
         renderTimer.stop();
         session.close();
         SoundManager.getInstance().stopBgm();
+        disposeDebugPanels();
         dispose();
         next.setVisible(true);
     }
@@ -324,8 +328,15 @@ public class LocalBattleScreen extends JFrame {
         finished = true;
         renderTimer.stop();
         session.close();
+        disposeDebugPanels();
         dispose();
         System.exit(0);
+    }
+
+    private void disposeDebugPanels() {
+        for (PlayerView view : views.values()) {
+            view.debugPanel.dispose();
+        }
     }
 
     // ---------- 레이아웃 ----------
@@ -380,8 +391,12 @@ public class LocalBattleScreen extends JFrame {
         final JLabel levelLabel = text("1", Theme.body(14, Font.BOLD), Theme.TEXT);
         final JLabel linesLabel = text("0", Theme.body(14, Font.BOLD), Theme.TEXT);
         final JLabel attackCount = text("0줄", Theme.body(12, Font.BOLD), Theme.TEXT_MUTED);
+        final DebugPanel debugPanel;
+        final BattleController battle;
 
-        PlayerView(Player player, LocalBattleSession.PlayerGame game) {
+        PlayerView(JFrame owner, Player player, LocalBattleSession.PlayerGame game, BattleController battle,
+                BattleSettings settings) {
+            this.battle = battle;
             gamePanel = new GamePanel(game.board());
             gamePanel.setMaxCellSize(fitCellSize(game.board().getWidth(),
                     game.board().getHeight() + game.board().getHiddenRows()));
@@ -402,8 +417,20 @@ public class LocalBattleScreen extends JFrame {
 
             sideColumn = column(SIDE_WIDTH);
             String name = player == Player.ONE ? "1P" : "2P";
+            debugPanel = new DebugPanel(owner, name + " 디버그 모드", game.action(), game.state(), battle, settings,
+                    on -> { });
             JLabel title = text(name, Theme.display(22), Theme.ACCENT);
             title.setAlignmentX(Component.LEFT_ALIGNMENT);
+            if (player == Player.ONE) {
+                title.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                title.setToolTipText("클릭하면 디버그 모드 전환");
+                title.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        debugPanel.toggle();
+                    }
+                });
+            }
             sideColumn.add(title);
             sideColumn.add(Box.createVerticalStrut(10));
 
@@ -415,7 +442,16 @@ public class LocalBattleScreen extends JFrame {
             scoreCard.add(Box.createVerticalStrut(2));
             scoreCard.add(scoreLabel);
             scoreCard.add(Box.createVerticalStrut(6));
-            scoreCard.add(row(text("레벨", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), levelLabel));
+            JPanel levelRow = row(text("레벨", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), levelLabel);
+            levelRow.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            levelRow.setToolTipText("클릭하면 디버그 모드 전환");
+            levelRow.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    debugPanel.toggle();
+                }
+            });
+            scoreCard.add(levelRow);
             scoreCard.add(Box.createVerticalStrut(4));
             scoreCard.add(row(text("라인", Theme.body(13, Font.PLAIN), Theme.TEXT_MUTED), linesLabel));
             addBlock(sideColumn, scoreCard);
@@ -436,6 +472,7 @@ public class LocalBattleScreen extends JFrame {
             scoreLabel.setText(String.format("%,d", frame.score()));
             levelLabel.setText(String.valueOf(frame.level()));
             linesLabel.setText(String.valueOf(frame.lines()));
+            attackPreview.setCapRows(battle.getMaxPendingAttackRows());
             attackPreview.setRows(frame.pendingAttackRows());
             int count = attackPreview.getRowCount();
             attackCount.setText(count + "줄");

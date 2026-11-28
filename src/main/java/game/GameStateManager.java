@@ -9,7 +9,7 @@ public class GameStateManager {
     private int countBlock = 0;
     private int countClearLine = 0;
     private volatile int totalLinesCleared = 0; //레베업으로 리셋되지 않는 누적 줄 수 (HUD 표시)
-    private int currentLevel = 1;
+    private volatile int currentLevel = 1;
     private volatile boolean gameOver = false; // 게임 오버인지 아닌지 확인
     private Difficulty difficulty = Difficulty.NORMAL; // 게임 난이도
 
@@ -19,8 +19,14 @@ public class GameStateManager {
     private static final int SLOW_ITEM_DELAY = 500; // S 한 줄당 증가할 하강 간격
     private static final int BLOCKS_FOR_LEVEL_UP = 10; // 블록 임계값
     private static final int LINES_FOR_LEVEL_UP = 10; // 삭제된 줄 임계값
-    private static final int LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값
-    private static final int MAX_LEVEL = 10;
+    public static final int DEFAULT_LINES_FOR_ITEM = 10; // 아이템 생성 줄 임계값 기본값
+    public static final int MIN_LINES_FOR_ITEM = 1;
+    public static final int MAX_LINES_FOR_ITEM = 10;
+    private int linesForItem = DEFAULT_LINES_FOR_ITEM;
+    public static final int MAX_LEVEL = 10;
+    // 디버그 모드에서 직접 지정할 수 있는 하강 속도 범위 (일반 진행 범위보다 넓다)
+    public static final int DEBUG_MIN_DROP_SPEED = 50;
+    public static final int DEBUG_MAX_DROP_SPEED = 2000;
 
     public int getDropSpeed() {
         return dropSpeed;
@@ -62,6 +68,28 @@ public class GameStateManager {
         this.gameOver = gameOver;
     }
 
+    // 디버그 모드: 레벨을 지정하면 그 레벨의 기본 하강 속도로 맞추고 레벨업 진행도를 초기화한다.
+    public void setDebugLevel(int level) {
+        currentLevel = Math.max(1, Math.min(MAX_LEVEL, level));
+        dropSpeed = Math.max(MIN_DROP_SPEED, MAX_DROP_SPEED - (currentLevel - 1) * SPEED_DECREASE_AMOUNT);
+        countBlock = 0;
+        countClearLine = 0;
+    }
+
+    // 디버그 모드: 하강 속도를 직접 지정한다 (ms, 작을수록 빠름).
+    public void setDebugDropSpeed(int speedMs) {
+        dropSpeed = Math.max(DEBUG_MIN_DROP_SPEED, Math.min(DEBUG_MAX_DROP_SPEED, speedMs));
+    }
+
+    // 디버그 모드: 아이템이 등장하는 누적 삭제 줄 간격을 지정한다.
+    public void setDebugLinesForItem(int lines) {
+        linesForItem = Math.max(MIN_LINES_FOR_ITEM, Math.min(MAX_LINES_FOR_ITEM, lines));
+    }
+
+    public int getLinesForItem() {
+        return linesForItem;
+    }
+
     public void applySlowItem(int slowLines) {
         dropSpeed = Math.min(MAX_DROP_SPEED, dropSpeed + slowLines * SLOW_ITEM_DELAY);
     }
@@ -75,7 +103,7 @@ public class GameStateManager {
 
     // 이번 줄 삭제로 누적 줄 수가 10줄 단위를 넘었는지 확인
     public boolean shouldSpawnItem(int previousTotalLines) {
-        return totalLinesCleared / LINES_FOR_ITEM > previousTotalLines / LINES_FOR_ITEM;
+        return totalLinesCleared / linesForItem > previousTotalLines / linesForItem;
     }
 
     // 레벨 업(하강 속도 증가) 메서드

@@ -20,6 +20,7 @@ import score.ScoreManager;
 import score.DropType;
 import ui.ItemAppearanceResolver;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import sound.SoundEvent;
 
 // 블록 이동 클래스
@@ -28,6 +29,8 @@ public class ActionController {
 
     // 싱글에서는 자체 잠금, 대전 등록 후에는 양쪽이 경기 잠금을 공유한다.
     private volatile Object stateLock = this;
+    // 디버그 모드에서 고정 생성 중인 블록 공급자 (null이면 무작위 생성)
+    private Supplier<Block> debugSpawnSource;
     private BattleController battle;
     private BattleController.Player player;
     public static final int MAX_PENDING_ATTACK_ROWS = 10;
@@ -325,8 +328,13 @@ public class ActionController {
         synchronized (stateLock) {
             if (battle == null || !battle.isRunning() || stopped || gameStateManager.isGameOver()) return 0;
             List<int[]> copies = BattleController.copyAttackRows(rows);
-            // 기존 대기 행을 먼저 유지한다. 8행 + 새 4행이면 새 행의 위쪽 2행만 받는다.
-            int accepted = Math.min(MAX_PENDING_ATTACK_ROWS - pendingAttackRows.size(), copies.size());
+            // 대기열 인덱스 0이 화면 맨 아래 줄이다. 저장 행 + 새 행이 상한을 넘으면 아래쪽 행부터 지워 자리를 만든다.
+            int cap = battle.getMaxPendingAttackRows();
+            int overflow = pendingAttackRows.size() + copies.size() - cap;
+            if (overflow > 0) {
+                pendingAttackRows.subList(0, Math.min(overflow, pendingAttackRows.size())).clear();
+            }
+            int accepted = Math.min(cap, copies.size());
             pendingAttackRows.addAll(copies.subList(0, accepted));
             return accepted;
         }
@@ -622,7 +630,9 @@ public class ActionController {
     private void spawnNextBlock(boolean shouldSpawnItem) {
         holdUsed = false; //FR-50
         block = nextBlock;
-        if (mode == GameMode.ITEM && shouldSpawnItem) {
+        if (debugSpawnSource != null) {
+            nextBlock = debugSpawnSource.get();
+        } else if (mode == GameMode.ITEM && shouldSpawnItem) {
             nextBlock = BlockFactory.createRandomItem(difficulty);
         } else {
             nextBlock = BlockFactory.createRandomBlock(difficulty);
@@ -635,6 +645,53 @@ public class ActionController {
         }
     }
 
+
+    /**
+     * 디버그 모드: 현재 낙하 블록을 교체한다. 줄 삭제 애니메이션 중이거나 게임이 멈춘 상태면 적용하지 않는다.
+     * 교체한 블록을 시작 위치에 놓을 수 없으면 게임 오버 처리한다.
+     */
+    public boolean debugReplaceCurrentBlock(Block replacement) {
+        synchronized (stateLock) {
+            if (cannotAct() || replacement == null) {
+                return false;
+            }
+            block = replacement;
+            block.setX(startX);
+            block.setY(startY);
+            if (!board.isValidPosition(block.getShape(), startX, startY)) {
+                markGameOver();
+            }
+            return true;
+        }
+    }
+
+    /**
+     * 디버그 모드: 이후 생성되는 블록을 지정한 공급자로 고정한다. null이면 무작위 생성으로 되돌린다.
+     */
+    public void debugSetSpawnSource(Supplier<Block> source) {
+        synchronized (stateLock) {
+            debugSpawnSource = source;
+            nextBlock = source != null ? source.get() : BlockFactory.createRandomBlock(difficulty);
+        }
+    }
+
+    public void debugSetLevel(int level) {
+        synchronized (stateLock) {
+            gameStateManager.setDebugLevel(level);
+        }
+    }
+
+    public void debugSetDropSpeed(int speedMs) {
+        synchronized (stateLock) {
+            gameStateManager.setDebugDropSpeed(speedMs);
+        }
+    }
+
+    public void debugSetLinesForItem(int lines) {
+        synchronized (stateLock) {
+            gameStateManager.setDebugLinesForItem(lines);
+        }
+    }
 
     public void moveLeftAction() {
         synchronized (stateLock) {

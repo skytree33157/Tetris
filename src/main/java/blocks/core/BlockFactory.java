@@ -118,7 +118,8 @@ public class BlockFactory {
         }
     }
 
-    private static Block createBlock(BlockType type) {
+    /** 지정한 테트로미노 생성 (디버그 모드 등 특정 모양이 필요할 때 사용). */
+    public static Block createBlock(BlockType type) {
         return switch (type) {
             case I -> new IBlock();
             case O -> new OBlock();

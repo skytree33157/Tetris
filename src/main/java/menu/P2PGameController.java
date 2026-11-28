@@ -113,6 +113,15 @@ public final class P2PGameController {
 
     // P2P 세션에 게임 종료 전달
     public void notifyGameOver() throws IOException {
+        notifyGameOver(false);
+    }
+
+    // 항복으로 게임을 끝낼 때 사용한다. 상대 화면의 종료 사유가 항복으로 표시된다.
+    public void notifySurrender() throws IOException {
+        notifyGameOver(true);
+    }
+
+    private void notifyGameOver(boolean surrender) throws IOException {
         localGameOver = true;
         GameStatus finalStatus;
         synchronized (battle) {
@@ -125,8 +134,21 @@ public final class P2PGameController {
                     true, // gameOver = true
                     current.getCells());
         }
-        session.sendStatus(finalStatus);
+        if (surrender) {
+            session.sendSurrender(finalStatus);
+        } else {
+            session.sendStatus(finalStatus);
+        }
     }
+
+    public boolean isLocalSurrendered() {
+        return session.isLocalSurrendered();
+    }
+
+    public boolean isRemoteSurrendered() {
+        return session.isRemoteSurrendered();
+    }
+
 
     // 호스트 전용: 시간 제한이 끝났음을 확정 점수와 함께 알린다
     public void sendTimeUp(int hostScore, int clientScore) throws IOException {

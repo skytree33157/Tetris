@@ -35,6 +35,11 @@ public class P2PJoinScreen extends JFrame {
     private int dots;
 
     public P2PJoinScreen() {
+        this(null);
+    }
+
+    // 게임 종료 후 같은 연결을 이어받아 로비로 돌아온다 (resumed가 null이면 새 접속 화면)
+    public P2PJoinScreen(P2PGameSession resumed) {
         super("TFSE - 온라인 참여");
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -80,6 +85,10 @@ public class P2PJoinScreen extends JFrame {
                 back();
             }
         });
+
+        if (resumed != null) {
+            P2PGameRunner.resumeLobby(resumed, lobbyListener());
+        }
     }
 
     private static List<String> loadRecent() {
@@ -116,7 +125,11 @@ public class P2PJoinScreen extends JFrame {
         view.setStatus(CONNECTING_TEXT + "...", false);
         dotsTimer.start();
 
-        P2PGameRunner.joinServer(address, new P2PGameRunner.ConnectListener() {
+        P2PGameRunner.joinServer(address, lobbyListener());
+    }
+
+    private P2PGameRunner.ConnectListener lobbyListener() {
+        return new P2PGameRunner.ConnectListener() {
             @Override
             public void onConnected(P2PGameSession connected) {
                 if (!isDisplayable()) {
@@ -153,9 +166,12 @@ public class P2PJoinScreen extends JFrame {
                 if (!isDisplayable()) {
                     return;
                 }
-                resetLobby();
-                view.setStatus("방장과의 연결이 끊어졌어요. 다시 접속해 주세요.", true);
-                view.getAddressField().requestFocusInWindow();
+                // 게임 중 끊김과 같이 오류 창을 띄운 뒤 P2P 초기 화면으로 돌아간다
+                dotsTimer.stop();
+                session = null;
+                dispose();
+                P2PGameRunner.showDisconnectDialog(exception);
+                new P2PJoinScreen().setVisible(true);
             }
 
             @Override
@@ -169,7 +185,7 @@ public class P2PJoinScreen extends JFrame {
                 view.setStatus(P2PGameRunner.describeFailure(exception), true);
                 view.getAddressField().requestFocusInWindow();
             }
-        });
+        };
     }
 
     // 방장이 준비했는지에 따라 안내 문구를 고른다
@@ -196,17 +212,6 @@ public class P2PJoinScreen extends JFrame {
         view.setLobby(true);
         view.setStatus(WAITING_TEXT + "...", false);
         dotsTimer.start();
-    }
-
-    // 접속이 끊겨 로비를 처음 상태로 되돌린다
-    private void resetLobby() {
-        session = null;
-        connecting = false;
-        localReady = false;
-        remoteReady = false;
-        statusPrefix = CONNECTING_TEXT;
-        dotsTimer.stop();
-        view.setConnecting(false);
     }
 
     private void back() {

@@ -13,6 +13,9 @@ import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
@@ -23,7 +26,9 @@ import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import app.AppState;
@@ -82,6 +87,8 @@ public class GameScreen extends JFrame {
     private P2PGameController p2pController;
     private volatile boolean gameStartAllowed = false;  // P2P 모드에서 onStarted() 대기용
     private volatile Runnable onGameOverCallback;  // P2P 게임 오버 시 호출할 콜백
+    private volatile Runnable p2pLobbyAction;      // P2P 결과 화면의 "대기실로"
+    private volatile Runnable p2pLeaveAction;      // P2P 결과 화면 종료 시 세션 정리
     private JLabel connectionStatusLabel;
     private JPanel rightPanel;
 
@@ -101,6 +108,7 @@ public class GameScreen extends JFrame {
 private JLabel scoreLabel;
     private JLabel bestLabel;
     private JLabel levelLabel;
+    private DebugPanel debugPanel;
     private JLabel linesLabel;
     private JLabel timeLabel;
     private JLabel nextLevelLabel;
@@ -354,7 +362,8 @@ private JLabel scoreLabel;
                         GameStatus.capture(actionController, gameStateManager, scoreManager),
                         p2pController.getRemoteStatus(),
                         modeLabel(),
-                        elapsedMs);
+                        elapsedMs,
+                        p2pController.isLocalSurrendered() || p2pController.isRemoteSurrendered());
         finishBattle(frame, battleResult);
     }
 
@@ -371,7 +380,7 @@ private JLabel scoreLabel;
 
         // 대전: 승패 결과 화면 (혼자 하는 게임의 기록 등록 화면 대신)
         if (battleResult != null) {
-            new BattleResultScreen(battleResult).setVisible(true);
+            new BattleResultScreen(battleResult, p2pLobbyAction, p2pLeaveAction).setVisible(true);
             return;
         }
 
@@ -447,9 +456,23 @@ private JLabel scoreLabel;
         JPanel tiles = new JPanel(new GridLayout(1, 2, 10, 0));
         tiles.setOpaque(false);
         RoundedPanel levelCard = card();
-        levelCard.add(caption("레벨"));
+        JLabel levelCaption = caption("레벨");
+        levelCard.add(levelCaption);
         levelLabel = text("1", Theme.display(24), Theme.TEXT);
         levelCard.add(levelLabel);
+        if (p2pController == null) {
+            debugPanel = new DebugPanel(this, "디버그 모드", actionController, gameStateManager, null, null,
+                    on -> levelCaption.setText(on ? "레벨 [DEBUG]" : "레벨"));
+            levelCard.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            levelCard.setToolTipText("클릭하면 디버그 모드 전환");
+            levelCard.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    debugPanel.toggle();
+                    requestFocusInWindow();
+                }
+            });
+        }
         RoundedPanel linesCard = card();
         linesCard.add(caption("라인"));
         linesLabel = text("0", Theme.display(24), Theme.TEXT);
@@ -659,6 +682,9 @@ private JLabel scoreLabel;
 
     public void stopGame() {
         closed = true;
+        if (debugPanel != null) {
+            debugPanel.dispose();
+        }
         renderTimer.stop();
         gameController.shutdown();
         actionController.shutdown();
@@ -711,10 +737,41 @@ private JLabel scoreLabel;
         this.p2pController = controller;
         // 네트워크 대전에서는 상대 보드가 멈추지 않도록 일시정지를 비활성화
         gameController.setPauseEnabled(controller == null);
+        gameController.setSurrenderHandler(controller == null ? null : this::askSurrender);
         if (controller != null && remoteBoardPanel == null) {
             installOpponentColumn();
             pack();
             setLocationRelativeTo(null);
+        }
+    }
+
+    // ESC를 떼면 항복 확인을 연다. 모달은 키 처리 밖(invokeLater)에서 띄워야 이벤트 흐름이 꼬이지 않는다.
+    private void askSurrender() {
+        SwingUtilities.invokeLater(() -> {
+            if (resultShown || gameOverHandled || gameStateManager.isGameOver()) {
+                return;
+            }
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "항복하시겠습니까?", "항복",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (resultShown || gameOverHandled || gameStateManager.isGameOver()) {
+                return;
+            }
+            // 취소·닫기: 게임은 확인창과 상관없이 계속 진행 중이므로 아무것도 하지 않는다
+            if (choice == JOptionPane.YES_OPTION) {
+                surrender();
+            }
+        });
+    }
+
+    // 항복은 자기 게임 오버와 같다. 패배를 보드 상태에 반영한 뒤 상대에게 알리면 라운드가 끝나고 결과 화면이 뜬다.
+    private void surrender() {
+        gameOverHandled = true;
+        gameStateManager.setGameOver(true);
+        try {
+            p2pController.notifySurrender();
+        } catch (IOException exception) {
+            exception.printStackTrace();
         }
     }
 
@@ -824,6 +881,12 @@ private JLabel scoreLabel;
     // P2P 게임 오버 콜백 설정 - session 정리 등 필요한 작업 수행
     public void setOnGameOverCallback(Runnable callback) {
         this.onGameOverCallback = callback;
+    }
+
+    // P2P 결과 화면에서 대기실로 돌아가기 / 나가기 동작 설정
+    public void setP2PResultActions(Runnable onLobby, Runnable onLeave) {
+        this.p2pLobbyAction = onLobby;
+        this.p2pLeaveAction = onLeave;
     }
 
     // P2P onStarted() 콜백: 게임 루프 시작 허용

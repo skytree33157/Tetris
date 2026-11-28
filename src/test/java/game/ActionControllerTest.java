@@ -90,6 +90,27 @@ class ActionControllerTest {
         controller.hardDropAction();
     }
 
+    // ---------- 디버그 모드 ----------
+
+    @Test // 디버그: 현재 블록을 원하는 블록으로 교체한다
+    void debugReplacesCurrentBlock() {
+        ActionController controller = create(GameMode.NORMAL, 0);
+        Block replacement = new OBlock();
+
+        assertTrue(controller.debugReplaceCurrentBlock(replacement));
+        assertSame(replacement, controller.getCurrentBlock());
+    }
+
+    @Test // 디버그: 게임 오버 상태에서는 블록 교체가 거부된다
+    void debugReplaceIsRejectedAfterGameOver() {
+        ActionController controller = create(GameMode.NORMAL, 0);
+        manager.setGameOver(true);
+        Block before = controller.getCurrentBlock();
+
+        assertFalse(controller.debugReplaceCurrentBlock(new OBlock()));
+        assertSame(before, controller.getCurrentBlock());
+    }
+
     // ---------- FR-15 다음 블록 ----------
 
     @Test // 블록 고정 후 미리보기에 있던 블록이 현재 블록이 되고 새 다음 블록 생성

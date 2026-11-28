@@ -39,6 +39,8 @@ public final class P2PGameSession implements AutoCloseable {
     private static final int MESSAGE_KEEP_ALIVE = 5;
     private static final int MESSAGE_ATTACK = 6;
     private static final int MESSAGE_TIME_UP = 7;
+    // 항복: STATUS와 같은 필드(게임 오버 상태)를 보내되, 패배 원인이 항복이라는 점을 함께 전한다
+    private static final int MESSAGE_SURRENDER = 8;
     private static final int BOARD_WIDTH = 10;
 
 
@@ -153,7 +155,8 @@ public final class P2PGameSession implements AutoCloseable {
     private final Socket socket;
     private final DataInputStream input;
     private final DataOutputStream output;
-    private final int timeLimitSeconds;
+    // 호스트는 시작 전까지 바꿀 수 있고, 클라이언트는 시작 메시지로 받은 값을 적용한다.
+    private volatile int timeLimitSeconds;
     // 게임 모드. 호스트는 시작 전에 정하고, 클라이언트는 시작 메시지로 받는다. 시작 전에는 null.
     private volatile GameMode mode;
     private final boolean server;
@@ -162,9 +165,10 @@ public final class P2PGameSession implements AutoCloseable {
     private boolean localReady;
     private boolean remoteReady;
     private boolean roundActive;
-    // 첫 라운드가 시작되면 모드를 바꿀 수 없다.
-    private boolean started;
     private boolean localGameOver;
+    // 이번 라운드에서 내가 항복했는지 / 상대가 항복했는지 (결과 화면의 종료 사유용)
+    private volatile boolean localSurrendered;
+    private volatile boolean remoteSurrendered;
     private GameStatus remoteStatus;
     private ConnectionMonitor connectionMonitor=new ConnectionMonitor();
     private volatile Thread monitorThread;
@@ -296,14 +300,26 @@ public final class P2PGameSession implements AutoCloseable {
      * @param mode 선택한 게임 모드
      */
     public synchronized void setMode(GameMode mode) {
+        setMatch(mode, timeLimitSeconds);
+    }
+
+    /**
+     * 호스트가 게임 모드와 제한 시간을 함께 정한다. 방을 연 뒤에도 첫 라운드 시작 전까지 바꿀 수 있다.
+     *
+     * @param mode 선택한 게임 모드
+     * @param timeLimitSeconds 제한 시간(초). 0이면 시간 제한 없음
+     */
+    public synchronized void setMatch(GameMode mode, int timeLimitSeconds) {
         Objects.requireNonNull(mode, "mode");
+        validateTimeLimit(timeLimitSeconds);
         if (!server) {
             throw new IllegalStateException("Only the host can choose the game mode");
         }
-        if (started) {
-            throw new IllegalStateException("Game mode cannot change after the match started");
+        if (roundActive) {
+            throw new IllegalStateException("Game mode cannot change during an active round");
         }
         this.mode = mode;
+        this.timeLimitSeconds = timeLimitSeconds;
     }
 
     public boolean isServer() {
@@ -320,6 +336,16 @@ public final class P2PGameSession implements AutoCloseable {
 
     public synchronized GameStatus getRemoteStatus() {
         return remoteStatus;
+    }
+
+    // 이번 라운드에서 내가 항복했는지 여부
+    public synchronized boolean isLocalSurrendered() {
+        return localSurrendered;
+    }
+
+    // 이번 라운드에서 상대가 항복했는지 여부
+    public synchronized boolean isRemoteSurrendered() {
+        return remoteSurrendered;
     }
 
     public void setListener(Listener listener) {
@@ -355,6 +381,23 @@ public final class P2PGameSession implements AutoCloseable {
             }
             writeMessage(MESSAGE_STATUS, false, status);
             localGameOver = status.isGameOver();
+            finishRoundIfComplete();
+        }
+    }
+
+    /**
+     * 내가 항복했음을 알린다. status는 게임 오버 상태여야 하며 라운드를 바로 끝낸다.
+     */
+    public void sendSurrender(GameStatus status) throws IOException {
+        Objects.requireNonNull(status, "status");
+        synchronized (this) {
+            ensureConnected();
+            if (!roundActive) {
+                return;
+            }
+            localSurrendered = true;
+            writeMessage(MESSAGE_SURRENDER, false, status);
+            localGameOver = true;
             finishRoundIfComplete();
         }
     }
@@ -424,8 +467,9 @@ public final class P2PGameSession implements AutoCloseable {
                 // 메시지 식별자에 따라 필요한 데이터만 읽고 해당 상태 전이 처리기에 전달한다.
                 switch (message) {
                     case MESSAGE_READY -> receiveReady(input.readBoolean());
-                    case MESSAGE_START -> receiveStart(input.readUnsignedByte());
-                    case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input));
+                    case MESSAGE_START -> receiveStart(input.readUnsignedByte(), input.readInt());
+                    case MESSAGE_STATUS -> receiveStatus(GameStatus.readFrom(input), false);
+                    case MESSAGE_SURRENDER -> receiveStatus(GameStatus.readFrom(input), true);
                     case MESSAGE_ATTACK -> receiveAttack(readAttackRows());
                     case MESSAGE_TIME_UP -> receiveTimeUp(input.readInt(), input.readInt());
                     case MESSAGE_KEEP_ALIVE -> {
@@ -468,28 +512,29 @@ public final class P2PGameSession implements AutoCloseable {
     }
 
     // 클라이언트가 호스트의 시작 메시지를 받았을 때 유효한 상태인지 확인하고, 호스트가 정한 모드를 적용한 뒤 라운드를 연다.
-    private void receiveStart(int modeOrdinal) throws IOException {
+    private void receiveStart(int modeOrdinal, int startTimeLimitSeconds) throws IOException {
         synchronized (this) {
             GameMode[] modes = GameMode.values();
             if (server || roundActive || !localReady || !remoteReady
-                    || modeOrdinal < 0 || modeOrdinal >= modes.length) {
+                    || modeOrdinal < 0 || modeOrdinal >= modes.length
+                    || startTimeLimitSeconds < 0 || startTimeLimitSeconds > MAX_TIME_LIMIT_SECONDS) {
                 throw new IOException("Unexpected multiplayer start message");
             }
             GameMode startMode = modes[modeOrdinal];
-            if (mode != null && mode != startMode) {
-                throw new IOException("Game mode changed after the match started");
-            }
             mode = startMode;
+            timeLimitSeconds = startTimeLimitSeconds;
             beginRound();
         }
     }
 
     // 상대 상태를 저장해 전달하고, 게임 오버 여부에 따라 라운드 종료를 검사한다.
-    private void receiveStatus(GameStatus status) throws IOException {
+    private void receiveStatus(GameStatus status, boolean surrendered) throws IOException {
         synchronized (this) {
             if (!roundActive) {
                 throw new IOException("Player status received outside an active round");
             }
+            // 리스너가 결과를 그리기 전에 항복 여부가 보이도록 먼저 기록한다
+            remoteSurrendered = surrendered;
             remoteStatus = status;
             listener.onRemoteStatus(status);
             finishRoundIfComplete();
@@ -549,11 +594,12 @@ public final class P2PGameSession implements AutoCloseable {
 
     private void beginRound() {
         // 연결은 유지하고, 이전 라운드에 한정된 준비/게임 오버/상대 상태만 초기화한다.
-        started = true;
         localReady = false;
         remoteReady = false;
         localGameOver = false;
+        localSurrendered = false;
         remoteStatus = null;
+        remoteSurrendered = false;
         roundActive = true;
         connectionMonitor.reset();
         listener.onStarted();
@@ -585,7 +631,8 @@ public final class P2PGameSession implements AutoCloseable {
             output.writeBoolean(ready);
         } else if (message == MESSAGE_START) {
             output.writeByte(mode.ordinal());
-        } else if (message == MESSAGE_STATUS) {
+            output.writeInt(timeLimitSeconds);
+        } else if (message == MESSAGE_STATUS || message == MESSAGE_SURRENDER) {
             status.writeTo(output);
         }
         output.flush();

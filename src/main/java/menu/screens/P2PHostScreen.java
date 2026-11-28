@@ -9,6 +9,7 @@ import java.io.IOException;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 
+import game.BattleSettings;
 import menu.BattleModes;
 import menu.P2PGameRunner;
 import menu.views.P2PHostView;
@@ -39,6 +40,11 @@ public class P2PHostScreen extends JFrame {
     private boolean left;
 
     public P2PHostScreen() {
+        this(null);
+    }
+
+    // 게임 종료 후 같은 연결을 이어받아 방 대기실로 돌아온다 (resumed가 null이면 새 방 만들기)
+    public P2PHostScreen(P2PGameSession resumed) {
         super("TFSE - 방 만들기");
         ui.AppIcon.apply(this);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -83,6 +89,10 @@ public class P2PHostScreen extends JFrame {
                 back();
             }
         });
+
+        if (resumed != null) {
+            P2PGameRunner.resumeLobby(resumed, hostListener());
+        }
     }
 
     private void pickMode(int index) {
@@ -125,10 +135,14 @@ public class P2PHostScreen extends JFrame {
     // 상대가 접속하면 게임 방식을 고르고 게임 시작을 누를 수 있다
     private void startGame() {
         try {
-            session.setMode(BattleModes.settings(modeIndex).getGameMode());
+            BattleSettings settings = BattleModes.settings(modeIndex);
+            session.setMatch(settings.getGameMode(), settings.getTimeLimitSeconds());
             session.setReady();
         } catch (IOException exception) {
             view.setStatus(P2PGameRunner.describeFailure(exception), true);
+            return;
+        } catch (IllegalStateException exception) {
+            view.setStatus("게임을 시작할 수 없어요: " + exception.getMessage(), true);
             return;
         }
         localReady = true;
@@ -206,8 +220,12 @@ public class P2PHostScreen extends JFrame {
                 if (!isDisplayable()) {
                     return;
                 }
-                resetRoom();
-                view.setStatus("상대와의 연결이 끊어졌어요. 다시 방을 열어 주세요.", true);
+                // 게임 중 끊김과 같이 오류 창을 띄운 뒤 P2P 초기 화면으로 돌아간다
+                dotsTimer.stop();
+                session = null;
+                dispose();
+                P2PGameRunner.showDisconnectDialog(exception);
+                new P2PHostScreen().setVisible(true);
             }
 
             @Override
